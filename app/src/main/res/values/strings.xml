@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Yoink</string>
+
+    <!-- Share sheet -->
+    <string name="share_not_youtube">That doesn\'t look like a YouTube link</string>
+    <string name="share_checking">Checking available qualities…</string>
+    <string name="share_formats_failed">Couldn\'t list qualities. You can still try Best or Audio.</string>
+    <string name="share_started">Download started</string>
+    <string name="share_loading_title">Loading…</string>
+    <string name="quality_best">Best</string>
+    <string name="quality_audio">Audio (MP3)</string>
+
+    <!-- Notifications -->
+    <string name="channel_progress">Download progress</string>
+    <string name="channel_status">Finished and failed downloads</string>
+    <string name="stage_queued">Queued</string>
+    <string name="stage_starting">Starting</string>
+    <string name="stage_video">Downloading video</string>
+    <string name="stage_audio">Downloading audio</string>
+    <string name="stage_merging">Merging</string>
+    <string name="stage_converting">Converting to MP3</string>
+    <string name="stage_saving">Saving</string>
+    <string name="notification_done">Download complete</string>
+    <string name="notification_failed">Download failed</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_retry">Retry</string>
+    <string name="eta_left">%1$s left</string>
+
+    <!-- Errors -->
+    <string name="error_private">This video is private.</string>
+    <string name="error_age">This video is age-restricted and can\'t be downloaded without signing in.</string>
+    <string name="error_unavailable">This video is unavailable or has been removed.</string>
+    <string name="error_members">This video is for channel members only.</string>
+    <string name="error_live">Live streams can\'t be downloaded while they\'re live.</string>
+    <string name="error_bot">YouTube asked to confirm you\'re not a bot. Try again later, or update the downloader in Settings.</string>
+    <string name="error_forbidden">YouTube refused the download. Try updating the downloader in Settings.</string>
+    <string name="error_network">Network error. Check your connection and try again.</string>
+    <string name="error_format">That quality isn\'t available for this video.</string>
+    <string name="error_storage">Not enough storage space.</string>
+    <string name="error_generic">Download failed.</string>
+    <string name="error_interrupted">The download was interrupted.</string>
+
+    <!-- Home -->
+    <string name="tab_downloading">Downloading</string>
+    <string name="tab_library">Library</string>
+    <string name="downloading_empty">Nothing downloading.\nIn YouTube, tap Share → Yoink.</string>
+    <string name="status_waiting">Waiting…</string>
+    <string name="status_failed">Failed</string>
+</resources>
