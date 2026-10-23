@@ -175,6 +175,12 @@
       62%, 74% { transform: translate(4.4px, -0.2px); }
       77%, 100% { transform: translate(0px, 0px); }
     }
+    @keyframes yoink-bubble {
+      0%, 32% { opacity: 0; transform: scale(.5) rotate(-6deg); }
+      34% { opacity: 1; transform: scale(1.08) rotate(2deg); animation-timing-function: ease-out; }
+      35.5%, 43% { opacity: 1; transform: scale(1) rotate(0deg); }
+      46%, 100% { opacity: 0; transform: scale(.9) rotate(0deg); }
+    }
 
     /* Toss: wind up, swing, release, and a long arc into the phone */
     @keyframes yoink-x {
