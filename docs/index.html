@@ -63,20 +63,20 @@
     /* Hero */
     .hero { text-align: center; padding: 48px 0 32px; }
     /* The "yoink" at the top: an old-cartoon short on a loop. A gloved hand reaches in, yoinks the
-       video out of the player, and flings it into the phone. Thick wobbly ink, film grain, squash and
-       stretch. Without the "play" class (no JavaScript, or the visitor prefers less motion) it holds
+       video out of the player, and flings it into the phone. Clean ink lines on a cream card, with
+       old-cartoon squash and stretch. Without the "play" class (no JavaScript, or the visitor prefers less motion) it holds
        still on a single frame. */
     .yoink { display: block; width: 100%; max-width: 360px; height: auto; margin: 0 auto 22px; }
-    .yoink .paper { fill: #fbf3e2; }
-    .yoink .frame { fill: none; stroke: #1d1411; stroke-width: 3; }
-    .yoink .ink, .yoink .inkf { stroke: #1d1411; stroke-width: 3.2; stroke-linejoin: round; stroke-linecap: round; }
+    .yoink .paper { fill: #fdf8ef; }
+    .yoink .frame { fill: none; stroke: #1d1411; stroke-width: 2.5; }
+    .yoink .ink, .yoink .inkf { stroke: #1d1411; stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; }
     .yoink .ink { fill: none; }
     .yoink .inkf { fill: #fffdf7; }
     .yoink .red { fill: #e0141e; }
-    .yoink .shade { fill: #1d1411; opacity: .14; }
+    .yoink .shade { fill: #1d1411; opacity: .1; }
     .yoink .addr { font: 800 8.5px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #1d1411; }
-    .yoink .shout { font: 900 26px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #e0141e; stroke: #1d1411; stroke-width: 5; paint-order: stroke; stroke-linejoin: round; letter-spacing: .02em; }
-    .yoink .shout.small { font-size: 16px; stroke-width: 4; }
+    .yoink .shout { font: 900 26px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #e0141e; stroke: #1d1411; stroke-width: 4; paint-order: stroke; stroke-linejoin: round; letter-spacing: .02em; }
+    .yoink .shout.small { font-size: 16px; stroke-width: 3.4; }
     .yoink .say { font: 900 13px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #e0141e; }
     .yoink .trail { fill: none; stroke: #1d1411; stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 5 8; opacity: 0; }
     .yoink .trail-mask { fill: none; stroke: #fff; stroke-width: 10; }
@@ -91,7 +91,6 @@
     .yoink.play .bob.late { animation-delay: -.3s; }
     .yoink.play .shadow-bob { animation: yoink-shadow .6s ease-in-out infinite alternate; }
     .yoink.play .shadow-bob.late { animation-delay: -.3s; }
-    .yoink.play .flicker { animation: yoink-flicker .18s steps(2) infinite; }
     .yoink.play .hand { animation-name: yoink-hand; }
     .yoink.play .stretch { animation-name: yoink-stretch; }
     .yoink.play .open { animation-name: yoink-open; animation-timing-function: linear; }
@@ -116,7 +115,6 @@
     /* Everything bounces to the beat, like a 1930s short */
     @keyframes yoink-bob { from { transform: scale(1, 1); } to { transform: scale(1.025, .965); } }
     @keyframes yoink-shadow { from { transform: scale(1); } to { transform: scale(1.08, 1); } }
-    @keyframes yoink-flicker { 0% { opacity: .9; } 100% { opacity: 1; } }
 
     /* Reach in, grab (0–27%) */
     @keyframes yoink-hand {
@@ -361,22 +359,9 @@
         <svg class="yoink" id="yoink" viewBox="0 0 340 170" role="img" aria-label="Cartoon: a gloved hand yoinks a video out of a YouTube player and flings it into a phone, which saves it">
           <defs>
             <clipPath id="yoink-clip"><rect x="1.5" y="1.5" width="337" height="167" rx="18"/></clipPath>
-            <!-- Hand-drawn wobble: the ink "boils" a few times a second -->
-            <filter id="yoink-boil" x="-5%" y="-5%" width="110%" height="110%">
-              <feTurbulence type="fractalNoise" baseFrequency=".045" numOctaves="1" seed="1" result="n">
-                <animate attributeName="seed" values="1;4;7;10" dur=".48s" calcMode="discrete" repeatCount="indefinite"/>
-              </feTurbulence>
-              <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G"/>
-            </filter>
-            <filter id="yoink-grain" x="0" y="0" width="100%" height="100%">
-              <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="2" stitchTiles="stitch">
-                <animate attributeName="seed" values="2;5;8;11;14" dur=".4s" calcMode="discrete" repeatCount="indefinite"/>
-              </feTurbulence>
-              <feColorMatrix values="0 0 0 0 .11  0 0 0 0 .08  0 0 0 0 .06  0 0 0 .32 -.14"/>
-            </filter>
             <radialGradient id="yoink-vignette" cx=".5" cy=".5" r=".72">
-              <stop offset=".62" stop-color="#5a3a1c" stop-opacity="0"/>
-              <stop offset="1" stop-color="#5a3a1c" stop-opacity=".32"/>
+              <stop offset=".7" stop-color="#5a3a1c" stop-opacity="0"/>
+              <stop offset="1" stop-color="#5a3a1c" stop-opacity=".12"/>
             </radialGradient>
             <mask id="yoink-mask" maskUnits="userSpaceOnUse" x="0" y="-60" width="340" height="260">
               <path class="trail-mask" pathLength="1" stroke-dasharray="1" d="M99 53 Q178 -40 291 101"/>
@@ -386,7 +371,7 @@
           <g clip-path="url(#yoink-clip)">
             <rect class="paper" x="0" y="0" width="340" height="170"/>
 
-            <g filter="url(#yoink-boil)">
+            <g>
               <!-- Shadows -->
               <ellipse class="shade fit shadow-bob" cx="85" cy="154" rx="58" ry="4.5"/>
               <ellipse class="shade fit shadow-bob late" cx="291" cy="152" rx="24" ry="3.5"/>
@@ -404,7 +389,7 @@
                 <rect class="ink" x="56" y="62" width="86" height="11" rx="5.5"/>
                 <text class="addr" x="99" y="70.4" text-anchor="middle">youtube.com</text>
                 <rect class="ink" x="27" y="83" width="116" height="61" rx="6" fill="#efe4cf"/>
-                <path class="ink" d="M34 138 H136" stroke="#d8c8ad" stroke-width="3.2"/>
+                <path class="ink" d="M34 138 H136" stroke="#e3d6bf" stroke-width="2.6"/>
                 <path class="ink prog" pathLength="1" stroke-dasharray="1" d="M34 138 H136" stroke="#e0141e"/>
                 <!-- Pie-cut eyes for when its video is gone -->
                 <g class="eyes fit">
@@ -425,7 +410,7 @@
                 <path class="ink" d="M285 63 h12"/>
                 <circle cx="291" cy="143" r="2.4" fill="#1d1411"/>
                 <g class="check fit">
-                  <circle class="red" cx="291" cy="101" r="12" stroke="#1d1411" stroke-width="3.2"/>
+                  <circle class="red" cx="291" cy="101" r="12" stroke="#1d1411" stroke-width="2.6"/>
                   <path d="M285 101.5 l4.2 4.2 l7.5 -8" fill="none" stroke="#fffdf7" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
                 </g>
                 <g class="ding fit">
@@ -452,7 +437,7 @@
               <!-- The glove; fingertips sit at (0,0), just over the top of the video -->
               <g transform="translate(85 99)">
                 <g class="hand"><g class="stretch"><g transform="scale(1.22)">
-                  <rect x="-8" y="-300" width="16" height="256" fill="#e0141e" stroke="#1d1411" stroke-width="3.2"/>
+                  <rect x="-8" y="-300" width="16" height="256" fill="#e0141e" stroke="#1d1411" stroke-width="2.6"/>
                   <g class="open">
                     <rect class="inkf" x="-17.5" y="-24" width="10" height="22" rx="5" transform="rotate(9 -12.5 -24)"/>
                     <rect class="inkf" x="-8.5" y="-24" width="10" height="26" rx="5"/>
@@ -483,22 +468,14 @@
               <g class="saved fit"><text class="shout small" x="291" y="44" text-anchor="middle">Saved!</text></g>
             </g>
 
-            <!-- Old film: grain, flicker, vignette -->
-            <rect class="flicker" x="0" y="0" width="340" height="170" filter="url(#yoink-grain)"/>
+            <!-- Soft warm vignette -->
             <rect x="0" y="0" width="340" height="170" fill="url(#yoink-vignette)"/>
           </g>
           <rect class="frame" x="1.5" y="1.5" width="337" height="167" rx="18"/>
         </svg>
         <script>
           // Keep the cartoon playing, unless the visitor has asked their device for less motion.
-          (function () {
-            var svg = document.getElementById("yoink");
-            if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) {
-              if (svg.pauseAnimations) svg.pauseAnimations();
-            } else {
-              svg.classList.add("play");
-            }
-          })();
+          if (!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) document.getElementById("yoink").classList.add("play");
         </script>
         <h1>Save videos to your phone</h1>
         <p class="lead">In YouTube, tap <b>Share → Yoink</b>, pick a quality, done. Free, open source, no ads.</p>
