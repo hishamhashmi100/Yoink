@@ -35,7 +35,7 @@ In the YouTube app, tap **Share → Yoink**, pick a quality, and keep watching. 
 
 ## Install
 
-**[Download Yoink from the website](https://yoink-7rk.pages.dev/)**
+**[Download Yoink from the website](https://YOUR-SITE.pages.dev)** <!-- PLACEHOLDER: replace with your Cloudflare Pages URL -->
 
 Or grab the APK from [GitHub Releases](https://github.com/hishamhashmi100/Yoink/releases/latest):
 
