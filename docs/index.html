@@ -74,19 +74,22 @@
     .yoink .red { fill: #e0141e; }
     .yoink .shade { fill: #1d1411; opacity: .1; }
     .yoink .addr { font: 800 8.5px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #1d1411; }
-    .yoink .shout { font: 800 26px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #ff4d4d; stroke: #1d1411; stroke-width: 2.6; paint-order: stroke; stroke-linejoin: round; letter-spacing: .03em; }
-    .yoink .shout.small { font-size: 16px; stroke-width: 2.2; }
-    .yoink .say { font: 800 13px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #ff4d4d; letter-spacing: .03em; }
+    .yoink .shout { font: 800 26px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #ffc83d; stroke: #1d1411; stroke-width: 3; paint-order: stroke; stroke-linejoin: round; letter-spacing: .03em; }
+    .yoink .shout.small { font-size: 16px; stroke-width: 2.6; }
+    .yoink .say { font: 800 13px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #ffc83d; stroke: #1d1411; stroke-width: 2.4; paint-order: stroke; stroke-linejoin: round; letter-spacing: .03em; }
     .yoink .trail { fill: none; stroke: #1d1411; stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 5 8; opacity: 0; }
     .yoink .trail-mask { fill: none; stroke: #fff; stroke-width: 10; }
     .yoink .prog { stroke-dashoffset: .4; }
     .yoink .fit { transform-box: fill-box; transform-origin: center; }
     .yoink .base { transform-box: fill-box; transform-origin: 50% 100%; }
     .yoink .hand { transform: translate(0px, -190px); }
-    .yoink .closed, .yoink .eyes, .yoink .bubble, .yoink .burst, .yoink .puff, .yoink .ding { opacity: 0; }
+    .yoink .swing { transform-origin: 0px -210px; }
+    .yoink .closed, .yoink .held, .yoink .eyes, .yoink .bubble, .yoink .burst, .yoink .puff, .yoink .ding { opacity: 0; }
 
     .yoink.play * { animation-duration: var(--t, 10s); animation-iteration-count: infinite; animation-fill-mode: both; animation-timing-function: ease-in-out; }
     .yoink.play .hand { animation-name: yoink-hand; }
+    .yoink.play .swing { animation-name: yoink-swing; }
+    .yoink.play .held { animation-name: yoink-held; animation-timing-function: linear; }
     .yoink.play .stretch { animation-name: yoink-stretch; }
     .yoink.play .open { animation-name: yoink-open; animation-timing-function: linear; }
     .yoink.play .closed { animation-name: yoink-closed; animation-timing-function: linear; }
@@ -115,11 +118,20 @@
       16% { transform: translate(0px, 3px); animation-timing-function: ease-in-out; }
       18%, 19.5% { transform: translate(0px, 0px); animation-timing-function: cubic-bezier(.45, 0, .25, 1); }
       27%, 38% { transform: translate(0px, -46px); animation-timing-function: cubic-bezier(.45, 0, .55, 1); }
-      44% { transform: translate(-24px, -30px); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
-      47% { transform: translate(26px, -62px); animation-timing-function: cubic-bezier(.1, .6, .3, 1); }
-      51% { transform: translate(52px, -74px); animation-timing-function: cubic-bezier(.5, 0, .8, .5); }
-      62%, 100% { transform: translate(60px, -220px); }
+      44% { transform: translate(2px, -34px); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
+      47% { transform: translate(10px, -50px); animation-timing-function: cubic-bezier(.1, .6, .3, 1); }
+      49.5% { transform: translate(16px, -62px); animation-timing-function: cubic-bezier(.5, 0, .8, .5); }
+      58%, 100% { transform: translate(40px, -230px); }
     }
+    /* Same beats as yoink-hand: swing back, sweep forward through the release, follow through */
+    @keyframes yoink-swing {
+      0%, 38% { transform: rotate(0deg); animation-timing-function: cubic-bezier(.45, 0, .55, 1); }
+      44% { transform: rotate(10deg); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
+      47% { transform: rotate(-16deg); animation-timing-function: cubic-bezier(.1, .6, .3, 1); }
+      49.5% { transform: rotate(-24deg); animation-timing-function: cubic-bezier(.5, 0, .8, .5); }
+      58%, 100% { transform: rotate(-8deg); }
+    }
+    @keyframes yoink-held { 0%, 18.9% { opacity: 0; } 18.95%, 46.95% { opacity: 1; } 47%, 100% { opacity: 0; } }
     @keyframes yoink-stretch {
       0%, 13% { transform: scale(1, 1); }
       15% { transform: scale(.96, 1.06); }
@@ -168,31 +180,25 @@
 
     /* Toss: wind up, swing, release, and a long arc into the phone */
     @keyframes yoink-x {
-      0%, 38% { transform: translateX(0px); animation-timing-function: cubic-bezier(.45, 0, .55, 1); }
-      44% { transform: translateX(-24px); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
-      47% { transform: translateX(26px); animation-timing-function: cubic-bezier(.3, .1, .7, .9); }
+      0%, 18.95% { transform: translateX(0px); }
+      19%, 47% { transform: translateX(71.2px); animation-timing-function: linear; }
       62%, 90% { transform: translateX(206px); }
       91%, 100% { transform: translateX(0px); }
     }
     @keyframes yoink-y {
-      0%, 19.5% { transform: translateY(0px); animation-timing-function: cubic-bezier(.45, 0, .25, 1); }
-      27% { transform: translateY(-46px); }
-      38% { transform: translateY(-46px); animation-timing-function: cubic-bezier(.45, 0, .55, 1); }
-      44% { transform: translateY(-30px); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
-      47% { transform: translateY(-62px); animation-timing-function: cubic-bezier(.2, .6, .4, 1); }
-      53.5% { transform: translateY(-80px); animation-timing-function: cubic-bezier(.6, 0, .8, .4); }
+      0%, 18.95% { transform: translateY(0px); }
+      19%, 47% { transform: translateY(-58.6px); animation-timing-function: cubic-bezier(.2, .6, .4, 1); }
+      53.5% { transform: translateY(-86px); animation-timing-function: cubic-bezier(.6, 0, .8, .4); }
       62%, 90% { transform: translateY(-10px); }
       91%, 100% { transform: translateY(0px); }
     }
     @keyframes yoink-card {
-      0%, 18.5% { opacity: 1; transform: scale(1, 1) rotate(0deg); }
-      20% { opacity: 1; transform: scale(1.06, .94) rotate(0deg); }
-      22%, 38% { opacity: 1; transform: scale(1, 1) rotate(0deg); }
-      44% { opacity: 1; transform: scale(1, 1) rotate(-10deg); }
-      47% { opacity: 1; transform: scale(1, 1) rotate(6deg); animation-timing-function: linear; }
-      54% { opacity: 1; transform: scale(1.12, 1.12) rotate(180deg); animation-timing-function: linear; }
-      62% { opacity: 1; transform: scale(1, 1) rotate(366deg); }
-      65.5%, 90% { opacity: 0; transform: scale(.3, .3) rotate(366deg); }
+      0%, 18.9% { opacity: 1; transform: scale(1, 1) rotate(0deg); }
+      18.95%, 46.95% { opacity: 0; transform: scale(1, 1) rotate(-16deg); }
+      47% { opacity: 1; transform: scale(1, 1) rotate(-16deg); animation-timing-function: linear; }
+      54% { opacity: 1; transform: scale(1.1, 1.1) rotate(160deg); animation-timing-function: linear; }
+      62% { opacity: 1; transform: scale(1, 1) rotate(344deg); }
+      65.5%, 90% { opacity: 0; transform: scale(.3, .3) rotate(344deg); }
       91% { opacity: 0; transform: scale(0, 0) rotate(0deg); }
       94% { opacity: 1; transform: scale(1.1, .92) rotate(0deg); }
       96%, 100% { opacity: 1; transform: scale(1, 1) rotate(0deg); }
@@ -353,7 +359,7 @@
               <stop offset="1" stop-color="#5a3a1c" stop-opacity=".12"/>
             </radialGradient>
             <mask id="yoink-mask" maskUnits="userSpaceOnUse" x="0" y="-60" width="340" height="260">
-              <path class="trail-mask" pathLength="1" stroke-dasharray="1" d="M111 49 Q179 -15 291 101"/>
+              <path class="trail-mask" pathLength="1" stroke-dasharray="1" d="M156 52 Q206 -27 291 101"/>
             </mask>
           </defs>
 
@@ -366,7 +372,7 @@
               <ellipse class="shade fit shadow-bob late" cx="291" cy="152" rx="24" ry="3.5"/>
 
               <!-- Dashed motion line behind the flying video -->
-              <path class="trail" mask="url(#yoink-mask)" d="M111 49 Q179 -15 291 101"/>
+              <path class="trail" mask="url(#yoink-mask)" d="M156 52 Q206 -27 291 101"/>
 
               <!-- The player -->
               <g class="player base"><g class="bob base">
@@ -425,7 +431,14 @@
 
               <!-- The glove; fingertips sit at (0,0), just over the top of the video -->
               <g transform="translate(85 99)">
-                <g class="hand"><g class="stretch"><g transform="scale(1.22)">
+                <g class="hand"><g class="swing">
+                  <g class="held" transform="translate(-85 -99)">
+                <rect class="inkf" x="61" y="94" width="48" height="34" rx="4"/>
+                <path d="M61 99.5 H109 M61 122.5 H109" stroke="#1d1411" stroke-width="2.6"/>
+                <path d="M66 96.8 h3 M74 96.8 h3 M82 96.8 h3 M90 96.8 h3 M98 96.8 h3 M66 125.2 h3 M74 125.2 h3 M82 125.2 h3 M90 125.2 h3 M98 125.2 h3" stroke="#1d1411" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M80 104.5 L93 111 L80 117.5 Z" fill="#e0141e" stroke="#1d1411" stroke-width="2.4" stroke-linejoin="round"/>
+                  </g>
+                  <g class="stretch"><g transform="scale(1.22)">
                   <rect x="-8" y="-300" width="16" height="256" fill="#e0141e" stroke="#1d1411" stroke-width="2.6"/>
                   <g class="open">
                     <rect class="inkf" x="-17.5" y="-24" width="10" height="22" rx="5" transform="rotate(9 -12.5 -24)"/>
@@ -445,7 +458,8 @@
                   <!-- Flared cuff -->
                   <path class="inkf" d="M-15 -40 l-5 -12 h40 l-5 12 z"/>
                   <path d="M-17.5 -46 h35" stroke="#e0141e" stroke-width="3"/>
-                </g></g></g>
+                  </g></g>
+                </g></g>
               </g>
 
               <!-- Words -->
