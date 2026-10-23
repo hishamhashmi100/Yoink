@@ -26,7 +26,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,7 +35,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
@@ -47,8 +45,8 @@ import io.github.hishamhashmi100.yoink.download.YouTubeUrl
 import java.io.File
 
 @Composable
-fun DownloadingScreen(modifier: Modifier = Modifier, viewModel: HomeViewModel = viewModel()) {
-    val active by viewModel.active.collectAsStateWithLifecycle()
+fun DownloadingScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier) {
+    val active = viewModel.active.collectAsStateWithLifecycle().value.orEmpty()
     if (active.isEmpty()) {
         Box(modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
             Text(

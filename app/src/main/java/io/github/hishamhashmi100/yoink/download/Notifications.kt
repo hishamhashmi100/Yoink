@@ -15,6 +15,8 @@ import androidx.core.content.ContextCompat
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
 import io.github.hishamhashmi100.yoink.ui.MainActivity
+import io.github.hishamhashmi100.yoink.ui.home.HomeTab
+import io.github.hishamhashmi100.yoink.ui.player.PlayerActivity
 
 object Notifications {
 
@@ -60,7 +62,7 @@ object Notifications {
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setProgress(100, progress.percent.coerceAtLeast(0f).toInt(), progress.percent < 0)
-            .setContentIntent(openApp(context, downloadId, play = false))
+            .setContentIntent(openDownloads(context, downloadId))
             .addAction(0, context.getString(R.string.action_cancel), action(context, NotificationActionReceiver.ACTION_CANCEL, downloadId))
             .build()
     }
@@ -74,7 +76,7 @@ object Notifications {
             .setContentTitle(download.title)
             .setContentText(context.getString(R.string.notification_done))
             .setAutoCancel(true)
-            .setContentIntent(openApp(context, download.id, play = true))
+            .setContentIntent(openPlayer(context, download.id))
             .build()
         post(context, resultId(download.id), notification)
     }
@@ -86,7 +88,7 @@ object Notifications {
             .setContentText(download.title)
             .setStyle(NotificationCompat.BigTextStyle().bigText("${download.title}\n$message"))
             .setAutoCancel(true)
-            .setContentIntent(openApp(context, download.id, play = false))
+            .setContentIntent(openDownloads(context, download.id))
             .addAction(0, context.getString(R.string.action_retry), action(context, NotificationActionReceiver.ACTION_RETRY, download.id))
             .build()
         post(context, resultId(download.id), notification)
@@ -103,17 +105,23 @@ object Notifications {
         NotificationManagerCompat.from(context).notify(id, notification)
     }
 
-    private fun openApp(context: Context, downloadId: Long, play: Boolean): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        if (play) intent.putExtra(MainActivity.EXTRA_PLAY_DOWNLOAD, downloadId)
-        return PendingIntent.getActivity(
+    private fun openDownloads(context: Context, downloadId: Long): PendingIntent =
+        PendingIntent.getActivity(
             context,
-            resultId(downloadId) * 2 + if (play) 1 else 0,
-            intent,
+            progressId(downloadId),
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra(MainActivity.EXTRA_TAB, HomeTab.DOWNLOADING.name),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-    }
+
+    private fun openPlayer(context: Context, downloadId: Long): PendingIntent =
+        PendingIntent.getActivity(
+            context,
+            resultId(downloadId),
+            PlayerActivity.intent(context, downloadId).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
 
     private fun action(context: Context, action: String, downloadId: Long): PendingIntent =
         PendingIntent.getBroadcast(

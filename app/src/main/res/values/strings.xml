@@ -47,4 +47,27 @@
     <string name="downloading_empty">Nothing downloading.\nIn YouTube, tap Share → Yoink.</string>
     <string name="status_waiting">Waiting…</string>
     <string name="status_failed">Failed</string>
+    <string name="library_empty">Your downloads show up here.</string>
+    <string name="library_no_results">No matches</string>
+    <string name="search_hint">Search library</string>
+    <string name="filter_all">All</string>
+    <string name="filter_video">Video</string>
+    <string name="filter_audio">Audio</string>
+    <string name="layout_grid">Grid view</string>
+    <string name="layout_list">List view</string>
+    <string name="action_share">Share</string>
+    <string name="action_open_with">Open with another app</string>
+    <string name="action_delete">Delete</string>
+    <string name="delete_title">Delete download?</string>
+    <string name="delete_message">“%1$s” will be removed from this phone.</string>
+    <string name="cancel">Cancel</string>
+    <string name="no_app_to_open">No app can open this file</string>
+    <string name="file_missing">This file is no longer on the phone</string>
+
+    <!-- Add link -->
+    <string name="add_link">Add link</string>
+    <string name="add_link_title">Download from a link</string>
+    <string name="add_link_hint">YouTube link</string>
+    <string name="paste">Paste</string>
+    <string name="next">Next</string>
 </resources>
