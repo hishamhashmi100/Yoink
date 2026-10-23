@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The arrow from docs/logo.svg, about 44dp tall and centred, inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.141"
+        android:scaleY="0.141"
+        android:translateX="17.9"
+        android:translateY="19.03">
+        <path
+            android:pathData="M256,120v256M152,272l104,104 104,-104"
+            android:strokeWidth="56"
+            android:strokeColor="#FF000000"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
+</vector>

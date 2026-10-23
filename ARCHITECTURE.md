@@ -56,7 +56,7 @@ Built on [`youtubedl-android`](https://github.com/JunkFood02/youtubedl-android),
 | CPython | `libpython.so` (+ stdlib zip) | Cross-compiled for Android ABIs |
 | yt-dlp | Python zipapp in `noBackupFilesDir` | **Updatable at runtime** without an app update |
 | ffmpeg / ffprobe | `libffmpeg.so` | Muxing, audio extraction |
-| JS runtime | per library | Required by yt-dlp for YouTube (see §3) |
+| QuickJS | `libqjs.so` | JS runtime yt-dlp needs for YouTube (see §3); passed via `--js-runtimes` by the library (0.18+) |
 
 ### Why executables are disguised as `.so` files
 
@@ -165,7 +165,7 @@ YouTube changes its player JS and API regularly, and every downloader breaks fro
 - **CI (`.github/workflows/release.yml`):** pushing a `v*` tag runs these steps:
   1. `./gradlew assembleRelease`
   2. Decode the keystore from the `KEYSTORE_BASE64` secret and sign with `apksigner`
-  3. Attach the APKs plus a `SHA-256SUMS` file to the GitHub Release
+  3. Attach the APKs plus a `SHA256SUMS.txt` file to the GitHub Release
 - **Not on Google Play.** Play policy prohibits YouTube downloaders, so releases are distributed through GitHub, as F-Droid-style apps commonly are.
 
 ---
