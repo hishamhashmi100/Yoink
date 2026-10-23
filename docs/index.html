@@ -84,7 +84,7 @@
     .yoink .base { transform-box: fill-box; transform-origin: 50% 100%; }
     .yoink .hand { transform: translate(0px, -190px); }
     .yoink .swing { transform-origin: 0px -210px; }
-    .yoink .closed, .yoink .held, .yoink .eyes, .yoink .bubble, .yoink .burst, .yoink .puff, .yoink .ding { opacity: 0; }
+    .yoink .closed, .yoink .held, .yoink .eyes, .yoink .bubble, .yoink .burst, .yoink .ding { opacity: 0; }
 
     .yoink.play * { animation-duration: var(--t, 10s); animation-iteration-count: infinite; animation-fill-mode: both; animation-timing-function: ease-in-out; }
     .yoink.play .hand { animation-name: yoink-hand; }
@@ -103,14 +103,14 @@
     .yoink.play .pupils { animation-name: yoink-look; }
     .yoink.play .bubble { animation-name: yoink-bubble; }
     .yoink.play .burst { animation-name: yoink-burst; }
-    .yoink.play .puff { animation-name: yoink-puff; }
     .yoink.play .trail { animation-name: yoink-trail; }
     .yoink.play .trail-mask { animation-name: yoink-draw; animation-timing-function: linear; }
     .yoink.play .check { animation-name: yoink-check; }
     .yoink.play .ding { animation-name: yoink-ding; }
     .yoink.play .saved { animation-name: yoink-saved; }
 
-    /* Four beats, one after the other: grab (8–29%), "HEY!!" (29–46%), toss (38–62%), saved (62–91%). */
+    /* Four beats, one after the other: grab (8–29%), "HEY!!" (32–46%), toss (38–62%), saved (62–91%).
+       The player's eyes open on the grab and follow the video until it's saved. */
 
     /* Grab: glide down, grip, lift */
     @keyframes yoink-hand {
@@ -155,27 +155,25 @@
       24.5%, 27.5% { opacity: 1; transform: scale(1) rotate(-10deg); }
       30%, 100% { opacity: 0; transform: scale(.9) rotate(-10deg); }
     }
-    @keyframes yoink-puff {
-      0%, 19.5% { opacity: 0; transform: scale(.3); }
-      21.5% { opacity: 1; transform: scale(1); animation-timing-function: ease-out; }
-      26%, 100% { opacity: 0; transform: scale(1.4); }
-    }
 
     /* "HEY!!": the player wakes up while the glove holds its video up */
     @keyframes yoink-eyes {
-      0%, 29% { opacity: 0; transform: scale(1, 0); }
-      31% { opacity: 1; transform: scale(1.05, 1.15); animation-timing-function: ease-out; }
-      32.5%, 70% { opacity: 1; transform: scale(1, 1); }
+      0%, 21% { opacity: 0; transform: scale(1, 0); }
+      23% { opacity: 1; transform: scale(1.05, 1.15); animation-timing-function: ease-out; }
+      24.5%, 70% { opacity: 1; transform: scale(1, 1); }
       71% { opacity: 1; transform: scale(1, .1); }
       72%, 74% { opacity: 1; transform: scale(1, 1); }
       77%, 100% { opacity: 0; transform: scale(1, 0); }
     }
-    @keyframes yoink-look { 0%, 46% { transform: translateX(0px); } 52%, 70% { transform: translateX(3.5px); } 74%, 100% { transform: translateX(0px); } }
-    @keyframes yoink-bubble {
-      0%, 32% { opacity: 0; transform: scale(.5) rotate(-6deg); }
-      34% { opacity: 1; transform: scale(1.08) rotate(2deg); animation-timing-function: ease-out; }
-      35.5%, 43% { opacity: 1; transform: scale(1) rotate(0deg); }
-      46%, 100% { opacity: 0; transform: scale(.9) rotate(0deg); }
+    /* The eyes stay on the video: up while it's held, back on the wind-up, along the arc, then at the phone */
+    @keyframes yoink-look {
+      0%, 22% { transform: translate(0px, 0px); animation-timing-function: cubic-bezier(.45, 0, .25, 1); }
+      26%, 38% { transform: translate(0.0px, -4.4px); animation-timing-function: cubic-bezier(.45, 0, .55, 1); }
+      44% { transform: translate(-3.1px, -3.1px); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
+      47% { transform: translate(3.4px, -2.8px); animation-timing-function: ease-out; }
+      53.5% { transform: translate(3.7px, -2.4px); animation-timing-function: ease-in; }
+      62%, 74% { transform: translate(4.4px, -0.2px); }
+      77%, 100% { transform: translate(0px, 0px); }
     }
 
     /* Toss: wind up, swing, release, and a long arc into the phone */
@@ -388,13 +386,15 @@
                 <path class="ink prog" pathLength="1" stroke-dasharray="1" d="M34 138 H136" stroke="#e0141e"/>
                 <!-- Pie-cut eyes for when its video is gone -->
                 <g class="eyes fit">
+                  <ellipse class="inkf" cx="72" cy="111" rx="10.5" ry="13" stroke-width="2.4"/>
+                  <ellipse class="inkf" cx="98" cy="111" rx="10.5" ry="13" stroke-width="2.4"/>
                   <g class="pupils">
-                    <ellipse cx="74" cy="110" rx="6.5" ry="10" fill="#1d1411"/>
-                    <ellipse cx="96" cy="110" rx="6.5" ry="10" fill="#1d1411"/>
-                    <path d="M76.5 106 l4.5 -5.5 a10 10 0 0 1 1.2 4.6 z" fill="#efe4cf"/>
-                    <path d="M98.5 106 l4.5 -5.5 a10 10 0 0 1 1.2 4.6 z" fill="#efe4cf"/>
+                    <ellipse cx="72" cy="111" rx="4.8" ry="7.4" fill="#1d1411"/>
+                    <ellipse cx="98" cy="111" rx="4.8" ry="7.4" fill="#1d1411"/>
+                    <path d="M73.6 108.6 l2.4 -3 a7 7 0 0 1 .9 2.7 z" fill="#fffdf7"/>
+                    <path d="M99.6 108.6 l2.4 -3 a7 7 0 0 1 .9 2.7 z" fill="#fffdf7"/>
                   </g>
-                  <path class="ink" d="M66 96 l13 4 M104 96 l-13 4"/>
+                  <path class="ink" d="M60 93 l14 4 M110 93 l-14 4"/>
                 </g>
               </g></g>
 
@@ -420,14 +420,6 @@
                 <path d="M66 96.8 h3 M74 96.8 h3 M82 96.8 h3 M90 96.8 h3 M98 96.8 h3 M66 125.2 h3 M74 125.2 h3 M82 125.2 h3 M90 125.2 h3 M98 125.2 h3" stroke="#1d1411" stroke-width="2.2" stroke-linecap="round"/>
                 <path d="M80 104.5 L93 111 L80 117.5 Z" fill="#e0141e" stroke="#1d1411" stroke-width="2.4" stroke-linejoin="round"/>
               </g></g></g>
-
-              <!-- Dust puffs where the video was grabbed -->
-              <g class="puff fit">
-                <circle class="inkf" cx="56" cy="92" r="5"/>
-                <circle class="inkf" cx="49" cy="99" r="3.5"/>
-                <circle class="inkf" cx="114" cy="92" r="5"/>
-                <circle class="inkf" cx="121" cy="99" r="3.5"/>
-              </g>
 
               <!-- The glove; fingertips sit at (0,0), just over the top of the video -->
               <g transform="translate(85 99)">
