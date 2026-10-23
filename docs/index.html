@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yoink — Save videos on Android</title>
+  <meta name="description" content="Yoink is a free, open-source Android app. Tap Share → Yoink in YouTube and the video saves to your phone.">
+  <meta name="theme-color" content="#e0141e">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ff4d4d'/%3E%3Cstop offset='1' stop-color='%23d90f1a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M32 15v32M19 34l13 13 13-13' stroke='%23fff' stroke-width='7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #faf8f8;
+      --surface: #ffffff;
+      --surface-2: #f6f2f2;
+      --text: #1a1414;
+      --muted: #645a5a;
+      --border: #ece4e4;
+      --accent: #e0141e;
+      --accent-2: #b80d16;
+      --accent-soft: #ffe9ea;
+      --on-accent: #ffffff;
+      --warn-bg: #fff6e0;
+      --warn-text: #6b4d00;
+      --shadow: 0 1px 2px rgba(20, 16, 50, .06), 0 8px 24px rgba(20, 16, 50, .06);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121010;
+        --surface: #1c1919;
+        --surface-2: #252121;
+        --text: #f5f1f1;
+        --muted: #b0a6a6;
+        --border: #332d2d;
+        --accent: #ff5a60;
+        --accent-2: #ff7a7f;
+        --accent-soft: #3a1a1c;
+        --on-accent: #ffffff;
+        --warn-bg: #2b2412;
+        --warn-text: #f3d48a;
+        --shadow: none;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    a { color: var(--accent); }
+    .wrap { max-width: 680px; margin: 0 auto; padding: 0 16px; }
+
+    /* Header */
+    header { padding: 20px 0 0; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; color: var(--text); }
+    .brand svg { width: 32px; height: 32px; }
+    .nav { display: flex; justify-content: space-between; align-items: center; }
+    .nav a.gh { font-size: 14px; color: var(--muted); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; }
+    .nav a.gh:hover { color: var(--text); }
+
+    /* Hero */
+    .hero { text-align: center; padding: 48px 0 32px; }
+    .hero .icon { width: 88px; height: 88px; margin: 0 auto 20px; filter: drop-shadow(0 10px 24px rgba(224, 20, 30, .35)); }
+    h1 { font-size: clamp(30px, 7vw, 44px); line-height: 1.1; margin: 0 0 12px; letter-spacing: -0.02em; }
+    .lead { font-size: 18px; color: var(--muted); margin: 0 auto 28px; max-width: 30em; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      min-height: 56px; padding: 0 28px; border-radius: 16px;
+      background: linear-gradient(135deg, #ff4d4d, #d90f1a);
+      color: #fff; font-weight: 700; font-size: 18px; text-decoration: none;
+      box-shadow: 0 8px 20px rgba(224, 20, 30, .3);
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(224, 20, 30, .38); }
+    .btn:active { transform: translateY(0); }
+    .btn svg { width: 22px; height: 22px; }
+    .meta { margin-top: 12px; font-size: 14px; color: var(--muted); min-height: 1.5em; }
+
+    .notice {
+      margin: 24px auto 0; max-width: 460px; padding: 14px 16px; border-radius: 14px;
+      background: var(--warn-bg); color: var(--warn-text); font-size: 15px; text-align: left;
+      display: none;
+    }
+    .notice.show { display: block; }
+
+    .qr-card {
+      display: none; margin: 28px auto 0; max-width: 360px; padding: 20px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow);
+    }
+    .qr-card.show { display: block; }
+    .qr-card p { margin: 0 0 14px; font-size: 15px; color: var(--muted); }
+    #qr { display: inline-block; padding: 10px; background: #fff; border-radius: 12px; }
+    #qr img, #qr canvas { display: block; }
+
+    /* Sections */
+    section { padding: 36px 0; }
+    h2 { font-size: 24px; margin: 0 0 6px; letter-spacing: -0.01em; }
+    .sub { color: var(--muted); margin: 0 0 22px; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); }
+
+    ol.steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+    ol.steps li {
+      counter-increment: step; position: relative;
+      padding: 18px 18px 18px 68px; border-bottom: 1px solid var(--border);
+    }
+    ol.steps li:last-child { border-bottom: 0; }
+    ol.steps li::before {
+      content: counter(step);
+      position: absolute; left: 18px; top: 16px;
+      width: 34px; height: 34px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: var(--accent-soft); color: var(--accent); font-weight: 700;
+    }
+    ol.steps strong { display: block; font-size: 17px; margin-bottom: 2px; }
+    ol.steps span { color: var(--muted); font-size: 15px; }
+    .tip {
+      margin-top: 10px; padding: 10px 12px; border-radius: 10px;
+      background: var(--surface-2); font-size: 14px; color: var(--muted);
+    }
+    .pill {
+      display: inline-block; padding: 1px 8px; border-radius: 6px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      font-size: 14px; color: var(--text); white-space: nowrap;
+    }
+
+    .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .flow .card { padding: 18px 14px; text-align: center; }
+    .flow .emoji { width: 44px; height: 44px; margin: 0 auto 10px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+    .flow .emoji svg { width: 24px; height: 24px; }
+    .flow b { display: block; font-size: 15px; }
+    .flow small { color: var(--muted); font-size: 13px; }
+
+    details { padding: 0 18px; border-bottom: 1px solid var(--border); }
+    details:last-child { border-bottom: 0; }
+    summary {
+      cursor: pointer; list-style: none; padding: 16px 0; font-weight: 600;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; font-size: 22px; color: var(--muted); font-weight: 400; }
+    details[open] summary::after { content: "–"; }
+    details p { margin: 0 0 16px; color: var(--muted); font-size: 15px; }
+
+    .files { padding: 6px 18px; }
+    .file { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .file:last-child { border-bottom: 0; }
+    .file div b { display: block; font-size: 15px; }
+    .file div small { color: var(--muted); font-size: 13px; }
+    .file a { font-weight: 600; font-size: 15px; white-space: nowrap; text-decoration: none; }
+
+    footer { padding: 32px 0 48px; color: var(--muted); font-size: 13px; text-align: center; }
+    footer p { margin: 6px 0; }
+
+    @media (max-width: 480px) {
+      .hero { padding-top: 36px; }
+      .btn { width: 100%; }
+      .flow { grid-template-columns: 1fr; }
+      .flow .card { display: flex; align-items: center; gap: 14px; text-align: left; }
+      .flow .emoji { margin: 0; flex: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="nav">
+        <a class="brand" href="#">
+          <svg viewBox="0 0 64 64" aria-hidden="true"><use href="#logo"/></svg>
+          Yoink
+        </a>
+        <a class="gh" id="source-link" href="#">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.640 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.880-1.370-3.880-1.370-.53-1.330-1.280-1.690-1.280-1.690-1.050-.71.08-.7.08-.7 1.160.08 1.770 1.190 1.770 1.190 1.030 1.770 2.7 1.260 3.360.96.1-.75.4-1.260.73-1.550-2.560-.29-5.240-1.280-5.240-5.680 0-1.260.45-2.280 1.190-3.090-.12-.29-.52-1.460.11-3.050 0 0 .97-.31 3.170 1.180a11 11 0 0 1 5.770 0c2.2-1.490 3.170-1.180 3.170-1.180.63 1.590.23 2.760.11 3.050.74.81 1.190 1.830 1.190 3.090 0 4.410-2.690 5.380-5.250 5.670.41.36.78 1.060.78 2.140v3.170c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg>
+          Source code
+        </a>
+      </div>
+    </header>
+
+    <main>
+      <div class="hero">
+        <svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><use href="#logo"/></svg>
+        <h1>Save videos to your phone</h1>
+        <p class="lead">In YouTube, tap <b>Share → Yoink</b>, pick a quality, done. Free, open source, no ads.</p>
+
+        <a class="btn" id="download-btn" href="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>
+          Download for Android
+        </a>
+        <div class="meta" id="release-meta">Latest version · Android 10 or newer</div>
+
+        <div class="notice" id="ios-notice">
+          <b>Yoink is Android only.</b> Apple doesn't allow apps like this on iPhone or iPad, so there's no iOS version.
+        </div>
+
+        <div class="qr-card" id="qr-card">
+          <p>You're on a computer. Scan this with your Android phone to open this page there.</p>
+          <div id="qr"></div>
+        </div>
+      </div>
+
+      <section id="install">
+        <h2>How to install</h2>
+        <p class="sub">Takes about a minute. Yoink isn't on the Play Store, so Android asks a couple of extra questions.</p>
+        <div class="card">
+          <ol class="steps">
+            <li>
+              <strong>Tap “Download for Android”</strong>
+              <span>If your browser asks whether to keep the file, tap <span class="pill">Download</span> or <span class="pill">Download anyway</span>.</span>
+            </li>
+            <li>
+              <strong>Open the downloaded file</strong>
+              <span>Tap <span class="pill">Open</span> in the notification, or find <b>yoink</b> in your <b>Files → Downloads</b> folder.</span>
+            </li>
+            <li>
+              <strong>Allow installing from your browser</strong>
+              <span>Android will say it can't install apps from this source. Tap <span class="pill">Settings</span>, turn on <span class="pill">Allow from this source</span>, then go back.</span>
+              <div class="tip">You only need to do this once. You can turn it off again after installing.</div>
+            </li>
+            <li>
+              <strong>Tap Install</strong>
+              <span>If Google Play Protect shows a warning, tap <span class="pill">More details</span> → <span class="pill">Install anyway</span>. It warns about every app that doesn't come from the Play Store.</span>
+            </li>
+            <li>
+              <strong>Open Yoink once</strong>
+              <span>Allow notifications so you can see download progress. That's it.</span>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="use">
+        <h2>How to use it</h2>
+        <p class="sub">You never have to copy a link.</p>
+        <div class="flow">
+          <div class="card">
+            <div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13"/></svg></div>
+            <div><b>Tap Share</b><small>under any video in the YouTube app</small></div>
+          </div>
+          <div class="card">
+            <div class="emoji"><svg viewBox="0 0 64 64"><use href="#logo"/></svg></div>
+            <div><b>Choose Yoink</b><small>then pick a quality or audio only</small></div>
+          </div>
+          <div class="card">
+            <div class="emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></div>
+            <div><b>Done</b><small>watch it any time in Yoink's Library</small></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="other">
+        <h2>Other versions</h2>
+        <p class="sub">The main button is right for almost every phone from the last 7 years.</p>
+        <div class="card files">
+          <div class="file">
+            <div><b>Most phones (64-bit)</b><small>arm64-v8a · recommended</small></div>
+            <a data-asset="yoink-arm64-v8a.apk" href="#">Download</a>
+          </div>
+          <div class="file">
+            <div><b>Older phones (32-bit)</b><small>armeabi-v7a · try this if the main one won't install</small></div>
+            <a data-asset="yoink-armeabi-v7a.apk" href="#">Download</a>
+          </div>
+          <div class="file">
+            <div><b>Universal</b><small>works everywhere, bigger download</small></div>
+            <a data-asset="yoink-universal.apk" href="#">Download</a>
+          </div>
+          <div class="file">
+            <div><b>Checksums</b><small>SHA-256, to verify your download</small></div>
+            <a data-asset="SHA256SUMS.txt" href="#">View</a>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq">
+        <h2>Questions</h2>
+        <p class="sub">&nbsp;</p>
+        <div class="card">
+          <details>
+            <summary>Is it safe?</summary>
+            <p>Yoink is open source: anyone can read every line of the code on GitHub. The APK is built and signed automatically by GitHub from that public code, and each release lists SHA-256 checksums so you can confirm your file wasn't changed.</p>
+          </details>
+          <details>
+            <summary>Why isn't it on the Play Store?</summary>
+            <p>Google Play doesn't allow apps that download from YouTube, so Yoink is distributed here instead, the same way many open-source Android apps are.</p>
+          </details>
+          <details>
+            <summary>Does it need a server or an account?</summary>
+            <p>No. Everything happens on your phone. There's no sign-in, no tracking and no ads.</p>
+          </details>
+          <details>
+            <summary>Downloads stopped working. What do I do?</summary>
+            <p>YouTube changes things often. Open Yoink → <b>Settings</b> → <b>Update downloader</b>. That fixes it almost every time. If not, check this page for a newer version.</p>
+          </details>
+          <details>
+            <summary>Where do my videos go?</summary>
+            <p>Into Yoink's Library. In Settings you can also choose to save them to your gallery (Movies/Yoink and Music/Yoink).</p>
+          </details>
+          <details>
+            <summary>How do I update Yoink?</summary>
+            <p>Download the latest version from this page and install it over the old one. Your library is kept.</p>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Yoink is free software under the <a id="license-link" href="#">GPL-3.0 license</a>.</p>
+      <p>For personal use with content you have the right to download. Respect copyright and YouTube's Terms of Service. Yoink is not affiliated with YouTube or Google.</p>
+    </footer>
+  </div>
+
+  <!-- App logo, reused via <use href="#logo"> -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ff4d4d"/>
+        <stop offset="1" stop-color="#d90f1a"/>
+      </linearGradient>
+      <symbol id="logo" viewBox="0 0 64 64">
+        <rect width="64" height="64" rx="16" fill="url(#logo-g)"/>
+        <path d="M32 15v32M19 34l13 13 13-13" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script>
+    // Change this to your GitHub "username/repository".
+    const REPO = "hishamhashmi100/Yoink";
+    const MAIN_ASSET = "yoink-arm64-v8a.apk";
+
+    const repoUrl = `https://github.com/${REPO}`;
+    const assetUrl = (name) => `${repoUrl}/releases/latest/download/${name}`;
+
+    document.getElementById("source-link").href = repoUrl;
+    document.getElementById("license-link").href = `${repoUrl}/blob/main/LICENSE`;
+    document.getElementById("download-btn").href = assetUrl(MAIN_ASSET);
+    document.querySelectorAll("[data-asset]").forEach((a) => {
+      a.href = assetUrl(a.dataset.asset);
+    });
+
+    // Show version, size and date from the latest GitHub release.
+    fetch(`https://api.github.com/repos/${REPO}/releases/latest`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((release) => {
+        const asset = (release.assets || []).find((a) => a.name === MAIN_ASSET);
+        const parts = [release.tag_name];
+        if (asset) parts.push(`${(asset.size / 1048576).toFixed(0)} MB`);
+        parts.push(new Date(release.published_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }));
+        parts.push("Android 10+");
+        document.getElementById("release-meta").textContent = parts.join(" · ");
+      })
+      .catch(() => {});
+
+    // Tailor the page to the visitor's device.
+    const ua = navigator.userAgent;
+    const isAndroid = /Android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+
+    if (isIOS) {
+      document.getElementById("ios-notice").classList.add("show");
+    } else if (!isAndroid) {
+      document.getElementById("qr-card").classList.add("show");
+      window.addEventListener("load", () => {
+        if (typeof QRCode === "undefined") {
+          document.getElementById("qr-card").classList.remove("show");
+          return;
+        }
+        new QRCode(document.getElementById("qr"), {
+          text: location.href.split("#")[0],
+          width: 160,
+          height: 160,
+          colorDark: "#15131f",
+          colorLight: "#ffffff",
+        });
+      });
+    }
+  </script>
+</body>
+</html>
