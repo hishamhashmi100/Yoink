@@ -63,8 +63,7 @@
     /* Hero */
     .hero { text-align: center; padding: 48px 0 32px; }
     /* The "yoink" at the top: an old-cartoon short on a loop. A gloved hand reaches in, yoinks the
-       video out of the player, and flings it into the phone. Clean ink lines on a cream card, with
-       old-cartoon squash and stretch. Without the "play" class (no JavaScript, or the visitor prefers less motion) it holds
+       video out of the player, the player shouts, and the glove tosses the video into the phone. Without the "play" class (no JavaScript, or the visitor prefers less motion) it holds
        still on a single frame. */
     .yoink { display: block; width: 100%; max-width: 360px; height: auto; margin: 0 auto 22px; }
     .yoink .paper { fill: #fdf8ef; }
@@ -86,11 +85,7 @@
     .yoink .hand { transform: translate(0px, -190px); }
     .yoink .closed, .yoink .eyes, .yoink .bubble, .yoink .burst, .yoink .puff, .yoink .ding { opacity: 0; }
 
-    .yoink.play * { animation-duration: var(--t, 7s); animation-iteration-count: infinite; animation-fill-mode: both; animation-timing-function: ease-in-out; }
-    .yoink.play .bob { animation: yoink-bob .6s ease-in-out infinite alternate; }
-    .yoink.play .bob.late { animation-delay: -.3s; }
-    .yoink.play .shadow-bob { animation: yoink-shadow .6s ease-in-out infinite alternate; }
-    .yoink.play .shadow-bob.late { animation-delay: -.3s; }
+    .yoink.play * { animation-duration: var(--t, 10s); animation-iteration-count: infinite; animation-fill-mode: both; animation-timing-function: ease-in-out; }
     .yoink.play .hand { animation-name: yoink-hand; }
     .yoink.play .stretch { animation-name: yoink-stretch; }
     .yoink.play .open { animation-name: yoink-open; animation-timing-function: linear; }
@@ -112,128 +107,122 @@
     .yoink.play .ding { animation-name: yoink-ding; }
     .yoink.play .saved { animation-name: yoink-saved; }
 
-    /* Everything bounces to the beat, like a 1930s short */
-    @keyframes yoink-bob { from { transform: scale(1, 1); } to { transform: scale(1.025, .965); } }
-    @keyframes yoink-shadow { from { transform: scale(1); } to { transform: scale(1.08, 1); } }
+    /* Four beats, one after the other: grab (8–29%), "HEY!!" (29–46%), toss (38–62%), saved (62–91%). */
 
-    /* Reach in, grab (0–27%) */
+    /* Grab: glide down, grip, lift */
     @keyframes yoink-hand {
-      0%, 10% { transform: translate(0px, -190px); }
-      13% { transform: translate(0px, -96px); animation-timing-function: ease-out; }
-      16.5% { transform: translate(0px, -112px); animation-timing-function: cubic-bezier(.6, 0, .9, .5); }
-      21.5% { transform: translate(0px, 5px); animation-timing-function: ease-out; }
-      24%, 26% { transform: translate(0px, 0px); animation-timing-function: cubic-bezier(.5, 0, .2, 1); }
-      31% { transform: translate(0px, -40px); }
-      33% { transform: translate(-9px, -44px); animation-timing-function: cubic-bezier(.6, 0, .9, .4); }
-      34.5% { transform: translate(14px, -58px); animation-timing-function: cubic-bezier(.4, 0, .8, .4); }
-      44%, 100% { transform: translate(18px, -210px); }
+      0%, 7% { transform: translate(0px, -190px); animation-timing-function: cubic-bezier(.22, .8, .32, 1); }
+      16% { transform: translate(0px, 3px); animation-timing-function: ease-in-out; }
+      18%, 19.5% { transform: translate(0px, 0px); animation-timing-function: cubic-bezier(.45, 0, .25, 1); }
+      27%, 38% { transform: translate(0px, -46px); animation-timing-function: cubic-bezier(.45, 0, .55, 1); }
+      44% { transform: translate(-24px, -30px); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
+      47% { transform: translate(26px, -62px); animation-timing-function: cubic-bezier(.1, .6, .3, 1); }
+      51% { transform: translate(52px, -74px); animation-timing-function: cubic-bezier(.5, 0, .8, .5); }
+      62%, 100% { transform: translate(60px, -220px); }
     }
     @keyframes yoink-stretch {
-      0%, 16.5% { transform: scale(1, 1); }
-      19.5% { transform: scale(.88, 1.2); }
-      22% { transform: scale(1.18, .82); }
-      25% { transform: scale(1, 1); }
-      28% { transform: scale(.9, 1.14); }
-      31% { transform: scale(1.06, .94); }
-      33% { transform: scale(1.1, .9); }
-      34.5% { transform: scale(.88, 1.15); }
-      37% { transform: scale(1, 1); }
-      40% { transform: scale(.9, 1.18); }
-      44%, 100% { transform: scale(1, 1); }
+      0%, 13% { transform: scale(1, 1); }
+      15% { transform: scale(.96, 1.06); }
+      17% { transform: scale(1.04, .96); }
+      19.5%, 38% { transform: scale(1, 1); }
+      44% { transform: scale(1.03, .97); }
+      47% { transform: scale(.95, 1.07); }
+      51%, 100% { transform: scale(1, 1); }
     }
-    @keyframes yoink-open { 0%, 25.4% { opacity: 1; } 25.5%, 34.9% { opacity: 0; } 35%, 100% { opacity: 1; } }
-    @keyframes yoink-closed { 0%, 25.4% { opacity: 0; } 25.5%, 34.9% { opacity: 1; } 35%, 100% { opacity: 0; } }
+    @keyframes yoink-open { 0%, 18.9% { opacity: 1; } 19%, 46.9% { opacity: 0; } 47%, 100% { opacity: 1; } }
+    @keyframes yoink-closed { 0%, 18.9% { opacity: 0; } 19%, 46.9% { opacity: 1; } 47%, 100% { opacity: 0; } }
     @keyframes yoink-player {
-      0%, 26% { transform: scale(1, 1); }
-      28.5% { transform: scale(.94, 1.08); }
-      31% { transform: scale(1.07, .93); }
-      33.5% { transform: scale(.98, 1.02); }
-      36%, 100% { transform: scale(1, 1); }
+      0%, 20% { transform: scale(1, 1); }
+      23% { transform: scale(1.03, .97); }
+      26%, 100% { transform: scale(1, 1); }
     }
-    @keyframes yoink-prog { 0% { stroke-dashoffset: 1; } 25%, 85% { stroke-dashoffset: .4; } 87%, 100% { stroke-dashoffset: 1; } }
+    @keyframes yoink-prog { 0% { stroke-dashoffset: 1; } 18%, 90% { stroke-dashoffset: .4; } 91%, 100% { stroke-dashoffset: 1; } }
     @keyframes yoink-burst {
-      0%, 26.5% { opacity: 0; transform: scale(.2) rotate(-24deg); }
-      29% { opacity: 1; transform: scale(1.3) rotate(-6deg); animation-timing-function: ease-out; }
-      31%, 33.5% { opacity: 1; transform: scale(1) rotate(-10deg); }
-      35.5%, 100% { opacity: 0; transform: scale(.6) rotate(-10deg); }
+      0%, 21% { opacity: 0; transform: scale(.4) rotate(-14deg); }
+      23% { opacity: 1; transform: scale(1.1) rotate(-9deg); animation-timing-function: ease-out; }
+      24.5%, 27.5% { opacity: 1; transform: scale(1) rotate(-10deg); }
+      30%, 100% { opacity: 0; transform: scale(.9) rotate(-10deg); }
     }
     @keyframes yoink-puff {
-      0%, 26% { opacity: 0; transform: scale(.2); }
-      28% { opacity: 1; transform: scale(1); animation-timing-function: ease-out; }
-      33%, 100% { opacity: 0; transform: scale(1.5); }
+      0%, 19.5% { opacity: 0; transform: scale(.3); }
+      21.5% { opacity: 1; transform: scale(1); animation-timing-function: ease-out; }
+      26%, 100% { opacity: 0; transform: scale(1.4); }
     }
 
-    /* Fling it across (34–46%), the player is not happy (37–68%) */
+    /* "HEY!!": the player wakes up while the glove holds its video up */
+    @keyframes yoink-eyes {
+      0%, 29% { opacity: 0; transform: scale(1, 0); }
+      31% { opacity: 1; transform: scale(1.05, 1.15); animation-timing-function: ease-out; }
+      32.5%, 70% { opacity: 1; transform: scale(1, 1); }
+      71% { opacity: 1; transform: scale(1, .1); }
+      72%, 74% { opacity: 1; transform: scale(1, 1); }
+      77%, 100% { opacity: 0; transform: scale(1, 0); }
+    }
+    @keyframes yoink-look { 0%, 46% { transform: translateX(0px); } 52%, 70% { transform: translateX(3.5px); } 74%, 100% { transform: translateX(0px); } }
+    @keyframes yoink-bubble {
+      0%, 32% { opacity: 0; transform: scale(.5) rotate(-6deg); }
+      34% { opacity: 1; transform: scale(1.08) rotate(2deg); animation-timing-function: ease-out; }
+      35.5%, 43% { opacity: 1; transform: scale(1) rotate(0deg); }
+      46%, 100% { opacity: 0; transform: scale(.9) rotate(0deg); }
+    }
+
+    /* Toss: wind up, swing, release, and a long arc into the phone */
     @keyframes yoink-x {
-      0%, 26% { transform: translateX(0px); }
-      33% { transform: translateX(-9px); }
-      34.5% { transform: translateX(14px); animation-timing-function: linear; }
-      46%, 84% { transform: translateX(206px); }
-      85%, 100% { transform: translateX(0px); }
+      0%, 38% { transform: translateX(0px); animation-timing-function: cubic-bezier(.45, 0, .55, 1); }
+      44% { transform: translateX(-24px); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
+      47% { transform: translateX(26px); animation-timing-function: cubic-bezier(.3, .1, .7, .9); }
+      62%, 90% { transform: translateX(206px); }
+      91%, 100% { transform: translateX(0px); }
     }
     @keyframes yoink-y {
-      0%, 26% { transform: translateY(0px); animation-timing-function: cubic-bezier(.5, 0, .2, 1); }
-      31% { transform: translateY(-40px); }
-      33% { transform: translateY(-44px); }
-      34.5% { transform: translateY(-58px); animation-timing-function: cubic-bezier(.2, .7, .5, 1); }
-      39.5% { transform: translateY(-88px); animation-timing-function: cubic-bezier(.5, 0, .8, .4); }
-      46%, 84% { transform: translateY(-10px); }
-      85%, 100% { transform: translateY(0px); }
+      0%, 19.5% { transform: translateY(0px); animation-timing-function: cubic-bezier(.45, 0, .25, 1); }
+      27% { transform: translateY(-46px); }
+      38% { transform: translateY(-46px); animation-timing-function: cubic-bezier(.45, 0, .55, 1); }
+      44% { transform: translateY(-30px); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
+      47% { transform: translateY(-62px); animation-timing-function: cubic-bezier(.2, .6, .4, 1); }
+      53.5% { transform: translateY(-80px); animation-timing-function: cubic-bezier(.6, 0, .8, .4); }
+      62%, 90% { transform: translateY(-10px); }
+      91%, 100% { transform: translateY(0px); }
     }
     @keyframes yoink-card {
-      0%, 25% { opacity: 1; transform: scale(1, 1) rotate(0deg); }
-      26.5% { opacity: 1; transform: scale(1.12, .88) rotate(0deg); }
-      28.5% { opacity: 1; transform: scale(.94, 1.06) rotate(-4deg); }
-      34.5% { opacity: 1; transform: scale(1, 1) rotate(0deg); animation-timing-function: linear; }
-      46% { opacity: 1; transform: scale(1, 1) rotate(360deg); }
-      49%, 84% { opacity: 0; transform: scale(.3, .3) rotate(360deg); }
-      85% { opacity: 0; transform: scale(0, 0) rotate(0deg); }
-      88% { opacity: 1; transform: scale(1.25, .8) rotate(0deg); }
-      90% { opacity: 1; transform: scale(.9, 1.12) rotate(0deg); }
-      92%, 100% { opacity: 1; transform: scale(1, 1) rotate(0deg); }
+      0%, 18.5% { opacity: 1; transform: scale(1, 1) rotate(0deg); }
+      20% { opacity: 1; transform: scale(1.06, .94) rotate(0deg); }
+      22%, 38% { opacity: 1; transform: scale(1, 1) rotate(0deg); }
+      44% { opacity: 1; transform: scale(1, 1) rotate(-10deg); }
+      47% { opacity: 1; transform: scale(1, 1) rotate(6deg); animation-timing-function: linear; }
+      54% { opacity: 1; transform: scale(1.12, 1.12) rotate(180deg); animation-timing-function: linear; }
+      62% { opacity: 1; transform: scale(1, 1) rotate(366deg); }
+      65.5%, 90% { opacity: 0; transform: scale(.3, .3) rotate(366deg); }
+      91% { opacity: 0; transform: scale(0, 0) rotate(0deg); }
+      94% { opacity: 1; transform: scale(1.1, .92) rotate(0deg); }
+      96%, 100% { opacity: 1; transform: scale(1, 1) rotate(0deg); }
     }
-    @keyframes yoink-trail { 0%, 34% { opacity: 0; } 35.5%, 46% { opacity: .55; } 54%, 100% { opacity: 0; } }
-    @keyframes yoink-draw { 0%, 34.5% { stroke-dashoffset: 1; } 46%, 100% { stroke-dashoffset: 0; } }
-    @keyframes yoink-eyes {
-      0%, 36% { opacity: 0; transform: scale(1, 0); }
-      38.5% { opacity: 1; transform: scale(1.1, 1.25); animation-timing-function: ease-out; }
-      40.5%, 57% { opacity: 1; transform: scale(1, 1); }
-      58% { opacity: 1; transform: scale(1, .1); }
-      59.5%, 64% { opacity: 1; transform: scale(1, 1); }
-      67%, 100% { opacity: 0; transform: scale(1, 0); }
-    }
-    @keyframes yoink-look { 0%, 41% { transform: translateX(0px); } 44%, 64% { transform: translateX(3.5px); } 66%, 100% { transform: translateX(0px); } }
-    @keyframes yoink-bubble {
-      0%, 39% { opacity: 0; transform: scale(.3) rotate(-8deg); }
-      41.5% { opacity: 1; transform: scale(1.15) rotate(3deg); animation-timing-function: ease-out; }
-      43.5%, 63% { opacity: 1; transform: scale(1) rotate(0deg); }
-      66%, 100% { opacity: 0; transform: scale(.8) rotate(0deg); }
-    }
+    @keyframes yoink-trail { 0%, 46.5% { opacity: 0; } 48%, 64% { opacity: .5; } 72%, 100% { opacity: 0; } }
+    @keyframes yoink-draw { 0%, 47% { stroke-dashoffset: 1; } 62%, 100% { stroke-dashoffset: 0; } }
 
-    /* The phone catches it (46–82%) */
+    /* Saved: the phone catches it, then the check, then the word */
     @keyframes yoink-phone {
-      0%, 46% { transform: scale(1, 1); }
-      48% { transform: scale(1.14, .84); }
-      50.5% { transform: scale(.94, 1.09); }
-      53% { transform: scale(1.03, .98); }
-      55%, 100% { transform: scale(1, 1); }
+      0%, 62% { transform: scale(1, 1); }
+      64% { transform: scale(1.08, .9); }
+      66.5% { transform: scale(.97, 1.04); }
+      69%, 100% { transform: scale(1, 1); }
     }
     @keyframes yoink-check {
-      0%, 48.5% { opacity: 0; transform: scale(0); }
-      51% { opacity: 1; transform: scale(1.3); animation-timing-function: ease-out; }
-      53.5%, 80% { opacity: 1; transform: scale(1); }
-      83%, 100% { opacity: 0; transform: scale(1); }
+      0%, 65% { opacity: 0; transform: scale(0); }
+      67% { opacity: 1; transform: scale(1.15); animation-timing-function: ease-out; }
+      69%, 88% { opacity: 1; transform: scale(1); }
+      91%, 100% { opacity: 0; transform: scale(1); }
     }
     @keyframes yoink-ding {
-      0%, 49.5% { opacity: 0; transform: scale(.5); }
-      51.5% { opacity: 1; transform: scale(1); animation-timing-function: ease-out; }
-      56%, 100% { opacity: 0; transform: scale(1.5); }
+      0%, 66% { opacity: 0; transform: scale(.6); }
+      68% { opacity: 1; transform: scale(1); animation-timing-function: ease-out; }
+      72%, 100% { opacity: 0; transform: scale(1.4); }
     }
     @keyframes yoink-saved {
-      0%, 50% { opacity: 0; transform: translateY(10px) scale(.4) rotate(6deg); }
-      53% { opacity: 1; transform: translateY(-3px) scale(1.2) rotate(-4deg); animation-timing-function: ease-out; }
-      55.5%, 80% { opacity: 1; transform: translateY(0px) scale(1) rotate(0deg); }
-      84%, 100% { opacity: 0; transform: translateY(0px) scale(1) rotate(0deg); }
+      0%, 68.5% { opacity: 0; transform: translateY(8px) scale(.6); }
+      71% { opacity: 1; transform: translateY(-2px) scale(1.08); animation-timing-function: ease-out; }
+      73%, 88% { opacity: 1; transform: translateY(0px) scale(1); }
+      91%, 100% { opacity: 0; transform: translateY(0px) scale(1); }
     }
     @media (prefers-reduced-motion: reduce) {
       .yoink * { animation: none !important; }
@@ -364,7 +353,7 @@
               <stop offset="1" stop-color="#5a3a1c" stop-opacity=".12"/>
             </radialGradient>
             <mask id="yoink-mask" maskUnits="userSpaceOnUse" x="0" y="-60" width="340" height="260">
-              <path class="trail-mask" pathLength="1" stroke-dasharray="1" d="M99 53 Q178 -40 291 101"/>
+              <path class="trail-mask" pathLength="1" stroke-dasharray="1" d="M111 49 Q179 -15 291 101"/>
             </mask>
           </defs>
 
@@ -377,7 +366,7 @@
               <ellipse class="shade fit shadow-bob late" cx="291" cy="152" rx="24" ry="3.5"/>
 
               <!-- Dashed motion line behind the flying video -->
-              <path class="trail" mask="url(#yoink-mask)" d="M99 53 Q178 -40 291 101"/>
+              <path class="trail" mask="url(#yoink-mask)" d="M111 49 Q179 -15 291 101"/>
 
               <!-- The player -->
               <g class="player base"><g class="bob base">
@@ -461,10 +450,10 @@
 
               <!-- Words -->
               <g class="burst fit"><text class="shout" x="186" y="46" text-anchor="middle">YOINK!</text></g>
-              <g class="bubble fit">
+              <g class="bubble fit"><g transform="translate(100 2)">
                 <path class="inkf" d="M22 18 h56 a9 9 0 0 1 9 9 v8 a9 9 0 0 1 -9 9 h-34 l-9 9 l1 -9 h-14 a9 9 0 0 1 -9 -9 v-8 a9 9 0 0 1 9 -9 z"/>
                 <text class="say" x="49" y="36" text-anchor="middle">HEY!!</text>
-              </g>
+              </g></g>
               <g class="saved fit"><text class="shout small" x="291" y="44" text-anchor="middle">Saved!</text></g>
             </g>
 
