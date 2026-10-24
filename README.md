@@ -36,7 +36,7 @@ In the YouTube app, tap **Share → Yoink**, pick a quality, and keep watching. 
 
 ## Install
 
-**[Download Yoink from the website](https://yoink-7rk.pages.dev/)**
+**[Download Yoink from yoink.download](https://yoink.download/)**
 
 Or grab the APK from [GitHub Releases](https://github.com/hishamhashmi100/Yoink/releases/latest):
 
@@ -129,7 +129,7 @@ The download page lives in [`docs/`](docs/) as plain HTML with no build step. It
 - Build command: *(empty)*
 - Build output directory: `docs`
 
-Every push to `main` redeploys it. The APKs stay on GitHub Releases, because Cloudflare Pages limits files to 25 MB.
+It's served at **[yoink.download](https://yoink.download/)** (a custom domain on the Pages project). Every push to `main` redeploys it. The APKs stay on GitHub Releases, because Cloudflare Pages limits files to 25 MB.
 
 ## Disclaimer
 
