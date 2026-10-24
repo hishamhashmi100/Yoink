@@ -91,11 +91,13 @@ class PlaybackService : MediaSessionService() {
 
     private fun repeatButton(mode: Int): CommandButton {
         val (icon, label) = when (mode) {
-            Player.REPEAT_MODE_ONE -> CommandButton.ICON_REPEAT_ONE to R.string.player_repeat_one
-            Player.REPEAT_MODE_ALL -> CommandButton.ICON_REPEAT_ALL to R.string.player_repeat_all
-            else -> CommandButton.ICON_REPEAT_OFF to R.string.player_repeat_off
+            Player.REPEAT_MODE_ONE -> R.drawable.ic_media_repeat_one to R.string.player_repeat_one
+            Player.REPEAT_MODE_ALL -> R.drawable.ic_media_repeat_all to R.string.player_repeat_all
+            else -> R.drawable.ic_media_repeat_off to R.string.player_repeat_off
         }
-        return CommandButton.Builder(icon)
+        // Our own vector icons: Media3's built-in ones came out large and blurry on some phones.
+        return CommandButton.Builder(CommandButton.ICON_UNDEFINED)
+            .setCustomIconResId(icon)
             .setDisplayName(getString(label))
             .setSessionCommand(repeatCommand)
             .build()

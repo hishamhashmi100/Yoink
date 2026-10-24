@@ -70,6 +70,7 @@ import coil3.compose.AsyncImage
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 import io.github.hishamhashmi100.yoink.ui.theme.GlassBackdrop
+import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdropColors
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
 import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
 import kotlinx.coroutines.delay
@@ -109,7 +110,7 @@ fun NowPlayingSheet(onDismiss: () -> Unit) {
         dragHandle = null,
     ) {
         Box(Modifier.fillMaxSize()) {
-            if (glass.enabled) GlassBackdrop(MaterialTheme.colorScheme.copy(background = glass.backdrop))
+            if (glass.enabled) GlassBackdrop(LocalBackdropColors.current ?: MaterialTheme.colorScheme)
             var showQueue by rememberSaveable { mutableStateOf(false) }
             Column(
                 Modifier

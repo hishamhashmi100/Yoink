@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -35,18 +34,11 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Colorize
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -55,7 +47,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -108,11 +99,19 @@ import io.github.hishamhashmi100.yoink.ui.theme.fontFamily
 import io.github.hishamhashmi100.yoink.ui.theme.isDarkTheme
 import io.github.hishamhashmi100.yoink.ui.theme.shapes
 import io.github.hishamhashmi100.yoink.yoink
+import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import io.github.hishamhashmi100.yoink.data.Download
+import io.github.hishamhashmi100.yoink.data.DownloadStatus
+import io.github.hishamhashmi100.yoink.download.Quality
+import io.github.hishamhashmi100.yoink.ui.home.LibraryItem
+import io.github.hishamhashmi100.yoink.ui.home.MiniPlayerBar
+import io.github.hishamhashmi100.yoink.ui.player.NowPlaying
+import androidx.media3.common.Player
 import android.graphics.Color as AndroidColor
 
 class AppearanceActivity : ComponentActivity() {
@@ -491,7 +490,7 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
         )
     }
     deleting?.let { name ->
-        AlertDialog(
+        YoinkAlertDialog(
             onDismissRequest = { deleting = null },
             title = { Text(stringResource(R.string.appearance_delete_theme, name)) },
             confirmButton = {
@@ -537,57 +536,66 @@ private fun Hint(@StringRes text: Int) {
     )
 }
 
-/** A small mock of Yoink, drawn in the look being edited. */
+/**
+ * A slice of the real Home screen (the Library filters, a Library item and the mini player), drawn with
+ * the very same components, so the preview looks exactly like the app.
+ */
 @Composable
 private fun LookPreview() {
-    val colors = MaterialTheme.colorScheme
     val glass = LocalGlass.current
-    val shape = MaterialTheme.shapes.medium
-    Card(
+    val title = stringResource(R.string.preview_title)
+    val channel = stringResource(R.string.preview_channel)
+    val sample = remember(title, channel) {
+        Download(
+            videoId = "",
+            title = title,
+            channel = channel,
+            durationSec = 36_000,
+            mimeType = "video/mp4",
+            quality = Quality.P1080,
+            sizeBytes = 452_000_000,
+            status = DownloadStatus.COMPLETED,
+            createdAt = System.currentTimeMillis() - 3 * 3_600_000L,
+            resolution = 1080,
+        )
+    }
+    val playing = NowPlaying(
+        downloadId = null,
+        title = title,
+        artist = channel,
+        artworkUri = null,
+        isPlaying = true,
+        hasNext = true,
+        repeatMode = Player.REPEAT_MODE_ALL,
+    )
+    val shape = MaterialTheme.shapes.large
+    Column(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .glassPanel(glass, shape),
-        shape = shape,
-        colors = CardDefaults.cardColors(containerColor = if (glass.enabled) Color.Transparent else colors.surfaceContainer),
+            .clip(shape)
+            .then(
+                if (glass.enabled) {
+                    Modifier.border(1.dp, glass.rim, shape)
+                } else {
+                    Modifier
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+                },
+            ),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(width = 80.dp, height = 48.dp)
-                        .clip(MaterialTheme.shapes.small)
-                        .background(Brush.linearGradient(listOf(colors.primaryContainer, colors.tertiaryContainer))),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = colors.onPrimaryContainer)
-                }
-                Column(
-                    Modifier
-                        .weight(1f)
-                        .padding(start = 12.dp),
-                ) {
-                    Text(
-                        stringResource(R.string.preview_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        stringResource(R.string.preview_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
-            }
-            LinearProgressIndicator(progress = { 0.62f }, modifier = Modifier.fillMaxWidth())
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = {}, shape = ButtonShape) { Text(stringResource(R.string.preview_video)) }
-                FilledTonalButton(onClick = {}, shape = ButtonShape) { Text(stringResource(R.string.preview_audio)) }
-                Spacer(Modifier.weight(1f))
-                SmallFloatingActionButton(onClick = {}) { Icon(Icons.Rounded.Add, contentDescription = null) }
-            }
+        Row(
+            Modifier.padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(selected = true, onClick = {}, label = { Text(stringResource(R.string.filter_all)) })
+            FilterChip(selected = false, onClick = {}, label = { Text(stringResource(R.string.filter_video)) })
+            FilterChip(selected = false, onClick = {}, label = { Text(stringResource(R.string.filter_audio)) })
         }
+        Box(Modifier.padding(start = 12.dp, end = 4.dp, bottom = 8.dp)) {
+            LibraryItem(sample, grid = false, onPlay = {}, onShare = {}, onOpenWith = {}, onDelete = {})
+        }
+        MiniPlayerBar(playing, progress = 0.62f, onOpen = {}, hazeState = null, interactive = false)
     }
 }
 
@@ -622,9 +630,10 @@ private fun ThemeCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Canvas(Modifier.size(40.dp)) {
+                    // The colors the app actually uses: its one accent, the lighter fills, the background.
                     drawArc(scheme.primary, 180f, 180f, useCenter = true)
-                    drawArc(scheme.secondaryContainer, 90f, 90f, useCenter = true)
-                    drawArc(scheme.tertiary, 0f, 90f, useCenter = true)
+                    drawArc(scheme.primaryContainer, 90f, 90f, useCenter = true)
+                    drawArc(scheme.surfaceContainerHighest, 0f, 90f, useCenter = true)
                 }
                 if (selected) {
                     Icon(Icons.Rounded.Check, contentDescription = null, tint = scheme.onPrimary, modifier = Modifier.size(20.dp))
@@ -741,7 +750,7 @@ private fun Swatch(brush: Brush, selected: Boolean, onClick: () -> Unit, icon: B
 private fun SaveThemeDialog(existing: List<String>, onSave: (String) -> Unit, onDismiss: () -> Unit) {
     var name by rememberSaveable { mutableStateOf("") }
     val replaces = existing.any { it.equals(name.trim(), ignoreCase = true) }
-    AlertDialog(
+    YoinkAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.appearance_save)) },
         text = {
@@ -785,7 +794,7 @@ private fun ColorPickerDialog(initial: Int, onPick: (Int) -> Unit, onDismiss: ()
         hex = Color.hsv(h, s, v).hex()
     }
 
-    AlertDialog(
+    YoinkAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.appearance_custom_color)) },
         text = {
