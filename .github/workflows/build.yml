@@ -27,6 +27,23 @@ jobs:
       - name: Build debug and release APKs
         run: ./gradlew assembleDebug assembleRelease --stacktrace
 
+      # Release builds are shrunk by R8. Fail here if it removed what the downloader needs to unpack
+      # Python, instead of finding out from a crash on someone's phone.
+      - name: Check the release APK kept the downloader's classes
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/release/app-arm64-v8a-release-unsigned.apk
+          tool="$(ls "$ANDROID_HOME"/cmdline-tools/*/bin/apkanalyzer | head -n 1)"
+          "$tool" dex packages --defined-only "$apk" > dex.txt
+          for name in \
+            "com.yausername.youtubedl_common.utils.ZipUtils" \
+            "org.apache.commons.compress.archivers.zip.ExtraFieldUtils" \
+            "org.apache.commons.compress.archivers.zip.AsiExtraField <init>()" \
+            "org.apache.commons.compress.archivers.zip.X5455_ExtendedTimestamp <init>()" \
+            "org.apache.commons.compress.archivers.zip.Zip64ExtendedInformationExtraField <init>()"; do
+            if grep -qF "$name" dex.txt; then echo "ok: $name"; else echo "::error::Missing from release APK: $name"; exit 1; fi
+          done
+
       - name: Upload arm64 debug APK
         uses: actions/upload-artifact@v4
         with:

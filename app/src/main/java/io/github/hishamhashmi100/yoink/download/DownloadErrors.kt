@@ -8,6 +8,7 @@ import java.io.IOException
 object DownloadErrors {
 
     private val rules: List<Pair<Regex, Int>> = listOf(
+        Regex(Regex.escape(Engine.ENGINE_FAILED)) to R.string.error_engine,
         Regex("private video", RegexOption.IGNORE_CASE) to R.string.error_private,
         Regex("confirm your age|age[- ]restricted|inappropriate for some users", RegexOption.IGNORE_CASE) to R.string.error_age,
         Regex("members[- ]only|join this channel", RegexOption.IGNORE_CASE) to R.string.error_members,

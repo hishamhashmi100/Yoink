@@ -58,7 +58,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         return try {
             slots.withPermit { download(download, workDir) }
             Result.success()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             if (e is CancellationException || isStopped) {
                 withContext(NonCancellable) { onStopped(workDir) }
                 throw if (e is CancellationException) e else CancellationException("Stopped")

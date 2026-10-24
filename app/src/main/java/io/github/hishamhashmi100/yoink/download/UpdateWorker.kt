@@ -17,7 +17,7 @@ class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         Engine.update(applicationContext)
         applicationContext.yoink.settings.setFirstUpdateCheckDone()
         Result.success()
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         if (runAttemptCount < 3) Result.retry() else Result.failure()
     }
 
