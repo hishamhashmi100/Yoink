@@ -11,6 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.download.NotificationActionReceiver
+import io.github.hishamhashmi100.yoink.download.NotificationThumbs
 import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.download.YouTubeUrl
@@ -54,6 +55,8 @@ object ShareNotifications {
         }
         val notification = builder
             .setSmallIcon(R.drawable.ic_notification)
+            .setColor(Notifications.yoinkRed(context))
+            .setLargeIcon(NotificationThumbs.cached(context, videoId))
             .setOnlyAlertOnce(!alert)
             .setContentIntent(reopen(context, videoId))
             .setDeleteIntent(receiver(context, NotificationActionReceiver.ACTION_PROBE_CANCEL, videoId, null))

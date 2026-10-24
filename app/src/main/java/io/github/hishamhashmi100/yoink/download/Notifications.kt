@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -15,6 +16,7 @@ import androidx.core.content.ContextCompat
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
 import io.github.hishamhashmi100.yoink.ui.MainActivity
+import io.github.hishamhashmi100.yoink.ui.home.FileActions
 import io.github.hishamhashmi100.yoink.ui.home.HomeTab
 import io.github.hishamhashmi100.yoink.ui.player.PlayerActivity
 
@@ -57,18 +59,22 @@ object Notifications {
     fun progressId(downloadId: Long): Int = 1_000 + (downloadId % 1_000_000).toInt() * 2
     private fun resultId(downloadId: Long): Int = progressId(downloadId) + 1
 
-    fun progress(context: Context, downloadId: Long, title: String, progress: LiveProgress): Notification {
+    fun progress(context: Context, downloadId: Long, title: String, progress: LiveProgress, thumb: Bitmap? = null): Notification {
         val detail = buildList {
-            add(progress.stage)
             if (progress.percent >= 0) add("${progress.percent.toInt()}%")
             progress.speed?.let(::add)
             if (progress.etaSeconds > 0) add(context.getString(R.string.eta_left, formatDuration(progress.etaSeconds)))
-        }.joinToString(" · ")
+        }.joinToString(" · ").ifEmpty { progress.stage }
 
         return NotificationCompat.Builder(context, CHANNEL_PROGRESS)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(detail)
+            .setSubText(progress.stage)
+            .setLargeIcon(thumb)
+            // Android only colourises ongoing (foreground) notifications like this one: a full Yoink-red card.
+            .setColor(yoinkRed(context))
+            .setColorized(true)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
@@ -80,23 +86,46 @@ object Notifications {
             .build()
     }
 
-    fun showProgress(context: Context, downloadId: Long, title: String, progress: LiveProgress) =
-        post(context, progressId(downloadId), progress(context, downloadId, title, progress))
+    fun showProgress(context: Context, downloadId: Long, title: String, progress: LiveProgress, thumb: Bitmap? = null) =
+        post(context, progressId(downloadId), progress(context, downloadId, title, progress, thumb))
 
     fun completed(context: Context, download: Download) {
-        val notification = NotificationCompat.Builder(context, CHANNEL_STATUS)
+        val thumb = NotificationThumbs.cached(context, download.videoId, download.thumbnailPath)
+        val builder = NotificationCompat.Builder(context, CHANNEL_STATUS)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(download.title)
-            .setContentText(context.getString(R.string.notification_done))
+            .setColor(yoinkRed(context))
+            .setContentTitle(context.getString(R.string.notification_done))
+            .setContentText(download.title)
+            .setLargeIcon(thumb)
             .setAutoCancel(true)
             .setContentIntent(openPlayer(context, download.id))
-            .build()
-        post(context, resultId(download.id), notification)
+            .addAction(0, context.getString(R.string.action_play), openPlayer(context, download.id))
+        if (thumb != null) {
+            // Expanded, the notification shows the thumbnail big.
+            builder.setStyle(
+                NotificationCompat.BigPictureStyle()
+                    .bigPicture(thumb)
+                    .bigLargeIcon(null as Bitmap?)
+                    .setSummaryText(download.title)
+            )
+        }
+        FileActions.shareChooser(context, download)?.let { share ->
+            val pending = PendingIntent.getActivity(
+                context,
+                resultId(download.id) * 2 + 1,
+                share.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            builder.addAction(0, context.getString(R.string.action_share), pending)
+        }
+        post(context, resultId(download.id), builder.build())
     }
 
     fun failed(context: Context, download: Download, message: String) {
         val notification = NotificationCompat.Builder(context, CHANNEL_STATUS)
             .setSmallIcon(R.drawable.ic_notification)
+            .setColor(yoinkRed(context))
+            .setLargeIcon(NotificationThumbs.cached(context, download.videoId, download.thumbnailPath))
             .setContentTitle(context.getString(R.string.notification_failed))
             .setContentText(download.title)
             .setStyle(NotificationCompat.BigTextStyle().bigText("${download.title}\n$message"))
@@ -116,6 +145,7 @@ object Notifications {
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_UPDATES)
             .setSmallIcon(R.drawable.ic_notification)
+            .setColor(yoinkRed(context))
             .setContentTitle(context.getString(R.string.update_available_title))
             .setContentText(context.getString(R.string.update_available_text, version))
             .setAutoCancel(true)
@@ -123,6 +153,8 @@ object Notifications {
             .build()
         post(context, UPDATE_ID, notification)
     }
+
+    fun yoinkRed(context: Context): Int = ContextCompat.getColor(context, R.color.yoink_red)
 
     fun cancelResult(context: Context, downloadId: Long) {
         NotificationManagerCompat.from(context).cancel(resultId(downloadId))

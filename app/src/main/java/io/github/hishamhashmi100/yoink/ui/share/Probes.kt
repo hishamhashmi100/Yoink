@@ -5,6 +5,7 @@ import android.content.Context
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.download.Engine
+import io.github.hishamhashmi100.yoink.download.NotificationThumbs
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.download.YouTubeUrl
 import io.github.hishamhashmi100.yoink.yoink
@@ -28,7 +29,9 @@ data class ShareUiState(
     val channel: String? = null,
     val durationSec: Long? = null,
     val loadingFormats: Boolean = true,
-    val available: Set<Quality> = emptySet(),
+    // Every button works from the start (each quality falls back to the nearest one the video has);
+    // the check only greys out the ones the video doesn't have.
+    val available: Set<Quality> = Quality.entries.toSet(),
     val formatsError: String? = null,
     /** The small Video / Audio sheet: no quality check, the buttons work straight away. */
     val quick: Boolean = false,
@@ -100,6 +103,8 @@ object Probes {
         // Phase 1: oEmbed answers in ~100 ms, so the sheet shows a title right away.
         val meta = runCatching { withContext(Dispatchers.IO) { fetchOEmbed(videoId) } }.getOrNull()
         if (meta != null) update(videoId) { it.copy(title = it.title ?: meta.first, channel = it.channel ?: meta.second) }
+        // So notifications for this video can show its thumbnail.
+        runCatching { withContext(Dispatchers.IO) { NotificationThumbs.load(app, videoId) } }
         if (!listFormats) return
 
         // Phase 2: yt-dlp lists the real formats, which takes a few seconds.
@@ -120,7 +125,7 @@ object Probes {
             update(videoId) {
                 it.copy(
                     loadingFormats = false,
-                    available = setOf(Quality.BEST, Quality.AUDIO),
+                    available = Quality.entries.toSet(),
                     formatsError = app.getString(R.string.share_formats_failed),
                 )
             }
@@ -136,6 +141,10 @@ object Probes {
     private suspend fun probe(app: Application, videoId: String): JSONObject {
         val request = YoutubeDLRequest(YouTubeUrl.watchUrl(videoId)).apply {
             addOption("--dump-single-json")
+            // Only the list of qualities is needed here, not playable links. The visionos client needs no
+            // JavaScript challenge (slow on a phone) and one request; downloads still use yt-dlp's defaults.
+            addOption("--extractor-args", "youtube:player_client=visionos")
+            addOption("--socket-timeout", "15")
             addOption("--no-playlist")
         }
         Engine.ensureFresh(app)
