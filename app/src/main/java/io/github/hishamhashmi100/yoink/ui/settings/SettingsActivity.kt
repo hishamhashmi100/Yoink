@@ -152,7 +152,7 @@ private fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                     Column {
                         Text(stringResource(R.string.settings_update_summary))
                         Text(
-                            version?.let { stringResource(R.string.settings_version, it) } ?: stringResource(R.string.settings_version_missing),
+                            version?.let { stringResource(R.string.settings_version, it.removePrefix("yt-dlp").trim()) } ?: stringResource(R.string.settings_version_missing),
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }

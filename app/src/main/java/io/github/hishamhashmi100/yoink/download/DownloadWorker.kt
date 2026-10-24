@@ -106,6 +106,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
         val request = YoutubeDLRequest(YouTubeUrl.watchUrl(download.videoId)).apply {
             addOption("--no-playlist")
+            // Verbose output goes to stderr; the useful lines (JS challenge, formats, warnings) end up in Copy details.
+            addOption("--verbose")
             addOption("--no-mtime")
             addOption("--http-chunk-size", "10M")
             addOption("--write-thumbnail")
@@ -157,11 +159,11 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         speed = if (downloading) SPEED.find(line)?.groupValues?.get(1) ?: live.value.speed else null,
                     )
                 }
-                // yt-dlp prints its warnings (e.g. formats YouTube held back) on stderr.
-                val warnings = response.err.lineSequence().filter { "WARNING" in it }.take(30).toList()
+                // yt-dlp prints warnings and its verbose notes on stderr: keep the ones that explain the result.
+                val notes = response.err.lineSequence().filter { DIAGNOSTIC.containsMatchIn(it) }.take(80).toList()
                 synchronized(log) {
-                    log.addAll(warnings)
-                    while (log.size > 110) log.removeFirst()
+                    log.addAll(notes)
+                    while (log.size > 160) log.removeFirst()
                 }
             } finally {
                 reporter.cancel()
@@ -262,6 +264,11 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
         private val MEDIA_EXTENSIONS = setOf("mp4", "mkv", "webm", "mov", "mp3", "m4a", "opus", "ogg")
         // yt-dlp's warnings when YouTube withholds formats (JS challenge, PO token, SABR, missing URLs).
+        private val DIAGNOSTIC = Regex(
+            """WARNING|ERROR|\[jsc|challenge|JS runtime|PO Token|\[youtube\]|\[info\]|Formats sorted|yt-dlp version|Python|exe versions|Optional libraries""",
+            RegexOption.IGNORE_CASE,
+        )
+
         private val HELD_BACK = Regex("challenge|PO Token|formats? (may be|are) missing|missing a URL|SABR|skipped", RegexOption.IGNORE_CASE)
 
         private val SPEED = Regex("""at\s+(~?\s*[\d.]+\s*[KMGT]?i?B/s)""")
