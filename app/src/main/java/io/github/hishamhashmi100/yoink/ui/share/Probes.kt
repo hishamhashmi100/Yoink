@@ -5,6 +5,7 @@ import android.content.Context
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.download.Engine
+import io.github.hishamhashmi100.yoink.download.NotificationThumbs
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.download.YouTubeUrl
 import io.github.hishamhashmi100.yoink.yoink
@@ -102,6 +103,8 @@ object Probes {
         // Phase 1: oEmbed answers in ~100 ms, so the sheet shows a title right away.
         val meta = runCatching { withContext(Dispatchers.IO) { fetchOEmbed(videoId) } }.getOrNull()
         if (meta != null) update(videoId) { it.copy(title = it.title ?: meta.first, channel = it.channel ?: meta.second) }
+        // So notifications for this video can show its thumbnail.
+        runCatching { withContext(Dispatchers.IO) { NotificationThumbs.load(app, videoId) } }
         if (!listFormats) return
 
         // Phase 2: yt-dlp lists the real formats, which takes a few seconds.

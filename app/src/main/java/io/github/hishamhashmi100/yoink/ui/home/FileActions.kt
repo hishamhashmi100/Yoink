@@ -14,13 +14,19 @@ import java.io.File
 object FileActions {
 
     fun share(context: Context, download: Download) {
-        val uri = contentUri(context, download) ?: return
+        if (contentUri(context, download) == null) return // Shows "file missing".
+        shareChooser(context, download)?.let { start(context, it) }
+    }
+
+    /** The system share sheet for a download, or null if its file is gone. Also used by the "Yoinked!" notification. */
+    fun shareChooser(context: Context, download: Download): Intent? {
+        val uri = contentUri(context, download, quiet = true) ?: return null
         val send = Intent(Intent.ACTION_SEND)
             .setType(download.mimeType ?: "*/*")
             .putExtra(Intent.EXTRA_STREAM, uri)
             .putExtra(Intent.EXTRA_TITLE, download.title)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        start(context, Intent.createChooser(send, download.title))
+        return Intent.createChooser(send, download.title)
     }
 
     fun openWith(context: Context, download: Download) {
@@ -31,16 +37,16 @@ object FileActions {
         start(context, Intent.createChooser(view, context.getString(R.string.action_open_with)))
     }
 
-    private fun contentUri(context: Context, download: Download): Uri? {
+    private fun contentUri(context: Context, download: Download, quiet: Boolean = false): Uri? {
         val uri = download.fileUri?.let(Uri::parse)
         if (uri == null) {
-            Toast.makeText(context, R.string.file_missing, Toast.LENGTH_SHORT).show()
+            if (!quiet) Toast.makeText(context, R.string.file_missing, Toast.LENGTH_SHORT).show()
             return null
         }
         if (uri.scheme != "file") return uri
         val file = File(uri.path.orEmpty())
         if (!file.exists()) {
-            Toast.makeText(context, R.string.file_missing, Toast.LENGTH_SHORT).show()
+            if (!quiet) Toast.makeText(context, R.string.file_missing, Toast.LENGTH_SHORT).show()
             return null
         }
         return FileProvider.getUriForFile(context, "${context.packageName}.files", file)

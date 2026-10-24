@@ -2,6 +2,7 @@ package io.github.hishamhashmi100.yoink.download
 
 import android.content.Context
 import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -51,6 +52,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     private val dao = app.repository.dao
     private val downloadId = inputData.getLong(KEY_ID, -1L)
 
+    @Volatile private var thumb: Bitmap? = null
+
     // The last lines yt-dlp printed, saved with a failed download for "Copy details".
     private val log = ArrayDeque<String>()
 
@@ -62,6 +65,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val workDir = jobDir(applicationContext, downloadId)
         setForeground(foregroundInfo(download.title, queued()))
         setProgress(toData(queued()))
+        thumb = withContext(Dispatchers.IO) { NotificationThumbs.load(applicationContext, download.videoId) }
 
         return try {
             slots.withPermit { download(download, workDir) }
@@ -223,14 +227,14 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
     private suspend fun report(title: String, progress: LiveProgress) {
         setProgress(toData(progress))
-        Notifications.showProgress(applicationContext, downloadId, title, progress)
+        Notifications.showProgress(applicationContext, downloadId, title, progress, thumb)
     }
 
     private fun queued() = LiveProgress(applicationContext.getString(R.string.stage_queued), -1f, -1L, null)
 
     private fun foregroundInfo(title: String, progress: LiveProgress) = ForegroundInfo(
         Notifications.progressId(downloadId),
-        Notifications.progress(applicationContext, downloadId, title, progress),
+        Notifications.progress(applicationContext, downloadId, title, progress, thumb),
         ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
     )
 

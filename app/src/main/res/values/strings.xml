@@ -25,8 +25,9 @@
     <string name="stage_merging">Merging</string>
     <string name="stage_converting">Converting to MP3</string>
     <string name="stage_saving">Saving</string>
-    <string name="notification_done">Download complete</string>
-    <string name="notification_failed">Download failed</string>
+    <string name="notification_done">Yoinked!</string>
+    <string name="notification_failed">Couldn\'t yoink that one</string>
+    <string name="action_play">Play</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_retry">Retry</string>
     <string name="eta_left">%1$s left</string>
