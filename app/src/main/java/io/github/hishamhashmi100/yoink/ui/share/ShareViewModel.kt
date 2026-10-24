@@ -62,7 +62,7 @@ class ShareViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 _state.update {
                     it.copy(
                         loadingFormats = false,

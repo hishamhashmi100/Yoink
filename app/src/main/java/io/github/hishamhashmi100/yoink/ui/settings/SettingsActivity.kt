@@ -139,7 +139,10 @@ private fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                 supportingContent = {
                     Column {
                         Text(stringResource(R.string.settings_update_summary))
-                        version?.let { Text(stringResource(R.string.settings_version, it), style = MaterialTheme.typography.bodySmall) }
+                        Text(
+                            version?.let { stringResource(R.string.settings_version, it) } ?: stringResource(R.string.settings_version_missing),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
                 },
                 trailingContent = {

@@ -39,6 +39,7 @@
     <string name="error_format">That quality isn\'t available for this video.</string>
     <string name="error_storage">Not enough storage space.</string>
     <string name="error_generic">Download failed.</string>
+    <string name="error_engine">The downloader couldn\'t start on this phone. Update Yoink, then try again.</string>
     <string name="error_interrupted">The download was interrupted.</string>
 
     <!-- Home -->
@@ -78,6 +79,7 @@
     <string name="settings_update">Update downloader</string>
     <string name="settings_update_summary">YouTube changes often. If downloads start failing, update first.</string>
     <string name="settings_version">yt-dlp %1$s</string>
+    <string name="settings_version_missing">Downloader not ready yet</string>
     <string name="settings_updating">Updating…</string>
     <string name="settings_updated">Downloader updated</string>
     <string name="settings_up_to_date">Already up to date</string>

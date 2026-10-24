@@ -51,7 +51,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 if (Engine.update(app)) R.string.settings_updated else R.string.settings_up_to_date
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 R.string.settings_update_failed
             }
             _ytDlpVersion.value = runCatching { Engine.version(app) }.getOrNull()

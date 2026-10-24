@@ -3,6 +3,7 @@ package io.github.hishamhashmi100.yoink.download
 import android.content.Context
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLException
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import com.yausername.youtubedl_android.YoutubeDLResponse
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,9 @@ import java.util.UUID
  */
 object Engine {
 
+    /** Marks errors from starting the downloader itself, so they get their own message. */
+    const val ENGINE_FAILED = "Downloader failed to start"
+
     private val initLock = Mutex()
     @Volatile private var initialized = false
 
@@ -34,8 +38,13 @@ object Engine {
         initLock.withLock {
             if (initialized) return
             withContext(Dispatchers.IO) {
-                YoutubeDL.getInstance().init(context.applicationContext)
-                FFmpeg.getInstance().init(context.applicationContext)
+                try {
+                    YoutubeDL.getInstance().init(context.applicationContext)
+                    FFmpeg.getInstance().init(context.applicationContext)
+                } catch (e: Throwable) {
+                    // Includes Errors (e.g. a class that failed to load), which would otherwise crash the app.
+                    throw YoutubeDLException("$ENGINE_FAILED: ${e.message ?: e.javaClass.simpleName}", e)
+                }
             }
             initialized = true
         }
