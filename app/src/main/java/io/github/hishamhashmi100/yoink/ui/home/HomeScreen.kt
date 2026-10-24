@@ -65,6 +65,7 @@ fun HomeScreen(
                 actions = { actions() },
             )
         },
+        bottomBar = { MiniPlayer() },
         floatingActionButton = {
             FloatingActionButton(onClick = { addingLink = true }) {
                 Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.add_link))

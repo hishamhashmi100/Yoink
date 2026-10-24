@@ -7,6 +7,10 @@
     <string name="share_checking">Checking available qualities…</string>
     <string name="share_formats_failed">Couldn\'t list qualities. You can still try Best or Audio.</string>
     <string name="share_started">Download started</string>
+    <string name="share_checking_tap">Checking available qualities… Tap to open.</string>
+    <string name="share_ready">Ready to download</string>
+    <string name="share_close">Close</string>
+    <string name="channel_share_ready">Ready to download</string>
     <string name="share_loading_title">Loading…</string>
     <string name="quality_best">Best</string>
     <string name="quality_audio">Audio (MP3)</string>
@@ -46,6 +50,11 @@
     <string name="copied">Copied</string>
     <string name="more_options">More options</string>
     <string name="close_player">Close</string>
+    <string name="player_previous">Previous</string>
+    <string name="player_play">Play</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_next">Next</string>
+    <string name="player_stop">Stop</string>
 
     <!-- Home -->
     <string name="tab_downloading">Downloading</string>

@@ -17,6 +17,7 @@ import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Settings
 import io.github.hishamhashmi100.yoink.ui.home.HomeScreen
 import io.github.hishamhashmi100.yoink.ui.home.HomeTab
+import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import io.github.hishamhashmi100.yoink.ui.settings.SettingsActivity
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
 import io.github.hishamhashmi100.yoink.yoink
@@ -28,6 +29,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        AudioController.connect(this)
         if (savedInstanceState == null) requestedTab.value = tabFrom(intent)
         setContent {
             val settings by yoink.settings.settings.collectAsStateWithLifecycle(Settings())

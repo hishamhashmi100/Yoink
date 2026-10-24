@@ -59,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
 import io.github.hishamhashmi100.yoink.download.Notifications
+import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import io.github.hishamhashmi100.yoink.ui.player.PlayerActivity
 
 @Composable
@@ -143,7 +144,15 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier) {
                     LibraryItem(
                         download = download,
                         grid = grid,
-                        onPlay = { context.startActivity(PlayerActivity.intent(context, download.id)) },
+                        onPlay = {
+                            if (download.quality.isAudio) {
+                                // Like a music app: the library's MP3s, in order, starting with this one.
+                                val queue = items.filter { it.quality.isAudio }
+                                AudioController.play(context, queue, queue.indexOf(download))
+                            } else {
+                                context.startActivity(PlayerActivity.intent(context, download.id))
+                            }
+                        },
                         onShare = { FileActions.share(context, download) },
                         onOpenWith = { FileActions.openWith(context, download) },
                         onDelete = { toDelete = download },

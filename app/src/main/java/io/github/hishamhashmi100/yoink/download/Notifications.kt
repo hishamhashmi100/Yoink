@@ -20,7 +20,8 @@ import io.github.hishamhashmi100.yoink.ui.player.PlayerActivity
 
 object Notifications {
 
-    private const val CHANNEL_PROGRESS = "progress"
+    const val CHANNEL_PROGRESS = "progress"
+    const val CHANNEL_SHARE_READY = "share_ready"
     private const val CHANNEL_STATUS = "status"
     private const val CHANNEL_UPDATES = "updates"
     private const val UPDATE_ID = 999
@@ -38,6 +39,11 @@ object Notifications {
                     CHANNEL_STATUS,
                     context.getString(R.string.channel_status),
                     NotificationManager.IMPORTANCE_DEFAULT,
+                ),
+                NotificationChannel(
+                    CHANNEL_SHARE_READY,
+                    context.getString(R.string.channel_share_ready),
+                    NotificationManager.IMPORTANCE_HIGH,
                 ),
                 NotificationChannel(
                     CHANNEL_UPDATES,

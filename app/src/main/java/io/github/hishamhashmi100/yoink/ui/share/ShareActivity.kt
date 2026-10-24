@@ -9,8 +9,8 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import io.github.hishamhashmi100.yoink.R
@@ -18,16 +18,18 @@ import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.download.YouTubeUrl
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
 import io.github.hishamhashmi100.yoink.yoink
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
  * Receives links from YouTube's Share menu (or youtube.com / youtu.be links) and shows a
- * quality picker over the calling app. Picking a quality queues the download and closes.
+ * quality picker over the calling app. Picking a quality queues the download and closes;
+ * swiping the sheet away tucks it into a notification while the check carries on.
  */
 class ShareActivity : ComponentActivity() {
 
-    private val viewModel: ShareViewModel by viewModels()
+    private val videoId = MutableStateFlow<String?>(null)
     private var pendingQuality: Quality? = null
 
     private val notificationPermission =
@@ -35,10 +37,13 @@ class ShareActivity : ComponentActivity() {
             pendingQuality?.let(::startDownload)
         }
 
+    // Notifications let the sheet be tucked away and come back when the qualities are ready.
+    private val askForNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val videoId = YouTubeUrl.extractId(sharedText(intent))
-        if (videoId == null) {
+        val id = YouTubeUrl.extractId(sharedText(intent))
+        if (id == null) {
             Toast.makeText(this, R.string.share_not_youtube, Toast.LENGTH_SHORT).show()
             finish()
             return
@@ -48,30 +53,65 @@ class ShareActivity : ComponentActivity() {
             val settings = yoink.settings.settings.first()
             val defaultQuality = settings.defaultQuality
             if (defaultQuality != null && savedInstanceState == null) {
-                viewModel.load(videoId)
+                videoId.value = id
                 onQualityPicked(defaultQuality)
                 return@launch
             }
-            viewModel.load(videoId)
+            show(id)
+            if (Build.VERSION.SDK_INT >= 33 && !notificationsAllowed()) {
+                askForNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
             setContent {
                 YoinkTheme(settings) {
-                    val state = viewModel.state.collectAsStateWithLifecycle().value
-                    ShareSheet(state = state, onPick = ::onQualityPicked, onDismiss = ::finish)
+                    val current = videoId.collectAsStateWithLifecycle().value ?: return@YoinkTheme
+                    val state = remember(current) { Probes.state(current) }
+                        .collectAsStateWithLifecycle(ShareUiState(videoId = current)).value
+                    ShareSheet(state = state, onPick = ::onQualityPicked, onMinimize = ::minimize, onClose = ::close)
                 }
             }
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        videoId.value?.let {
+            Probes.visibleVideo = it
+            Probes.restored(this, it)
+        }
+    }
+
+    override fun onStop() {
+        if (Probes.visibleVideo == videoId.value) Probes.visibleVideo = null
+        super.onStop()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // singleTask: a second share while the sheet is open replaces the video.
-        YouTubeUrl.extractId(sharedText(intent))?.let(viewModel::load)
+        // singleTask: a second share (or tapping a "Ready" notification) switches the sheet to that video.
+        YouTubeUrl.extractId(sharedText(intent))?.let(::show)
+    }
+
+    private fun show(id: String) {
+        videoId.value = id
+        Probes.visibleVideo = id
+        Probes.start(this, id)
+        Probes.restored(this, id)
+    }
+
+    /** Swiped down, Back, or tapped outside: keep checking, with a notification to come back to. */
+    private fun minimize() {
+        videoId.value?.let { Probes.minimize(this, it) }
+        finish()
+    }
+
+    /** The ✕: stop checking and close. */
+    private fun close() {
+        videoId.value?.let { Probes.cancel(this, it) }
+        finish()
     }
 
     private fun onQualityPicked(quality: Quality) {
-        if (Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (Build.VERSION.SDK_INT >= 33 && !notificationsAllowed()) {
             pendingQuality = quality
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
@@ -79,11 +119,16 @@ class ShareActivity : ComponentActivity() {
         }
     }
 
+    private fun notificationsAllowed() =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
     private fun startDownload(quality: Quality) {
         pendingQuality = null
-        val state = viewModel.state.value
+        val id = videoId.value ?: return
+        val state = Probes.current(id)
         lifecycleScope.launch {
-            yoink.repository.enqueue(state.videoId, state.title, state.channel, quality)
+            yoink.repository.enqueue(id, state?.title, state?.channel, quality)
+            Probes.done(applicationContext, id)
             Toast.makeText(applicationContext, R.string.share_started, Toast.LENGTH_SHORT).show()
             finish()
         }

@@ -28,6 +28,7 @@ import androidx.media3.ui.PlayerView
 import com.google.common.util.concurrent.ListenableFuture
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
+import io.github.hishamhashmi100.yoink.ui.MainActivity
 import io.github.hishamhashmi100.yoink.yoink
 import kotlinx.coroutines.launch
 import java.io.File
@@ -103,6 +104,15 @@ class PlayerActivity : ComponentActivity() {
         lifecycleScope.launch {
             val found = yoink.repository.dao.get(id)
             if (found?.fileUri == null) {
+                finish()
+                return@launch
+            }
+            if (found.mimeType?.startsWith("audio/") == true) {
+                AudioController.play(this@PlayerActivity, listOf(found), 0)
+                startActivity(
+                    Intent(this@PlayerActivity, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                )
                 finish()
                 return@launch
             }
