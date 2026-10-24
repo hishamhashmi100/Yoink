@@ -674,7 +674,7 @@ private fun ThemeCard(
 private fun GlassTile(style: GlassStyle, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     val dark = colors.onSurface.luminance() > 0.5f
-    val tile = Glass(style, dark, Color.Unspecified)
+    val tile = Glass(style, dark, Color.Unspecified, colors.primary)
     val shape = MaterialTheme.shapes.medium
     Column(
         modifier

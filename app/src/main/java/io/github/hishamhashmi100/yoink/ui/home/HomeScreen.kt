@@ -1,6 +1,7 @@
 package io.github.hishamhashmi100.yoink.ui.home
 
 import android.content.Intent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -40,6 +41,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.ui.player.NowPlayingSheet
 import io.github.hishamhashmi100.yoink.ui.share.ShareActivity
+import io.github.hishamhashmi100.yoink.ui.theme.GlassBackdrop
+import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdropColors
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
 import io.github.hishamhashmi100.yoink.ui.theme.LocalHazeState
 import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
@@ -84,6 +87,15 @@ fun HomeScreen(
     }
 
     CompositionLocalProvider(LocalHazeState provides hazeState.takeIf { glass.enabled }) {
+    Box(Modifier.fillMaxSize()) {
+    // With glass, the backdrop is part of what the mini player and + button blur, under the lists. Without
+    // it they'd show a solid color wherever no list item is behind them.
+    if (glass.enabled) {
+        GlassBackdrop(
+            LocalBackdropColors.current ?: MaterialTheme.colorScheme,
+            Modifier.hazeSource(hazeState, zIndex = 0f),
+        )
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -121,7 +133,7 @@ fun HomeScreen(
                     bottom = padding.calculateBottomPadding() - bottomInset,
                 )
                 .fillMaxSize()
-                .then(if (glass.enabled) Modifier.hazeSource(hazeState) else Modifier),
+                .then(if (glass.enabled) Modifier.hazeSource(hazeState, zIndex = 1f) else Modifier),
         ) {
             UpdateCard()
             val selected = tab ?: HomeTab.LIBRARY
@@ -147,6 +159,7 @@ fun HomeScreen(
                 HomeTab.LIBRARY -> LibraryScreen(viewModel, bottomInset = bottomInset)
             }
         }
+    }
     }
     }
 

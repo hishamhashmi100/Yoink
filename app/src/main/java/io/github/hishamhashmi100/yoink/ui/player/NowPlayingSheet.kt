@@ -1,5 +1,8 @@
 package io.github.hishamhashmi100.yoink.ui.player
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -45,6 +48,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -60,10 +64,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
@@ -110,6 +119,7 @@ fun NowPlayingSheet(onDismiss: () -> Unit) {
         dragHandle = null,
     ) {
         Box(Modifier.fillMaxSize()) {
+            HideSystemBars()
             if (glass.enabled) GlassBackdrop(LocalBackdropColors.current ?: MaterialTheme.colorScheme)
             var showQueue by rememberSaveable { mutableStateOf(false) }
             Column(
@@ -392,3 +402,39 @@ private fun time(ms: Long): String {
     val seconds = total % 60
     return if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds) else "%d:%02d".format(minutes, seconds)
 }
+
+/**
+ * Full screen while the player is open: hides the status bar (clock, icons) and the navigation bar, on the
+ * sheet's own window and the screen under it. A swipe from the edge brings them back for a moment;
+ * closing the player restores them.
+ */
+@Composable
+private fun HideSystemBars() {
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val windows = buildList {
+            var parent = view.parent
+            while (parent != null && parent !is DialogWindowProvider) parent = parent.parent
+            (parent as? DialogWindowProvider)?.window?.let(::add)
+            view.context.findActivity()?.window?.let(::add)
+        }
+        windows.forEach { window ->
+            WindowCompat.getInsetsController(window, window.decorView).apply {
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                hide(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+        onDispose {
+            windows.forEach { window ->
+                WindowCompat.getInsetsController(window, window.decorView).show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+    }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+

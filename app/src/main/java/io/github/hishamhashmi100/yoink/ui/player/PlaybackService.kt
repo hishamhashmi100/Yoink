@@ -10,6 +10,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
@@ -75,6 +76,10 @@ class PlaybackService : MediaSessionService() {
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 .putExtra(MainActivity.EXTRA_PLAYER, true),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        // The notification's small icon is stamped on the cover by some phones; keep it empty there.
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this).build().apply { setSmallIcon(R.drawable.ic_media_badge) },
         )
         session = MediaSession.Builder(this, player)
             .setSessionActivity(openApp)

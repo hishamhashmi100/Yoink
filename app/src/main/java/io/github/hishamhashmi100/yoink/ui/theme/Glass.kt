@@ -1,5 +1,6 @@
 package io.github.hishamhashmi100.yoink.ui.theme
 
+import android.content.Context
 import android.os.Build
 import android.view.WindowManager
 import androidx.compose.foundation.Canvas
@@ -17,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +26,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
@@ -38,21 +43,43 @@ import kotlin.math.max
 
 /** The glass look in effect, for the few places that draw glass panels themselves. */
 @Immutable
-data class Glass(val style: GlassStyle, val dark: Boolean, val backdrop: Color) {
+data class Glass(
+    val style: GlassStyle,
+    val dark: Boolean,
+    val backdrop: Color,
+    /** The theme's color, which tints the glass the way colored glass would. */
+    val accent: Color = Color.Unspecified,
+) {
 
     val enabled: Boolean get() = style != GlassStyle.OFF
 
-    private val base: Color get() = if (dark) Color(0xFF17171C) else Color.White
+    /** White (or near-black in dark mode) with a little of the theme's color mixed in. */
+    private val base: Color
+        get() {
+            val neutral = if (dark) Color(0xFF17171C) else Color.White
+            return if (accent.isSpecified) lerp(neutral, accent, if (dark) 0.22f else 0.16f) else neutral
+        }
 
     /**
-     * The one tint every glass surface uses (cards, bars, dialogs, sheets, menus), so glass looks the same
-     * everywhere. Clear lets the backdrop show through; frosted is milky and blurred.
+     * The one tint every glass surface uses (cards, bars, dialogs, sheets), so glass looks the same
+     * everywhere. Glass is about 70% see-through, like iPhone glass; frosted is milkier and blurred.
      */
     val tint: Color
         get() = when (style) {
             GlassStyle.OFF -> Color.Transparent
-            GlassStyle.CLEAR -> base.copy(alpha = if (dark) 0.42f else 0.48f)
-            GlassStyle.FROSTED -> base.copy(alpha = if (dark) 0.62f else 0.70f)
+            GlassStyle.CLEAR -> base.copy(alpha = if (dark) 0.34f else 0.30f)
+            GlassStyle.FROSTED -> base.copy(alpha = if (dark) 0.58f else 0.55f)
+        }
+
+    /**
+     * For menus, which pop up over busy thumbnails and can't blur what's behind them: the same glass, a
+     * little thicker so their text stays readable.
+     */
+    val menuTint: Color
+        get() = when (style) {
+            GlassStyle.OFF -> Color.Transparent
+            GlassStyle.CLEAR -> base.copy(alpha = 0.72f)
+            GlassStyle.FROSTED -> base.copy(alpha = 0.82f)
         }
 
     val blur: Dp get() = if (style == GlassStyle.FROSTED) 30.dp else 8.dp
@@ -137,10 +164,18 @@ fun ColorScheme.glassy(glass: Glass): ColorScheme = copy(
     surface = Color.Transparent,
     surfaceContainerLowest = glass.tint,
     surfaceContainerLow = glass.tint,
-    surfaceContainer = glass.tint,
+    // Menus use this one.
+    surfaceContainer = glass.menuTint,
     surfaceContainerHigh = glass.tint,
     surfaceContainerHighest = glass.tint,
 )
+
+/**
+ * Whether windows can blur what's behind them right now (Android 12+, and not switched off, e.g. by
+ * battery saver). Without it, see-through dialogs and sheets fall back to the thicker menu glass.
+ */
+fun windowBlurAvailable(context: Context): Boolean =
+    Build.VERSION.SDK_INT >= 31 && context.getSystemService(WindowManager::class.java)?.isCrossWindowBlurEnabled == true
 
 /**
  * One accent color across the app. Material gives some buttons the secondary or tertiary color, so a
@@ -193,6 +228,8 @@ fun YoinkAlertDialog(
 ) {
     val glass = LocalGlass.current
     val shape = MaterialTheme.shapes.extraLarge
+    val context = LocalContext.current
+    val blur = remember { windowBlurAvailable(context) }
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
@@ -204,6 +241,7 @@ fun YoinkAlertDialog(
         title = title,
         text = text,
         shape = shape,
+        containerColor = if (glass.enabled && !blur) glass.menuTint else AlertDialogDefaults.containerColor,
         tonalElevation = if (glass.enabled) 0.dp else AlertDialogDefaults.TonalElevation,
     )
 }
