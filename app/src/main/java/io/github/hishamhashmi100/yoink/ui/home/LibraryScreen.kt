@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.MoreVert
@@ -192,6 +193,7 @@ private fun LibraryItem(
     onDelete: () -> Unit,
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
     val clickable = Modifier
         .clip(RoundedCornerShape(12.dp))
         .combinedClickable(onClick = onPlay, onLongClick = { menuOpen = true })
@@ -211,6 +213,11 @@ private fun LibraryItem(
                     text = { Text(stringResource(R.string.action_open_with)) },
                     leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
                     onClick = { menuOpen = false; onOpenWith() },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.copy_details)) },
+                    leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) },
+                    onClick = { menuOpen = false; FileActions.copyDetails(context, download.id) },
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.action_delete)) },
@@ -310,4 +317,15 @@ private fun ItemText(download: Download) {
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.padding(top = 2.dp),
     )
+    // E.g. "Saved in 360p: YouTube held back higher qualities…"
+    download.error?.let {
+        Text(
+            it,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+    }
 }

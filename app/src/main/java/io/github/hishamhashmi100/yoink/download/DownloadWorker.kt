@@ -67,8 +67,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         thumb = withContext(Dispatchers.IO) { NotificationThumbs.load(applicationContext, download.videoId) }
 
         return try {
-            slots.withPermit { download(download, workDir) }
-            DownloadLog.delete(applicationContext, downloadId)
+            val finished = slots.withPermit { download(download, workDir) }
+            runCatching { DownloadLog.write(applicationContext, finished, synchronized(log) { log.toList() }, null) }
             Result.success()
         } catch (e: Throwable) {
             if (e is CancellationException || isStopped) {
@@ -94,7 +94,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         }
     }
 
-    private suspend fun download(download: Download, workDir: File) {
+    private suspend fun download(download: Download, workDir: File): Download {
         dao.setStatus(downloadId, DownloadStatus.DOWNLOADING)
         withContext(Dispatchers.IO) { workDir.mkdirs() }
         Engine.ensureFresh(applicationContext)
@@ -106,6 +106,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
         val request = YoutubeDLRequest(YouTubeUrl.watchUrl(download.videoId)).apply {
             addOption("--no-playlist")
+            // Verbose output goes to stderr; the useful lines (JS challenge, formats, warnings) end up in Copy details.
+            addOption("--verbose")
             addOption("--no-mtime")
             addOption("--http-chunk-size", "10M")
             addOption("--write-thumbnail")
@@ -131,7 +133,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 }
             }
             try {
-                Engine.execute(applicationContext, request) { progress, eta, line ->
+                val response = Engine.execute(applicationContext, request) { progress, eta, line ->
                     // Progress lines repeat many times a second; keep the log to the lines that say something.
                     if (!line.startsWith("[download]") || "Destination" in line || "100%" in line || "ERROR" in line) {
                         synchronized(log) {
@@ -157,15 +159,39 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         speed = if (downloading) SPEED.find(line)?.groupValues?.get(1) ?: live.value.speed else null,
                     )
                 }
+                // yt-dlp prints warnings and its verbose notes on stderr: keep the ones that explain the result.
+                val notes = response.err.lineSequence().filter { DIAGNOSTIC.containsMatchIn(it) }.take(80).toList()
+                synchronized(log) {
+                    log.addAll(notes)
+                    while (log.size > 160) log.removeFirst()
+                }
             } finally {
                 reporter.cancel()
             }
         }
 
         report(download.title, LiveProgress(res.getString(R.string.stage_saving), -1f, -1L, null))
-        val finished = withContext(Dispatchers.IO) { finish(download, workDir) }
+        val saved = withContext(Dispatchers.IO) { finish(download, workDir) }
+        val finished = saved.copy(error = qualityNote(saved))
         dao.update(finished)
         Notifications.completed(applicationContext, finished)
+        return finished
+    }
+
+    /**
+     * When a video came out well below the quality asked for, says so, and whether YouTube held the higher
+     * qualities back (yt-dlp warns about missing formats) or the video simply doesn't have them.
+     */
+    private fun qualityNote(download: Download): String? {
+        if (download.quality.isAudio) return null
+        val got = download.resolution ?: return null
+        val wanted = download.quality.height ?: 720 // "Best" should be at least HD for most videos.
+        if (got >= wanted * 0.9) return null
+        val heldBack = synchronized(log) { log.any { HELD_BACK.containsMatchIn(it) } }
+        return applicationContext.getString(
+            if (heldBack) R.string.note_held_back else R.string.note_best_available,
+            MediaInfo.label(got),
+        )
     }
 
     private suspend fun finish(download: Download, workDir: File): Download {
@@ -237,6 +263,14 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         private const val ID_TAG_PREFIX = "download-id:"
 
         private val MEDIA_EXTENSIONS = setOf("mp4", "mkv", "webm", "mov", "mp3", "m4a", "opus", "ogg")
+        // yt-dlp's warnings when YouTube withholds formats (JS challenge, PO token, SABR, missing URLs).
+        private val DIAGNOSTIC = Regex(
+            """WARNING|ERROR|\[jsc|challenge|JS runtime|PO Token|\[youtube\]|\[info\]|Formats sorted|yt-dlp version|Python|exe versions|Optional libraries""",
+            RegexOption.IGNORE_CASE,
+        )
+
+        private val HELD_BACK = Regex("challenge|PO Token|formats? (may be|are) missing|missing a URL|SABR|skipped", RegexOption.IGNORE_CASE)
+
         private val SPEED = Regex("""at\s+(~?\s*[\d.]+\s*[KMGT]?i?B/s)""")
 
         /** At most two downloads run at once; the rest wait here, shown as "Queued". */

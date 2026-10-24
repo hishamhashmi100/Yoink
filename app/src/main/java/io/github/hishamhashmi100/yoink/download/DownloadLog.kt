@@ -10,7 +10,8 @@ object DownloadLog {
 
     private fun file(context: Context, id: Long) = File(context.filesDir, "logs/$id.txt")
 
-    fun write(context: Context, download: Download, lines: List<String>, error: Throwable) {
+    /** Saves yt-dlp's notes for a download; [error] is null when it finished. */
+    fun write(context: Context, download: Download, lines: List<String>, error: Throwable?) {
         val app = context.packageManager.getPackageInfo(context.packageName, 0).versionName
         val text = buildString {
             appendLine("Yoink $app · Android ${Build.VERSION.RELEASE} · ${Build.MANUFACTURER} ${Build.MODEL}")
@@ -18,8 +19,12 @@ object DownloadLog {
             appendLine()
             lines.forEach(::appendLine)
             appendLine()
-            appendLine(error.toString())
-            generateSequence(error.cause) { it.cause }.forEach { appendLine("Caused by: $it") }
+            if (error == null) {
+                appendLine("Finished" + (download.resolution?.let { " · ${MediaInfo.label(it)}" } ?: ""))
+            } else {
+                appendLine(error.toString())
+                generateSequence(error.cause) { it.cause }.forEach { appendLine("Caused by: $it") }
+            }
         }
         file(context, download.id).apply { parentFile?.mkdirs() }.writeText(text.take(20_000))
     }
