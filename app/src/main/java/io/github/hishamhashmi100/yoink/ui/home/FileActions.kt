@@ -1,6 +1,8 @@
 package io.github.hishamhashmi100.yoink.ui.home
 
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -8,6 +10,7 @@ import android.widget.Toast
 import androidx.core.content.FileProvider
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
+import io.github.hishamhashmi100.yoink.download.DownloadLog
 import java.io.File
 
 /** Share and "open with" for library items, via FileProvider for files in app storage. */
@@ -50,6 +53,18 @@ object FileActions {
             return null
         }
         return FileProvider.getUriForFile(context, "${context.packageName}.files", file)
+    }
+
+    /** Copies yt-dlp's notes for a download, so they can be pasted into a bug report. */
+    fun copyDetails(context: Context, downloadId: Long) {
+        val details = DownloadLog.read(context, downloadId)
+        if (details == null) {
+            Toast.makeText(context, R.string.no_details, Toast.LENGTH_SHORT).show()
+            return
+        }
+        context.getSystemService(ClipboardManager::class.java)
+            ?.setPrimaryClip(ClipData.newPlainText("Yoink details", details))
+        Toast.makeText(context, R.string.copied, Toast.LENGTH_SHORT).show()
     }
 
     private fun start(context: Context, intent: Intent) {

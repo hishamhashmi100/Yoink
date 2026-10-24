@@ -110,7 +110,8 @@ object Engine {
         if (freshnessChecked) return
         freshnessChecked = true
         val released = runCatching { version(context) }.getOrNull()
-            ?.let { runCatching { LocalDate.parse(it.take(10), DateTimeFormatter.ofPattern("yyyy.MM.dd")) }.getOrNull() }
+            ?.let { Regex("""\d{4}\.\d{2}\.\d{2}""").find(it)?.value }
+            ?.let { runCatching { LocalDate.parse(it, DateTimeFormatter.ofPattern("yyyy.MM.dd")) }.getOrNull() }
             ?: return
         if (ChronoUnit.DAYS.between(released, LocalDate.now()) > 30) {
             runCatching { update(context) }

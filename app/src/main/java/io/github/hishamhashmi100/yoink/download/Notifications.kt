@@ -95,7 +95,7 @@ object Notifications {
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(yoinkRed(context))
             .setContentTitle(context.getString(R.string.notification_done))
-            .setContentText(download.title)
+            .setContentText(download.error ?: download.title)
             .setLargeIcon(thumb)
             .setAutoCancel(true)
             .setContentIntent(openPlayer(context, download.id))
@@ -106,7 +106,7 @@ object Notifications {
                 NotificationCompat.BigPictureStyle()
                     .bigPicture(thumb)
                     .bigLargeIcon(null as Bitmap?)
-                    .setSummaryText(download.title)
+                    .setSummaryText(download.error ?: download.title)
             )
         }
         FileActions.shareChooser(context, download)?.let { share ->
