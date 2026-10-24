@@ -30,6 +30,8 @@ data class ShareUiState(
     val loadingFormats: Boolean = true,
     val available: Set<Quality> = emptySet(),
     val formatsError: String? = null,
+    /** The small Video / Audio sheet: no quality check, the buttons work straight away. */
+    val quick: Boolean = false,
 ) {
     val thumbnailUrl: String get() = YouTubeUrl.thumbnailUrl(videoId)
 }
@@ -51,14 +53,25 @@ object Probes {
 
     fun current(videoId: String): ShareUiState? = all.value[videoId]
 
-    /** Starts checking a video, unless it's already being checked or was checked successfully. */
-    fun start(context: Context, videoId: String) {
+    /**
+     * Starts checking a video, unless it's already being checked or was checked successfully.
+     * In [quick] mode there's no quality check: Video ([videoQuality]) and Audio work immediately, and only
+     * the title is looked up.
+     */
+    fun start(context: Context, videoId: String, quick: Boolean = false, videoQuality: Quality = Quality.BEST) {
         val app = context.yoink
         synchronized(jobs) {
             val known = all.value[videoId]
-            if (jobs[videoId]?.isActive == true || (known != null && !known.loadingFormats && known.formatsError == null)) return
-            all.update { it + (videoId to ShareUiState(videoId = videoId)) }
-            jobs[videoId] = app.appScope.launch { check(app, videoId) }
+            val reusable = known != null && known.quick == quick && !known.loadingFormats && known.formatsError == null
+            if ((jobs[videoId]?.isActive == true && known?.quick == quick) || reusable) return
+            jobs.remove(videoId)?.cancel()
+            val initial = if (quick) {
+                ShareUiState(videoId = videoId, loadingFormats = false, available = setOf(videoQuality, Quality.AUDIO), quick = true)
+            } else {
+                ShareUiState(videoId = videoId)
+            }
+            all.update { it + (videoId to initial) }
+            jobs[videoId] = app.appScope.launch { check(app, videoId, listFormats = !quick) }
         }
     }
 
@@ -83,10 +96,11 @@ object Probes {
         all.update { it - videoId }
     }
 
-    private suspend fun check(app: Application, videoId: String) {
+    private suspend fun check(app: Application, videoId: String, listFormats: Boolean) {
         // Phase 1: oEmbed answers in ~100 ms, so the sheet shows a title right away.
         val meta = runCatching { withContext(Dispatchers.IO) { fetchOEmbed(videoId) } }.getOrNull()
         if (meta != null) update(videoId) { it.copy(title = it.title ?: meta.first, channel = it.channel ?: meta.second) }
+        if (!listFormats) return
 
         // Phase 2: yt-dlp lists the real formats, which takes a few seconds.
         try {

@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.hishamhashmi100.yoink.R
+import io.github.hishamhashmi100.yoink.data.ShareMode
 import io.github.hishamhashmi100.yoink.data.ThemeMode
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
@@ -87,7 +88,15 @@ private fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     val updating by viewModel.updating.collectAsStateWithLifecycle()
     val message by viewModel.messages.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    var pickingQuality by rememberSaveable { mutableStateOf(false) }
+    var pickingMode by rememberSaveable { mutableStateOf(false) }
+    var pickingVideoQuality by rememberSaveable { mutableStateOf(false) }
+    val shareModes = listOf(
+        ShareMode.ASK to stringResource(R.string.share_mode_ask),
+        ShareMode.VIDEO_OR_AUDIO to stringResource(R.string.share_mode_quick),
+        ShareMode.VIDEO to stringResource(R.string.share_mode_video),
+        ShareMode.AUDIO to stringResource(R.string.share_mode_audio),
+    )
+    val videoQualities = Quality.entries.filterNot { it.isAudio }.map { it to it.label(context.resources) }
 
     LaunchedEffect(message) {
         message?.let {
@@ -116,11 +125,14 @@ private fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
         ) {
             SectionHeader(R.string.settings_downloads)
             ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_default_quality)) },
-                supportingContent = {
-                    Text(settings.defaultQuality?.label(context.resources) ?: stringResource(R.string.settings_ask_every_time))
-                },
-                modifier = Modifier.clickable { pickingQuality = true },
+                headlineContent = { Text(stringResource(R.string.settings_share_mode)) },
+                supportingContent = { Text(shareModes.first { it.first == settings.shareMode }.second) },
+                modifier = Modifier.clickable { pickingMode = true },
+            )
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.settings_video_quality)) },
+                supportingContent = { Text(settings.videoQuality.label(context.resources)) },
+                modifier = Modifier.clickable { pickingVideoQuality = true },
             )
             ListItem(
                 headlineContent = { Text(stringResource(R.string.settings_gallery)) },
@@ -201,14 +213,30 @@ private fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
         }
     }
 
-    if (pickingQuality) {
-        QualityDialog(
-            selected = settings.defaultQuality,
+    if (pickingMode) {
+        ChoiceDialog(
+            title = stringResource(R.string.settings_share_mode),
+            hint = stringResource(R.string.settings_share_mode_hint),
+            options = shareModes,
+            selected = settings.shareMode,
             onSelect = {
-                viewModel.setDefaultQuality(it)
-                pickingQuality = false
+                viewModel.setShareMode(it)
+                pickingMode = false
             },
-            onDismiss = { pickingQuality = false },
+            onDismiss = { pickingMode = false },
+        )
+    }
+    if (pickingVideoQuality) {
+        ChoiceDialog(
+            title = stringResource(R.string.settings_video_quality),
+            hint = stringResource(R.string.settings_video_quality_hint),
+            options = videoQualities,
+            selected = settings.videoQuality,
+            onSelect = {
+                viewModel.setVideoQuality(it)
+                pickingVideoQuality = false
+            },
+            onDismiss = { pickingVideoQuality = false },
         )
     }
 }
@@ -263,30 +291,30 @@ private fun SectionHeader(title: Int) {
 }
 
 @Composable
-private fun QualityDialog(selected: Quality?, onSelect: (Quality?) -> Unit, onDismiss: () -> Unit) {
-    val resources = LocalContext.current.resources
-    val options: List<Pair<Quality?, String>> =
-        listOf(null to stringResource(R.string.settings_ask_every_time)) + Quality.entries.map { it to it.label(resources) }
+private fun <T> ChoiceDialog(
+    title: String,
+    hint: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    onDismiss: () -> Unit,
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_default_quality)) },
+        title = { Text(title) },
         text = {
             Column {
-                Text(
-                    stringResource(R.string.settings_default_quality_hint),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-                options.forEach { (quality, label) ->
+                Text(hint, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 8.dp))
+                options.forEach { (value, label) ->
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .selectable(selected = quality == selected, role = Role.RadioButton) { onSelect(quality) }
+                            .selectable(selected = value == selected, role = Role.RadioButton) { onSelect(value) }
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        RadioButton(selected = quality == selected, onClick = null)
+                        RadioButton(selected = value == selected, onClick = null)
                         Text(label)
                     }
                 }

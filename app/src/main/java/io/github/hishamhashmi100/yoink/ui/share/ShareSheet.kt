@@ -46,7 +46,13 @@ import io.github.hishamhashmi100.yoink.download.Quality
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShareSheet(state: ShareUiState, onPick: (Quality) -> Unit, onMinimize: () -> Unit, onClose: () -> Unit) {
+fun ShareSheet(
+    state: ShareUiState,
+    videoQuality: Quality,
+    onPick: (Quality) -> Unit,
+    onMinimize: () -> Unit,
+    onClose: () -> Unit,
+) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     // Swipe down / Back / tap outside tucks the sheet away; the ✕ closes it for good.
     ModalBottomSheet(onDismissRequest = onMinimize, sheetState = sheetState) {
@@ -78,7 +84,7 @@ fun ShareSheet(state: ShareUiState, onPick: (Quality) -> Unit, onMinimize: () ->
                 )
             }
 
-            QualityButtons(state.available, onPick)
+            if (state.quick) VideoOrAudioButtons(videoQuality, onPick) else QualityButtons(state.available, onPick)
         }
     }
 }
@@ -133,6 +139,24 @@ private fun VideoHeader(state: ShareUiState, onClose: () -> Unit) {
         }
         IconButton(onClick = onClose) {
             Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.share_close))
+        }
+    }
+}
+
+/** The small sheet: one tap for video in the chosen quality, one for MP3. Nothing to wait for. */
+@Composable
+private fun VideoOrAudioButtons(videoQuality: Quality, onPick: (Quality) -> Unit) {
+    val resources = LocalContext.current.resources
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(onClick = { onPick(videoQuality) }, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.share_video_with, videoQuality.label(resources)))
+        }
+        FilledTonalButton(onClick = { onPick(Quality.AUDIO) }, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            Icon(Icons.Rounded.MusicNote, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(Quality.AUDIO.label(resources))
         }
     }
 }
