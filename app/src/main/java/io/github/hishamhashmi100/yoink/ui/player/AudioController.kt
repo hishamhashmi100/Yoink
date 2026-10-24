@@ -3,6 +3,7 @@ package io.github.hishamhashmi100.yoink.ui.player
 import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
+import android.os.Bundle
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -12,12 +13,13 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import io.github.hishamhashmi100.yoink.data.Download
 import io.github.hishamhashmi100.yoink.yoink
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.io.File
 
 data class NowPlaying(
@@ -39,6 +41,7 @@ object AudioController {
 
     // Audio queue items are tagged so the mini player ignores videos playing in PlayerActivity.
     private const val PREFIX = "audio:"
+    private const val EXTRA_THUMBNAIL = "thumbnail"
 
     private var future: ListenableFuture<MediaController>? = null
 
@@ -52,12 +55,24 @@ object AudioController {
     fun connect(context: Context) = withController(context) {}
 
     /** Plays [queue] in order, starting at [start]. */
-    fun play(context: Context, queue: List<Download>, start: Int) = withController(context) { c ->
-        // Videos share the player and have their own loop setting, so put the MP3 one back.
-        c.repeatMode = runBlocking { context.yoink.settings.audioRepeat.first() }
-        c.setMediaItems(queue.map(::item), start.coerceIn(0, queue.lastIndex.coerceAtLeast(0)), 0L)
-        c.prepare()
-        c.play()
+    fun play(context: Context, queue: List<Download>, start: Int) {
+        val app = context.yoink
+        app.appScope.launch {
+            val appearance = app.settings.settings.first().appearance
+            // Videos share the player and have their own loop setting, so put the MP3 one back.
+            val repeat = app.settings.audioRepeat.first()
+            val items = withContext(Dispatchers.IO) {
+                queue.map { item(it, ThemedArtwork.uri(app, it.thumbnailPath, appearance)) }
+            }
+            withContext(Dispatchers.Main) {
+                withController(app) { c ->
+                    c.repeatMode = repeat
+                    c.setMediaItems(items, start.coerceIn(0, queue.lastIndex.coerceAtLeast(0)), 0L)
+                    c.prepare()
+                    c.play()
+                }
+            }
+        }
     }
 
     fun togglePlayPause(context: Context) = withController(context) { c ->
@@ -71,11 +86,7 @@ object AudioController {
 
     /** Off → repeat all → repeat this track → off, like a music app. */
     fun cycleRepeat(context: Context) = withController(context) { c ->
-        val next = when (c.repeatMode) {
-            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-            else -> Player.REPEAT_MODE_OFF
-        }
+        val next = PlaybackService.nextRepeatMode(c.repeatMode)
         c.repeatMode = next
         val app = context.yoink
         app.appScope.launch { app.settings.setAudioRepeat(next) }
@@ -130,7 +141,8 @@ object AudioController {
         f.addListener({ runCatching { f.get() }.getOrNull()?.let(block) }, executor)
     }
 
-    private fun item(download: Download): MediaItem = MediaItem.Builder()
+    /** [artwork] is the themed cover, which the system media player takes its colors from. */
+    private fun item(download: Download, artwork: Uri?): MediaItem = MediaItem.Builder()
         .setMediaId(PREFIX + download.id)
         .setUri(download.fileUri)
         .setMimeType(download.mimeType)
@@ -138,7 +150,9 @@ object AudioController {
             MediaMetadata.Builder()
                 .setTitle(download.title)
                 .setArtist(download.channel)
-                .setArtworkUri(download.thumbnailPath?.let { Uri.fromFile(File(it)) })
+                .setArtworkUri(artwork ?: download.thumbnailPath?.let { Uri.fromFile(File(it)) })
+                // The real thumbnail, for the mini player.
+                .setExtras(Bundle().apply { putString(EXTRA_THUMBNAIL, download.thumbnailPath) })
                 .build()
         )
         .build()
@@ -152,7 +166,8 @@ object AudioController {
                 downloadId = item.mediaId.removePrefix(PREFIX).toLongOrNull(),
                 title = item.mediaMetadata.title?.toString().orEmpty(),
                 artist = item.mediaMetadata.artist?.toString(),
-                artworkUri = item.mediaMetadata.artworkUri,
+                artworkUri = item.mediaMetadata.extras?.getString(EXTRA_THUMBNAIL)?.let { Uri.fromFile(File(it)) }
+                    ?: item.mediaMetadata.artworkUri,
                 isPlaying = player.isPlaying || (player.playWhenReady && player.playbackState == Player.STATE_BUFFERING),
                 hasNext = player.hasNextMediaItem(),
                 repeatMode = player.repeatMode,
