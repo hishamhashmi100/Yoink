@@ -11,9 +11,13 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import io.github.hishamhashmi100.yoink.data.Download
+import io.github.hishamhashmi100.yoink.yoink
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.File
 
 data class NowPlaying(
@@ -23,6 +27,8 @@ data class NowPlaying(
     val artworkUri: Uri?,
     val isPlaying: Boolean,
     val hasNext: Boolean,
+    /** One of Player.REPEAT_MODE_OFF, _ALL (the whole queue) or _ONE (this track). */
+    val repeatMode: Int,
 )
 
 /**
@@ -47,6 +53,8 @@ object AudioController {
 
     /** Plays [queue] in order, starting at [start]. */
     fun play(context: Context, queue: List<Download>, start: Int) = withController(context) { c ->
+        // Videos share the player and have their own loop setting, so put the MP3 one back.
+        c.repeatMode = runBlocking { context.yoink.settings.audioRepeat.first() }
         c.setMediaItems(queue.map(::item), start.coerceIn(0, queue.lastIndex.coerceAtLeast(0)), 0L)
         c.prepare()
         c.play()
@@ -59,6 +67,18 @@ object AudioController {
             if (c.playbackState == Player.STATE_ENDED) c.seekTo(0, 0L)
             c.play()
         }
+    }
+
+    /** Off → repeat all → repeat this track → off, like a music app. */
+    fun cycleRepeat(context: Context) = withController(context) { c ->
+        val next = when (c.repeatMode) {
+            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+            else -> Player.REPEAT_MODE_OFF
+        }
+        c.repeatMode = next
+        val app = context.yoink
+        app.appScope.launch { app.settings.setAudioRepeat(next) }
     }
 
     fun next(context: Context) = withController(context) { it.seekToNextMediaItem() }
@@ -135,6 +155,7 @@ object AudioController {
                 artworkUri = item.mediaMetadata.artworkUri,
                 isPlaying = player.isPlaying || (player.playWhenReady && player.playbackState == Player.STATE_BUFFERING),
                 hasNext = player.hasNextMediaItem(),
+                repeatMode = player.repeatMode,
             )
         }
     }

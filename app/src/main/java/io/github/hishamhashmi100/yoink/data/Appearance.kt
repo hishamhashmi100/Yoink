@@ -10,16 +10,15 @@ enum class PaletteStyle { TONAL, VIBRANT, EXPRESSIVE, FIDELITY, NEUTRAL, MONOCHR
 
 enum class Contrast(val level: Double) { STANDARD(0.0), MEDIUM(0.5), HIGH(1.0) }
 
+/** Solid surfaces, or see-through glass panels over a soft color backdrop (clear or frosted). */
+enum class GlassStyle { OFF, CLEAR, FROSTED }
+
 enum class CornerStyle { BUBBLY, ROUND, SOFT, SQUARE }
 
-/** System font families, so nothing has to be bundled. */
-enum class FontStyle(val family: String?) {
-    DEFAULT(null),
-    CONDENSED("sans-serif-condensed"),
-    SERIF("serif"),
-    MONO("monospace"),
-    CASUAL("casual"),
-    CURSIVE("cursive"),
+/** Fonts for the whole app. The first few are built into Android; the rest ship with Yoink (res/font). */
+enum class FontStyle {
+    DEFAULT, CONDENSED, SERIF, MONO, CASUAL, CURSIVE,
+    ROUNDED, MODERN, ELEGANT, COMFY, BUBBLY, SCRIPT, RETRO, GROOVY, FUTURE, PIXEL, COMIC, TYPEWRITER,
 }
 
 /** The brand red from docs/logo.svg. */
@@ -37,6 +36,7 @@ data class Appearance(
     val contrast: Contrast = Contrast.STANDARD,
     val corners: CornerStyle = CornerStyle.ROUND,
     val font: FontStyle = FontStyle.DEFAULT,
+    val glass: GlassStyle = GlassStyle.OFF,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("theme", theme.name)
@@ -47,6 +47,7 @@ data class Appearance(
         .put("contrast", contrast.name)
         .put("corners", corners.name)
         .put("font", font.name)
+        .put("glass", glass.name)
 
     companion object {
         fun fromJson(json: JSONObject): Appearance {
@@ -60,6 +61,7 @@ data class Appearance(
                 contrast = enumOf(json.optString("contrast"), default.contrast),
                 corners = enumOf(json.optString("corners"), default.corners),
                 font = enumOf(json.optString("font"), default.font),
+                glass = enumOf(json.optString("glass"), default.glass),
             )
         }
     }
@@ -100,7 +102,12 @@ enum class ThemePreset(
     GRAPE(0xFF8E24AA.toInt(), PaletteStyle.VIBRANT, CornerStyle.ROUND, FontStyle.DEFAULT),
     CANDY(0xFFEC407A.toInt(), PaletteStyle.FRUIT_SALAD, CornerStyle.BUBBLY, FontStyle.CASUAL),
     RETRO(0xFFFFC83D.toInt(), PaletteStyle.FIDELITY, CornerStyle.SQUARE, FontStyle.SERIF),
-    NOIR(0xFF000000.toInt(), PaletteStyle.MONOCHROME, CornerStyle.SQUARE, FontStyle.MONO, pureBlack = true);
+    NOIR(0xFF000000.toInt(), PaletteStyle.MONOCHROME, CornerStyle.SQUARE, FontStyle.MONO, pureBlack = true),
+    COZY(0xFFC8A97E.toInt(), PaletteStyle.TONAL, CornerStyle.BUBBLY, FontStyle.COMFY),
+    ROYAL(0xFF1A237E.toInt(), PaletteStyle.FIDELITY, CornerStyle.SOFT, FontStyle.ELEGANT),
+    ARCADE(0xFFD500F9.toInt(), PaletteStyle.VIBRANT, CornerStyle.SQUARE, FontStyle.PIXEL, pureBlack = true),
+    COMIC(0xFFFFAB00.toInt(), PaletteStyle.FRUIT_SALAD, CornerStyle.ROUND, FontStyle.COMIC),
+    SPACE(0xFF00ACC1.toInt(), PaletteStyle.EXPRESSIVE, CornerStyle.SOFT, FontStyle.FUTURE, pureBlack = true);
 
     fun applyTo(current: Appearance) = current.copy(
         dynamicColor = false,

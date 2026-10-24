@@ -63,6 +63,7 @@ class SettingsStore(context: Context) {
                 contrast = enumOf(p[CONTRAST], Contrast.STANDARD),
                 corners = enumOf(p[CORNERS], CornerStyle.ROUND),
                 font = enumOf(p[FONT], FontStyle.DEFAULT),
+                glass = enumOf(p[GLASS], GlassStyle.OFF),
             ),
         )
     }
@@ -76,6 +77,13 @@ class SettingsStore(context: Context) {
 
     /** The app version we last sent an "update available" notification for. */
     val notifiedVersion: Flow<String?> = store.data.map { it[NOTIFIED_VERSION] }
+
+    /** Repeat modes (Player.REPEAT_MODE_*) kept between sessions: one for MP3s, one for videos. */
+    val audioRepeat: Flow<Int> = store.data.map { it[AUDIO_REPEAT] ?: 0 }
+    val videoRepeat: Flow<Int> = store.data.map { it[VIDEO_REPEAT] ?: 0 }
+
+    suspend fun setAudioRepeat(mode: Int) = store.edit { it[AUDIO_REPEAT] = mode }
+    suspend fun setVideoRepeat(mode: Int) = store.edit { it[VIDEO_REPEAT] = mode }
 
     suspend fun setShareMode(mode: ShareMode) = store.edit { it[SHARE_MODE] = mode.name }
     suspend fun setVideoQuality(quality: Quality) = store.edit { it[VIDEO_QUALITY] = quality.name }
@@ -91,6 +99,7 @@ class SettingsStore(context: Context) {
         it[CONTRAST] = appearance.contrast.name
         it[CORNERS] = appearance.corners.name
         it[FONT] = appearance.font.name
+        it[GLASS] = appearance.glass.name
     }
 
     /** Saves [appearance] under [name], replacing a saved theme with the same name. */
@@ -120,7 +129,10 @@ class SettingsStore(context: Context) {
         val CONTRAST = stringPreferencesKey("contrast")
         val CORNERS = stringPreferencesKey("corners")
         val FONT = stringPreferencesKey("font")
+        val GLASS = stringPreferencesKey("glass")
         val SAVED_THEMES = stringPreferencesKey("saved_themes")
+        val AUDIO_REPEAT = intPreferencesKey("audio_repeat")
+        val VIDEO_REPEAT = intPreferencesKey("video_repeat")
         val FIRST_UPDATE_DONE = booleanPreferencesKey("first_update_done")
         val NOTIFIED_VERSION = stringPreferencesKey("notified_version")
     }

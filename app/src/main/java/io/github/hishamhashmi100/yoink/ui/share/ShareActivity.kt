@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import io.github.hishamhashmi100.yoink.R
+import io.github.hishamhashmi100.yoink.data.GlassStyle
 import io.github.hishamhashmi100.yoink.data.ShareMode
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.download.YouTubeUrl
@@ -71,8 +73,10 @@ class ShareActivity : ComponentActivity() {
             if (Build.VERSION.SDK_INT >= 33 && !notificationsAllowed()) {
                 askForNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
+            blurBehind(settings.appearance.glass)
             setContent {
-                YoinkTheme(settings) {
+                // No backdrop: YouTube (blurred, with glass on) shows through behind the sheet.
+                YoinkTheme(settings, backdrop = false) {
                     val current = videoId.collectAsStateWithLifecycle().value ?: return@YoinkTheme
                     val state = remember(current) { Probes.state(current) }
                         .collectAsStateWithLifecycle(ShareUiState(videoId = current)).value
@@ -86,6 +90,14 @@ class ShareActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /** With a glass look, blur the app behind the sheet like frosted glass (Android 12 and newer). */
+    private fun blurBehind(glass: GlassStyle) {
+        if (Build.VERSION.SDK_INT < 31 || glass == GlassStyle.OFF) return
+        val radius = (if (glass == GlassStyle.FROSTED) 48 else 14) * resources.displayMetrics.density
+        window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+        window.attributes = window.attributes.also { it.blurBehindRadius = radius.toInt() }
     }
 
     override fun onStart() {

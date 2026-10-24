@@ -7,7 +7,9 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Typeface
 import android.os.Build
+import androidx.annotation.FontRes
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,7 +31,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.google.android.material.color.utilities.DynamicColor
@@ -44,6 +50,7 @@ import com.google.android.material.color.utilities.SchemeNeutral
 import com.google.android.material.color.utilities.SchemeRainbow
 import com.google.android.material.color.utilities.SchemeTonalSpot
 import com.google.android.material.color.utilities.SchemeVibrant
+import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Appearance
 import io.github.hishamhashmi100.yoink.data.Contrast
 import io.github.hishamhashmi100.yoink.data.CornerStyle
@@ -125,13 +132,20 @@ fun isDarkTheme(appearance: Appearance): Boolean = when (appearance.theme) {
 }
 
 @Composable
-fun YoinkTheme(settings: Settings, content: @Composable () -> Unit) = YoinkTheme(settings.appearance, content)
+fun YoinkTheme(settings: Settings, backdrop: Boolean = true, content: @Composable () -> Unit) =
+    YoinkTheme(settings.appearance, backdrop, content)
 
+/**
+ * @param backdrop draw the glass backdrop behind [content]. Off for windows that float over other apps,
+ * like the share sheet, where whatever is behind serves as the backdrop.
+ */
 @Composable
-fun YoinkTheme(appearance: Appearance, content: @Composable () -> Unit) {
+fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Composable () -> Unit) {
     val dark = isDarkTheme(appearance)
     val context = LocalContext.current
-    val colors = remember(appearance, dark) { colorScheme(context, appearance, dark) }
+    val solid = remember(appearance, dark) { colorScheme(context, appearance, dark) }
+    val glass = Glass(appearance.glass, dark, solid.background)
+    val colors = if (glass.enabled) remember(solid, dark) { solid.glassy(dark) } else solid
     val typography = remember(appearance.font) { typography(appearance.font) }
 
     // enableEdgeToEdge() follows the system's dark mode; keep the bar icons readable when the app overrides it.
@@ -148,7 +162,19 @@ fun YoinkTheme(appearance: Appearance, content: @Composable () -> Unit) {
     }
 
     MaterialTheme(colorScheme = colors, shapes = shapes(appearance.corners), typography = typography) {
-        CompositionLocalProvider(LocalButtonShape provides buttonShape(appearance.corners), content = content)
+        CompositionLocalProvider(
+            LocalButtonShape provides buttonShape(appearance.corners),
+            LocalGlass provides glass,
+        ) {
+            if (glass.enabled && backdrop) {
+                Box {
+                    GlassBackdrop(solid)
+                    content()
+                }
+            } else {
+                content()
+            }
+        }
     }
 }
 
@@ -274,8 +300,36 @@ fun buttonShape(style: CornerStyle): CornerBasedShape = when (style) {
     CornerStyle.SQUARE -> RoundedCornerShape(0.dp)
 }
 
-fun fontFamily(font: FontStyle): FontFamily =
-    font.family?.let { FontFamily(Typeface.create(it, Typeface.NORMAL)) } ?: FontFamily.Default
+fun fontFamily(font: FontStyle): FontFamily = when (font) {
+    FontStyle.DEFAULT -> FontFamily.Default
+    FontStyle.CONDENSED -> system("sans-serif-condensed")
+    FontStyle.SERIF -> FontFamily.Serif
+    FontStyle.MONO -> FontFamily.Monospace
+    FontStyle.CASUAL -> system("casual")
+    FontStyle.CURSIVE -> FontFamily.Cursive
+    FontStyle.ROUNDED -> variable(R.font.nunito)
+    FontStyle.MODERN -> FontFamily(Font(R.font.poppins))
+    FontStyle.ELEGANT -> variable(R.font.playfair_display)
+    FontStyle.COMFY -> variable(R.font.comfortaa)
+    FontStyle.BUBBLY -> variable(R.font.fredoka)
+    FontStyle.SCRIPT -> FontFamily(Font(R.font.pacifico))
+    FontStyle.RETRO -> FontFamily(Font(R.font.lobster))
+    FontStyle.GROOVY -> FontFamily(Font(R.font.righteous))
+    FontStyle.FUTURE -> variable(R.font.orbitron)
+    FontStyle.PIXEL -> FontFamily(Font(R.font.press_start_2p))
+    FontStyle.COMIC -> FontFamily(Font(R.font.bangers))
+    FontStyle.TYPEWRITER -> FontFamily(Font(R.font.special_elite))
+}
+
+private fun system(name: String) = FontFamily(Typeface.create(name, Typeface.NORMAL))
+
+/** One variable font file, used at the weights Material's text styles ask for. */
+@OptIn(ExperimentalTextApi::class)
+private fun variable(@FontRes res: Int) = FontFamily(
+    listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold).map { weight ->
+        Font(res, weight, variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)))
+    },
+)
 
 private fun typography(font: FontStyle): Typography {
     val base = Typography()
