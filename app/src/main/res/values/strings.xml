@@ -129,6 +129,11 @@
     <string name="appearance_mode">Light and dark</string>
     <string name="appearance_pure_black">Pure black</string>
     <string name="appearance_pure_black_summary">Black backgrounds in dark mode. Easier on OLED screens.</string>
+    <string name="appearance_glass">Surface style</string>
+    <string name="appearance_glass_hint">Glass lets the colors behind cards and bars shine through. Frosted blurs them too.</string>
+    <string name="glass_off">Solid</string>
+    <string name="glass_clear">Glass</string>
+    <string name="glass_frosted">Frosted glass</string>
     <string name="appearance_color">Color</string>
     <string name="appearance_custom_color">Custom color</string>
     <string name="appearance_palette">Palette style</string>

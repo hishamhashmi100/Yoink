@@ -70,12 +70,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -90,12 +92,16 @@ import io.github.hishamhashmi100.yoink.data.Appearance
 import io.github.hishamhashmi100.yoink.data.Contrast
 import io.github.hishamhashmi100.yoink.data.CornerStyle
 import io.github.hishamhashmi100.yoink.data.FontStyle
+import io.github.hishamhashmi100.yoink.data.GlassStyle
 import io.github.hishamhashmi100.yoink.data.PaletteStyle
 import io.github.hishamhashmi100.yoink.data.SavedTheme
 import io.github.hishamhashmi100.yoink.data.ThemeMode
 import io.github.hishamhashmi100.yoink.data.ThemePreset
 import io.github.hishamhashmi100.yoink.data.YOINK_RED
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
+import io.github.hishamhashmi100.yoink.ui.theme.Glass
+import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
+import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
 import io.github.hishamhashmi100.yoink.ui.theme.colorScheme
 import io.github.hishamhashmi100.yoink.ui.theme.fontFamily
@@ -179,6 +185,13 @@ private fun PaletteStyle.label() = when (this) {
     PaletteStyle.MONOCHROME -> R.string.palette_monochrome
     PaletteStyle.RAINBOW -> R.string.palette_rainbow
     PaletteStyle.FRUIT_SALAD -> R.string.palette_fruit_salad
+}
+
+@StringRes
+private fun GlassStyle.label() = when (this) {
+    GlassStyle.OFF -> R.string.glass_off
+    GlassStyle.CLEAR -> R.string.glass_clear
+    GlassStyle.FROSTED -> R.string.glass_frosted
 }
 
 @StringRes
@@ -315,6 +328,24 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                     trailingContent = { Switch(checked = appearance.pureBlack, onCheckedChange = null) },
                     modifier = Modifier.clickable { viewModel.update { it.copy(pureBlack = !it.pureBlack) } },
                 )
+
+                Header(R.string.appearance_glass)
+                Hint(R.string.appearance_glass_hint)
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    GlassStyle.entries.forEach { style ->
+                        GlassTile(
+                            style = style,
+                            selected = appearance.glass == style,
+                            onClick = { viewModel.update { it.copy(glass = style) } },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
 
                 Header(R.string.appearance_color)
                 if (Build.VERSION.SDK_INT >= 31) {
@@ -510,11 +541,15 @@ private fun Hint(@StringRes text: Int) {
 @Composable
 private fun LookPreview() {
     val colors = MaterialTheme.colorScheme
+    val glass = LocalGlass.current
+    val shape = MaterialTheme.shapes.medium
     Card(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = colors.surfaceContainer),
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .glassPanel(glass, shape),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = if (glass.enabled) Color.Transparent else colors.surfaceContainer),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -621,6 +656,61 @@ private fun ThemeCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 6.dp),
+        )
+    }
+}
+
+/** A little picture of each surface style: a panel over the color backdrop. */
+@Composable
+private fun GlassTile(style: GlassStyle, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val dark = colors.onSurface.luminance() > 0.5f
+    val tile = Glass(style, dark, Color.Unspecified)
+    val shape = MaterialTheme.shapes.medium
+    Column(
+        modifier
+            .clip(shape)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(72.dp)
+                .clip(shape)
+                .then(if (selected) Modifier.border(3.dp, colors.primary, shape) else Modifier),
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(Modifier.matchParentSize()) {
+                drawRect(if (dark) Color(0xFF101014) else Color(0xFFF6F6F8))
+                drawCircle(colors.primary, size.minDimension * 0.42f, Offset(size.width * 0.28f, size.height * 0.35f))
+                drawCircle(colors.tertiary, size.minDimension * 0.36f, Offset(size.width * 0.72f, size.height * 0.75f))
+            }
+            val panel = Modifier
+                .fillMaxWidth(0.7f)
+                .height(36.dp)
+            val panelShape = MaterialTheme.shapes.small
+            when (style) {
+                GlassStyle.OFF -> Box(panel.background(if (dark) Color(0xFF26262C) else Color.White, panelShape))
+                // A real blur of the circles behind, so the tile shows what frosted means.
+                GlassStyle.FROSTED -> Box(panel.clip(panelShape)) {
+                    Canvas(
+                        Modifier
+                            .matchParentSize()
+                            .blur(10.dp),
+                    ) {
+                        drawCircle(colors.primary, size.height * 1.1f, Offset(size.width * 0.1f, 0f))
+                        drawCircle(colors.tertiary, size.height * 0.9f, Offset(size.width * 0.95f, size.height * 1.2f))
+                    }
+                    Box(Modifier.matchParentSize().glassPanel(tile, panelShape))
+                }
+                GlassStyle.CLEAR -> Box(panel.glassPanel(tile, panelShape))
+            }
+        }
+        Text(
+            stringResource(style.label()),
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(top = 6.dp, bottom = 4.dp),
         )
     }
 }

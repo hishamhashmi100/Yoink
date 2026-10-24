@@ -63,6 +63,7 @@ class SettingsStore(context: Context) {
                 contrast = enumOf(p[CONTRAST], Contrast.STANDARD),
                 corners = enumOf(p[CORNERS], CornerStyle.ROUND),
                 font = enumOf(p[FONT], FontStyle.DEFAULT),
+                glass = enumOf(p[GLASS], GlassStyle.OFF),
             ),
         )
     }
@@ -98,6 +99,7 @@ class SettingsStore(context: Context) {
         it[CONTRAST] = appearance.contrast.name
         it[CORNERS] = appearance.corners.name
         it[FONT] = appearance.font.name
+        it[GLASS] = appearance.glass.name
     }
 
     /** Saves [appearance] under [name], replacing a saved theme with the same name. */
@@ -127,6 +129,7 @@ class SettingsStore(context: Context) {
         val CONTRAST = stringPreferencesKey("contrast")
         val CORNERS = stringPreferencesKey("corners")
         val FONT = stringPreferencesKey("font")
+        val GLASS = stringPreferencesKey("glass")
         val SAVED_THEMES = stringPreferencesKey("saved_themes")
         val AUDIO_REPEAT = intPreferencesKey("audio_repeat")
         val VIDEO_REPEAT = intPreferencesKey("video_repeat")

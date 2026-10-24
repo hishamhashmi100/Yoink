@@ -55,6 +55,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.hishamhashmi100.yoink.R
@@ -65,7 +66,7 @@ import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import io.github.hishamhashmi100.yoink.ui.player.PlayerActivity
 
 @Composable
-fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier) {
+fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, bottomInset: Dp = 0.dp) {
     val items by viewModel.library.collectAsStateWithLifecycle()
     val hasAny by viewModel.hasLibraryItems.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
@@ -137,7 +138,7 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier) {
         } else {
             LazyVerticalGrid(
                 columns = if (grid) GridCells.Adaptive(minSize = 160.dp) else GridCells.Fixed(1),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp + bottomInset),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize(),

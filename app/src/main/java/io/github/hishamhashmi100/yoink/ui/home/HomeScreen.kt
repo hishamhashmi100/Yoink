@@ -10,6 +10,8 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
@@ -17,18 +19,27 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.ui.share.ShareActivity
+import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
+import io.github.hishamhashmi100.yoink.ui.theme.LocalHazeState
+import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
 
 enum class HomeTab { DOWNLOADING, LIBRARY }
 
@@ -44,6 +55,8 @@ fun HomeScreen(
     val active by viewModel.active.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf<HomeTab?>(null) }
     var addingLink by rememberSaveable { mutableStateOf(false) }
+    val glass = LocalGlass.current
+    val hazeState = rememberHazeState()
 
     // Open on Downloading when something is in progress, otherwise on the Library.
     LaunchedEffect(active == null) {
@@ -58,6 +71,7 @@ fun HomeScreen(
         }
     }
 
+    CompositionLocalProvider(LocalHazeState provides hazeState.takeIf { glass.enabled }) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -67,12 +81,36 @@ fun HomeScreen(
         },
         bottomBar = { MiniPlayer() },
         floatingActionButton = {
-            FloatingActionButton(onClick = { addingLink = true }) {
+            val fabShape = MaterialTheme.shapes.large
+            FloatingActionButton(
+                onClick = { addingLink = true },
+                shape = fabShape,
+                containerColor = if (glass.enabled) Color.Transparent else FloatingActionButtonDefaults.containerColor,
+                elevation = if (glass.enabled) {
+                    FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                } else {
+                    FloatingActionButtonDefaults.elevation()
+                },
+                modifier = Modifier.glassPanel(glass, fabShape, hazeState),
+            ) {
                 Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.add_link))
             }
         },
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
+        // With glass, the lists run on under the mini player and the + button, which blur them.
+        val direction = LocalLayoutDirection.current
+        val bottomInset = if (glass.enabled) padding.calculateBottomPadding() else 0.dp
+        Column(
+            Modifier
+                .padding(
+                    start = padding.calculateStartPadding(direction),
+                    top = padding.calculateTopPadding(),
+                    end = padding.calculateEndPadding(direction),
+                    bottom = padding.calculateBottomPadding() - bottomInset,
+                )
+                .fillMaxSize()
+                .then(if (glass.enabled) Modifier.hazeSource(hazeState) else Modifier),
+        ) {
             UpdateCard()
             val selected = tab ?: HomeTab.LIBRARY
             PrimaryTabRow(selectedTabIndex = selected.ordinal) {
@@ -93,10 +131,11 @@ fun HomeScreen(
                 )
             }
             when (selected) {
-                HomeTab.DOWNLOADING -> DownloadingScreen(viewModel)
-                HomeTab.LIBRARY -> LibraryScreen(viewModel)
+                HomeTab.DOWNLOADING -> DownloadingScreen(viewModel, bottomInset = bottomInset)
+                HomeTab.LIBRARY -> LibraryScreen(viewModel, bottomInset = bottomInset)
             }
         }
+    }
     }
 
     if (addingLink) {

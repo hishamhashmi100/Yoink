@@ -9,6 +9,7 @@ import android.graphics.Typeface
 import android.os.Build
 import androidx.annotation.FontRes
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -131,13 +132,20 @@ fun isDarkTheme(appearance: Appearance): Boolean = when (appearance.theme) {
 }
 
 @Composable
-fun YoinkTheme(settings: Settings, content: @Composable () -> Unit) = YoinkTheme(settings.appearance, content)
+fun YoinkTheme(settings: Settings, backdrop: Boolean = true, content: @Composable () -> Unit) =
+    YoinkTheme(settings.appearance, backdrop, content)
 
+/**
+ * @param backdrop draw the glass backdrop behind [content]. Off for windows that float over other apps,
+ * like the share sheet, where whatever is behind serves as the backdrop.
+ */
 @Composable
-fun YoinkTheme(appearance: Appearance, content: @Composable () -> Unit) {
+fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Composable () -> Unit) {
     val dark = isDarkTheme(appearance)
     val context = LocalContext.current
-    val colors = remember(appearance, dark) { colorScheme(context, appearance, dark) }
+    val solid = remember(appearance, dark) { colorScheme(context, appearance, dark) }
+    val glass = Glass(appearance.glass, dark, solid.background)
+    val colors = if (glass.enabled) remember(solid, dark) { solid.glassy(dark) } else solid
     val typography = remember(appearance.font) { typography(appearance.font) }
 
     // enableEdgeToEdge() follows the system's dark mode; keep the bar icons readable when the app overrides it.
@@ -154,7 +162,19 @@ fun YoinkTheme(appearance: Appearance, content: @Composable () -> Unit) {
     }
 
     MaterialTheme(colorScheme = colors, shapes = shapes(appearance.corners), typography = typography) {
-        CompositionLocalProvider(LocalButtonShape provides buttonShape(appearance.corners), content = content)
+        CompositionLocalProvider(
+            LocalButtonShape provides buttonShape(appearance.corners),
+            LocalGlass provides glass,
+        ) {
+            if (glass.enabled && backdrop) {
+                Box {
+                    GlassBackdrop(solid)
+                    content()
+                }
+            } else {
+                content()
+            }
+        }
     }
 }
 

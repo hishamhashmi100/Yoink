@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -37,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
@@ -48,9 +48,10 @@ import io.github.hishamhashmi100.yoink.download.LiveProgress
 import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.YouTubeUrl
 import java.io.File
+import io.github.hishamhashmi100.yoink.ui.theme.YoinkCard
 
 @Composable
-fun DownloadingScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier) {
+fun DownloadingScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, bottomInset: Dp = 0.dp) {
     val active = viewModel.active.collectAsStateWithLifecycle().value.orEmpty()
     if (active.isEmpty()) {
         Box(modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -65,7 +66,7 @@ fun DownloadingScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier) {
     }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + bottomInset),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(active, key = { it.download.id }) { item ->
@@ -83,7 +84,7 @@ private fun ActiveDownloadCard(item: ActiveDownload, onCancel: () -> Unit, onRet
     val download = item.download
     val progress = item.progress
     val failed = download.status == DownloadStatus.FAILED
-    ElevatedCard(Modifier.fillMaxWidth()) {
+    YoinkCard(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Thumbnail(download, Modifier.width(112.dp))
             Spacer(Modifier.width(12.dp))

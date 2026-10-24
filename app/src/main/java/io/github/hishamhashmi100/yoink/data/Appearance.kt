@@ -10,6 +10,9 @@ enum class PaletteStyle { TONAL, VIBRANT, EXPRESSIVE, FIDELITY, NEUTRAL, MONOCHR
 
 enum class Contrast(val level: Double) { STANDARD(0.0), MEDIUM(0.5), HIGH(1.0) }
 
+/** Solid surfaces, or see-through glass panels over a soft color backdrop (clear or frosted). */
+enum class GlassStyle { OFF, CLEAR, FROSTED }
+
 enum class CornerStyle { BUBBLY, ROUND, SOFT, SQUARE }
 
 /** Fonts for the whole app. The first few are built into Android; the rest ship with Yoink (res/font). */
@@ -33,6 +36,7 @@ data class Appearance(
     val contrast: Contrast = Contrast.STANDARD,
     val corners: CornerStyle = CornerStyle.ROUND,
     val font: FontStyle = FontStyle.DEFAULT,
+    val glass: GlassStyle = GlassStyle.OFF,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("theme", theme.name)
@@ -43,6 +47,7 @@ data class Appearance(
         .put("contrast", contrast.name)
         .put("corners", corners.name)
         .put("font", font.name)
+        .put("glass", glass.name)
 
     companion object {
         fun fromJson(json: JSONObject): Appearance {
@@ -56,6 +61,7 @@ data class Appearance(
                 contrast = enumOf(json.optString("contrast"), default.contrast),
                 corners = enumOf(json.optString("corners"), default.corners),
                 font = enumOf(json.optString("font"), default.font),
+                glass = enumOf(json.optString("glass"), default.glass),
             )
         }
     }

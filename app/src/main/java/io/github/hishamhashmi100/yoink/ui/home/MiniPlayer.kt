@@ -40,9 +40,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import coil3.compose.AsyncImage
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
+import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
+import io.github.hishamhashmi100.yoink.ui.theme.LocalHazeState
+import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
 import kotlinx.coroutines.delay
 
 /** The bar at the bottom of Home while an MP3 is playing: cover, title, 🔁 ⏮ ⏯ ⏭ and ✕. */
@@ -61,7 +66,13 @@ fun MiniPlayer() {
         }
     }
 
-    Surface(tonalElevation = 3.dp, shadowElevation = 8.dp) {
+    val glass = LocalGlass.current
+    Surface(
+        tonalElevation = if (glass.enabled) 0.dp else 3.dp,
+        shadowElevation = if (glass.enabled) 0.dp else 8.dp,
+        color = if (glass.enabled) Color.Transparent else MaterialTheme.colorScheme.surface,
+        modifier = Modifier.glassPanel(glass, RectangleShape, LocalHazeState.current),
+    ) {
         Column(Modifier.navigationBarsPadding()) {
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(2.dp))
             Row(
