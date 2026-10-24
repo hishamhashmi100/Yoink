@@ -150,7 +150,7 @@ object AppUpdater {
                 ?: "yoink-universal.apk".takeIf { it in urls }
                 ?: return null
             return Release(
-                version = json.getString("tag_name").removePrefix("v"),
+                version = json.getString("tag_name").trimStart('v', 'V'),
                 pageUrl = json.optString("html_url"),
                 apkName = apkName,
                 apkUrl = urls.getValue(apkName),
