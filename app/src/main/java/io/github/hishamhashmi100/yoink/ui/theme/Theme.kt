@@ -144,7 +144,7 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
     val dark = isDarkTheme(appearance)
     val context = LocalContext.current
     val solid = remember(appearance, dark) { colorScheme(context, appearance, dark) }
-    val glass = Glass(appearance.glass, dark, solid.background)
+    val glass = Glass(appearance.glass, dark, solid.background, solid.primary)
     val colors = remember(solid, glass) { solid.oneAccent().let { if (glass.enabled) it.glassy(glass) else it } }
     val typography = remember(appearance.font) { typography(appearance.font) }
 

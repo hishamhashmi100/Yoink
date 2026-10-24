@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -30,6 +31,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +46,8 @@ import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
+import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
+import io.github.hishamhashmi100.yoink.ui.theme.windowBlurAvailable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +60,15 @@ fun ShareSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     // Swipe down / Back / tap outside tucks the sheet away; the ✕ closes it for good.
-    ModalBottomSheet(onDismissRequest = onMinimize, sheetState = sheetState) {
+    val glass = LocalGlass.current
+    val context = LocalContext.current
+    // Glass over another app needs the window blur to stay readable; without it, use the thicker glass.
+    val blur = remember { windowBlurAvailable(context) }
+    ModalBottomSheet(
+        onDismissRequest = onMinimize,
+        sheetState = sheetState,
+        containerColor = if (glass.enabled && !blur) glass.menuTint else BottomSheetDefaults.ContainerColor,
+    ) {
         Column(
             Modifier
                 .fillMaxWidth()
