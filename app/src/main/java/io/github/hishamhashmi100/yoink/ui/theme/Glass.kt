@@ -1,16 +1,21 @@
 package io.github.hishamhashmi100.yoink.ui.theme
 
+import android.os.Build
+import android.view.WindowManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
@@ -19,8 +24,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogWindowProvider
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -36,12 +44,15 @@ data class Glass(val style: GlassStyle, val dark: Boolean, val backdrop: Color) 
 
     private val base: Color get() = if (dark) Color(0xFF17171C) else Color.White
 
-    /** Clear glass lets most of the color through; frosted is milky. */
+    /**
+     * The one tint every glass surface uses (cards, bars, dialogs, sheets, menus), so glass looks the same
+     * everywhere. Clear lets the backdrop show through; frosted is milky and blurred.
+     */
     val tint: Color
         get() = when (style) {
             GlassStyle.OFF -> Color.Transparent
-            GlassStyle.CLEAR -> base.copy(alpha = if (dark) 0.30f else 0.32f)
-            GlassStyle.FROSTED -> base.copy(alpha = if (dark) 0.55f else 0.62f)
+            GlassStyle.CLEAR -> base.copy(alpha = if (dark) 0.42f else 0.48f)
+            GlassStyle.FROSTED -> base.copy(alpha = if (dark) 0.62f else 0.70f)
         }
 
     val blur: Dp get() = if (style == GlassStyle.FROSTED) 30.dp else 8.dp
@@ -65,6 +76,9 @@ data class Glass(val style: GlassStyle, val dark: Boolean, val backdrop: Color) 
 }
 
 val LocalGlass = staticCompositionLocalOf { Glass(GlassStyle.OFF, dark = false, backdrop = Color.White) }
+
+/** The theme's full palette (before [oneAccent]), for the backdrop's colored blobs. */
+val LocalBackdropColors = staticCompositionLocalOf<ColorScheme?> { null }
 
 /** Set by screens whose content can be blurred behind glass panels (see Modifier.hazeSource). */
 val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
@@ -115,18 +129,81 @@ fun GlassBackdrop(colors: ColorScheme, modifier: Modifier = Modifier) {
 }
 
 /**
- * Material's own surfaces see-through, so the backdrop shows behind screens, bars and lists. Menus,
- * dialogs and sheets stay nearly opaque so their text is easy to read.
+ * Material's own surfaces in the glass tint: screens and bars are clear over the backdrop, and every
+ * container (dialogs, menus, sheets, cards) is the same pane of glass as Yoink's own panels.
  */
-fun ColorScheme.glassy(dark: Boolean): ColorScheme {
-    val base = if (dark) Color(0xFF17171C) else Color.White
-    return copy(
-        background = Color.Transparent,
-        surface = Color.Transparent,
-        surfaceContainerLowest = base.copy(alpha = 0.80f),
-        surfaceContainerLow = base.copy(alpha = 0.86f),
-        surfaceContainer = base.copy(alpha = 0.90f),
-        surfaceContainerHigh = base.copy(alpha = 0.94f),
-        surfaceContainerHighest = base.copy(alpha = 0.96f),
+fun ColorScheme.glassy(glass: Glass): ColorScheme = copy(
+    background = Color.Transparent,
+    surface = Color.Transparent,
+    surfaceContainerLowest = glass.tint,
+    surfaceContainerLow = glass.tint,
+    surfaceContainer = glass.tint,
+    surfaceContainerHigh = glass.tint,
+    surfaceContainerHighest = glass.tint,
+)
+
+/**
+ * One accent color across the app. Material gives some buttons the secondary or tertiary color, so a
+ * palette could make one button blue and the next green; here everything uses the primary color.
+ * (The glass backdrop keeps the other colors, where the variety looks good.)
+ */
+fun ColorScheme.oneAccent(): ColorScheme = copy(
+    secondary = primary,
+    onSecondary = onPrimary,
+    secondaryContainer = primaryContainer,
+    onSecondaryContainer = onPrimaryContainer,
+    tertiary = primary,
+    onTertiary = onPrimary,
+    tertiaryContainer = primaryContainer,
+    onTertiaryContainer = onPrimaryContainer,
+)
+
+/**
+ * Inside a dialog or sheet with glass on: blurs what's behind its window (Android 12 and newer), so the
+ * see-through pane stays readable, the same frosted feel as the panels.
+ */
+@Composable
+fun GlassWindowBlur() {
+    val glass = LocalGlass.current
+    if (!glass.enabled || Build.VERSION.SDK_INT < 31) return
+    val view = LocalView.current
+    val radius = with(LocalDensity.current) { glass.blur.roundToPx() }
+    DisposableEffect(view, radius) {
+        runCatching {
+            var parent = view.parent
+            while (parent != null && parent !is DialogWindowProvider) parent = parent.parent
+            (parent as? DialogWindowProvider)?.window?.let { window ->
+                window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                window.attributes = window.attributes.also { it.blurBehindRadius = radius }
+            }
+        }
+        onDispose {}
+    }
+}
+
+/** Material's AlertDialog with the glass rim and window blur. Same parameters, so it drops in. */
+@Composable
+fun YoinkAlertDialog(
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    dismissButton: @Composable (() -> Unit)? = null,
+    title: @Composable (() -> Unit)? = null,
+    text: @Composable (() -> Unit)? = null,
+) {
+    val glass = LocalGlass.current
+    val shape = MaterialTheme.shapes.extraLarge
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            GlassWindowBlur()
+            confirmButton()
+        },
+        modifier = if (glass.enabled) modifier.border(1.dp, glass.rim, shape) else modifier,
+        dismissButton = dismissButton,
+        title = title,
+        text = text,
+        shape = shape,
+        tonalElevation = if (glass.enabled) 0.dp else AlertDialogDefaults.TonalElevation,
     )
 }

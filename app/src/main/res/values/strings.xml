@@ -159,9 +159,7 @@
     <string name="save">Save</string>
     <string name="delete">Delete</string>
     <string name="preview_title">Cat plays piano for 10 hours</string>
-    <string name="preview_subtitle">1080p · 10:00:00</string>
-    <string name="preview_video">Video</string>
-    <string name="preview_audio">Audio</string>
+    <string name="preview_channel">Piano Cat</string>
     <string name="contrast_standard">Standard</string>
     <string name="contrast_medium">Medium</string>
     <string name="contrast_high">High</string>

@@ -145,7 +145,7 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
     val context = LocalContext.current
     val solid = remember(appearance, dark) { colorScheme(context, appearance, dark) }
     val glass = Glass(appearance.glass, dark, solid.background)
-    val colors = if (glass.enabled) remember(solid, dark) { solid.glassy(dark) } else solid
+    val colors = remember(solid, glass) { solid.oneAccent().let { if (glass.enabled) it.glassy(glass) else it } }
     val typography = remember(appearance.font) { typography(appearance.font) }
 
     // enableEdgeToEdge() follows the system's dark mode; keep the bar icons readable when the app overrides it.
@@ -165,6 +165,7 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
         CompositionLocalProvider(
             LocalButtonShape provides buttonShape(appearance.corners),
             LocalGlass provides glass,
+            LocalBackdropColors provides solid,
         ) {
             if (glass.enabled && backdrop) {
                 Box {

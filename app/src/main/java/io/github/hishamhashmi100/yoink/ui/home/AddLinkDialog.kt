@@ -4,7 +4,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ContentPaste
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -19,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.download.YouTubeUrl
+import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 
 /** For people who copy links instead of sharing them. [onSubmit] gets a link with a valid video ID. */
 @Composable
@@ -31,7 +31,7 @@ fun AddLinkDialog(onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
         if (YouTubeUrl.extractId(text) != null) onSubmit(text.trim()) else showError = true
     }
 
-    AlertDialog(
+    YoinkAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.add_link_title)) },
         text = {

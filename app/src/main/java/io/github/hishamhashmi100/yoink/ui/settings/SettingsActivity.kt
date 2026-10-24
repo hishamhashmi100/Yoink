@@ -19,7 +19,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -56,6 +55,7 @@ import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
 import io.github.hishamhashmi100.yoink.update.AppUpdater
 import io.github.hishamhashmi100.yoink.update.UpdateState
+import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 import kotlinx.coroutines.launch
 
 class SettingsActivity : ComponentActivity() {
@@ -274,7 +274,7 @@ private fun <T> ChoiceDialog(
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    YoinkAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {

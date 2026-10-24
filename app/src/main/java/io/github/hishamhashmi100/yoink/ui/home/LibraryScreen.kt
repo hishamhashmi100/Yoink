@@ -31,7 +31,6 @@ import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.automirrored.rounded.ViewList
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -64,6 +63,7 @@ import io.github.hishamhashmi100.yoink.download.MediaInfo
 import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import io.github.hishamhashmi100.yoink.ui.player.PlayerActivity
+import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 
 @Composable
 fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, bottomInset: Dp = 0.dp) {
@@ -166,7 +166,7 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, botto
     }
 
     toDelete?.let { download ->
-        AlertDialog(
+        YoinkAlertDialog(
             onDismissRequest = { toDelete = null },
             title = { Text(stringResource(R.string.delete_title)) },
             text = { Text(stringResource(R.string.delete_message, download.title)) },
@@ -185,7 +185,7 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, botto
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun LibraryItem(
+internal fun LibraryItem(
     download: Download,
     grid: Boolean,
     onPlay: () -> Unit,

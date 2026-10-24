@@ -8,6 +8,7 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Shader
 import android.net.Uri
 import androidx.compose.ui.graphics.toArgb
@@ -23,7 +24,8 @@ import kotlin.math.max
  */
 object ThemedArtwork {
 
-    private const val SIZE = 512
+    // Square, like the player shows it; big enough to stay sharp on high-density screens.
+    private const val SIZE = 720
 
     /** A file URI for the themed cover. Does disk work, so call it off the main thread. */
     fun uri(context: Context, thumbnailPath: String?, appearance: Appearance): Uri? = runCatching {
@@ -34,10 +36,11 @@ object ThemedArtwork {
         dir.listFiles()?.filterNot { it.name.startsWith(theme) }?.forEach { it.delete() }
 
         val name = thumbnailPath?.let { File(it).nameWithoutExtension } ?: "none"
-        val file = File(dir, "${theme}_$name.jpg")
+        val file = File(dir, "${theme}_$name.png")
         if (!file.exists()) {
             val bitmap = thumbnailPath?.let { recolor(it, shadow, highlight) } ?: gradient(shadow, highlight)
-            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+            // PNG: JPEG blotches the smooth duotone.
+            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             bitmap.recycle()
         }
         Uri.fromFile(file)
@@ -47,10 +50,14 @@ object ThemedArtwork {
     private fun duotone(context: Context, appearance: Appearance): Pair<Int, Int> {
         val dark = colorScheme(context, appearance, dark = true)
         val light = colorScheme(context, appearance, dark = false)
-        return dark.onPrimary.toArgb() to light.primaryContainer.toArgb()
+        // Lifted toward white so the picture keeps its contrast once the player darkens it.
+        return dark.onPrimary.toArgb() to blend(light.primaryContainer.toArgb(), 0xFFFFFFFF.toInt(), 0.45f)
     }
 
-    /** Maps the picture's brightness onto shadow → highlight, so it stays recognizable in the theme's color. */
+    /**
+     * Maps the picture's brightness onto shadow → highlight, so it stays recognizable in the theme's color.
+     * The whole 16:9 thumbnail sits in the middle of a square, so the player's square crop doesn't cut it.
+     */
     private fun recolor(path: String, shadow: Int, highlight: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(path, bounds)
@@ -59,13 +66,24 @@ object ThemedArtwork {
         while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= SIZE) sample *= 2
         val source = BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return null
 
-        val out = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
-        Canvas(out).drawBitmap(source, 0f, 0f, Paint().apply { colorFilter = ColorMatrixColorFilter(gradientMap(shadow, highlight)) })
+        val out = gradient(shadow, blend(shadow, highlight, 0.35f))
+        val scale = SIZE.toFloat() / source.width
+        val height = source.height * scale
+        val top = (SIZE - height) / 2f
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(gradientMap(shadow, highlight))
+        }
+        Canvas(out).drawBitmap(source, null, RectF(0f, top, SIZE.toFloat(), top + height), paint)
         source.recycle()
         return out
     }
 
-    /** Without a thumbnail: a plain gradient in the theme's colors. */
+    private fun blend(from: Int, to: Int, amount: Float): Int {
+        fun channel(shift: Int) = ((from shr shift and 0xFF) + ((to shr shift and 0xFF) - (from shr shift and 0xFF)) * amount).toInt()
+        return (0xFF shl 24) or (channel(16) shl 16) or (channel(8) shl 8) or channel(0)
+    }
+
+    /** A plain gradient in the theme's colors: the cover without a thumbnail, and the frame around one. */
     private fun gradient(shadow: Int, highlight: Int): Bitmap {
         val out = Bitmap.createBitmap(SIZE, SIZE, Bitmap.Config.ARGB_8888)
         val paint = Paint().apply {
