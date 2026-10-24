@@ -3,6 +3,7 @@ package io.github.hishamhashmi100.yoink.data
 import android.content.Context
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import io.github.hishamhashmi100.yoink.download.DownloadLog
 import io.github.hishamhashmi100.yoink.download.DownloadWorker
 import io.github.hishamhashmi100.yoink.download.LiveProgress
 import io.github.hishamhashmi100.yoink.download.Quality
@@ -54,7 +55,10 @@ class DownloadRepository(private val context: Context, val dao: DownloadDao) {
         // The row goes first: the worker treats a missing row as "cancelled by the user".
         dao.delete(id)
         workManager.cancelUniqueWork(DownloadWorker.workName(id))
-        withContext(Dispatchers.IO) { DownloadWorker.jobDir(context, id).deleteRecursively() }
+        withContext(Dispatchers.IO) {
+            DownloadWorker.jobDir(context, id).deleteRecursively()
+            DownloadLog.delete(context, id)
+        }
     }
 
     /** Removes a finished download together with its file and thumbnail. */

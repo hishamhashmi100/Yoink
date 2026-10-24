@@ -25,6 +25,13 @@ object DownloadErrors {
     )
 
     fun readable(context: Context, error: Throwable): String {
+        if (error is IncompleteDownloadException) {
+            return context.getString(
+                R.string.error_incomplete,
+                Notifications.formatDuration(error.gotSec),
+                Notifications.formatDuration(error.expectedSec),
+            )
+        }
         val text = generateSequence(error) { it.cause }.mapNotNull { it.message }.joinToString("\n")
         rules.firstOrNull { (regex, _) -> regex.containsMatchIn(text) }?.let { return context.getString(it.second) }
         if (error is IOException && text.isBlank()) return context.getString(R.string.error_network)

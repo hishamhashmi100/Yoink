@@ -2,6 +2,7 @@ package io.github.hishamhashmi100.yoink.download
 
 import android.content.Context
 import android.content.pm.ServiceInfo
+import android.media.MediaMetadataRetriever
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -32,6 +33,10 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 
+/** The file is much shorter than the video on YouTube. */
+class IncompleteDownloadException(val gotSec: Long, val expectedSec: Long) :
+    Exception("Incomplete download: got ${gotSec}s of ${expectedSec}s")
+
 data class LiveProgress(
     val stage: String,
     /** 0–100, or negative when unknown (merging, converting). */
@@ -46,6 +51,9 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     private val dao = app.repository.dao
     private val downloadId = inputData.getLong(KEY_ID, -1L)
 
+    // The last lines yt-dlp printed, saved with a failed download for "Copy details".
+    private val log = ArrayDeque<String>()
+
     override suspend fun getForegroundInfo(): ForegroundInfo =
         foregroundInfo(app.getString(R.string.app_name), queued())
 
@@ -57,6 +65,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
         return try {
             slots.withPermit { download(download, workDir) }
+            DownloadLog.delete(applicationContext, downloadId)
             Result.success()
         } catch (e: Throwable) {
             if (e is CancellationException || isStopped) {
@@ -64,6 +73,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 throw if (e is CancellationException) e else CancellationException("Stopped")
             }
             val message = DownloadErrors.readable(applicationContext, e)
+            val lines = synchronized(log) { log.toList() }
+            runCatching { DownloadLog.write(applicationContext, download, lines, e) }
             dao.setStatus(downloadId, DownloadStatus.FAILED, message)
             Notifications.failed(applicationContext, download, message)
             Result.failure()
@@ -83,6 +94,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     private suspend fun download(download: Download, workDir: File) {
         dao.setStatus(downloadId, DownloadStatus.DOWNLOADING)
         withContext(Dispatchers.IO) { workDir.mkdirs() }
+        Engine.ensureFresh(applicationContext)
 
         val res = applicationContext.resources
         var stage = res.getString(R.string.stage_starting)
@@ -117,6 +129,13 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             }
             try {
                 Engine.execute(applicationContext, request) { progress, eta, line ->
+                    // Progress lines repeat many times a second; keep the log to the lines that say something.
+                    if (!line.startsWith("[download]") || "Destination" in line || "100%" in line || "ERROR" in line) {
+                        synchronized(log) {
+                            log.addLast(line)
+                            while (log.size > 80) log.removeFirst()
+                        }
+                    }
                     when {
                         line.startsWith("[download] Destination:") -> {
                             destinations++
@@ -160,6 +179,13 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             ?: download.channel
         val duration = info?.optDouble("duration")?.takeUnless { it.isNaN() }?.toLong() ?: download.durationSec
 
+        // YouTube sometimes sends only the start of a stream. Don't save that as a finished download.
+        val actual = mediaDurationSec(media)
+        if (duration != null && actual != null && duration >= 15 && actual < duration * 0.9) {
+            workDir.deleteRecursively() // Otherwise a retry would find the short file and call it done.
+            throw IncompleteDownloadException(actual, duration)
+        }
+
         val thumbnail = files.firstOrNull { it.name.startsWith("thumb.") }?.let { thumb ->
             val dest = File(applicationContext.filesDir, "thumbs/${download.id}.jpg")
             dest.parentFile?.mkdirs()
@@ -181,6 +207,18 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             status = DownloadStatus.COMPLETED,
             error = null,
         )
+    }
+
+    private fun mediaDurationSec(file: File): Long? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(file.absolutePath)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()?.div(1000)
+        } catch (e: Exception) {
+            null
+        } finally {
+            retriever.release()
+        }
     }
 
     private suspend fun report(title: String, progress: LiveProgress) {

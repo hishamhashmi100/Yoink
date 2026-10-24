@@ -79,6 +79,7 @@ class ShareViewModel(application: Application) : AndroidViewModel(application) {
             addOption("--dump-single-json")
             addOption("--no-playlist")
         }
+        Engine.ensureFresh(getApplication<Application>())
         val response = Engine.execute(getApplication<Application>(), request)
         return JSONObject(response.out)
     }

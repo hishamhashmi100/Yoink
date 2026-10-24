@@ -41,6 +41,11 @@
     <string name="error_generic">Download failed.</string>
     <string name="error_engine">The downloader couldn\'t start on this phone. Update Yoink, then try again.</string>
     <string name="error_interrupted">The download was interrupted.</string>
+    <string name="error_incomplete">YouTube only sent part of this video (%1$s of %2$s). Update the downloader in Settings, then tap Retry.</string>
+    <string name="copy_details">Copy details</string>
+    <string name="copied">Copied</string>
+    <string name="more_options">More options</string>
+    <string name="close_player">Close</string>
 
     <!-- Home -->
     <string name="tab_downloading">Downloading</string>

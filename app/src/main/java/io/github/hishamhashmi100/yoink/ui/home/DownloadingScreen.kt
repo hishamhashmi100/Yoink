@@ -1,5 +1,8 @@
 package io.github.hishamhashmi100.yoink.ui.home
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,11 +28,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +44,7 @@ import coil3.compose.AsyncImage
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
 import io.github.hishamhashmi100.yoink.data.DownloadStatus
+import io.github.hishamhashmi100.yoink.download.DownloadLog
 import io.github.hishamhashmi100.yoink.download.LiveProgress
 import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.YouTubeUrl
@@ -95,9 +101,10 @@ private fun ActiveDownloadCard(item: ActiveDownload, onCancel: () -> Unit, onRet
                         download.error ?: stringResource(R.string.status_failed),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
-                        maxLines = 3,
+                        maxLines = 4,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    CopyDetailsButton(download.id)
                 } else {
                     val percent = progress?.percent ?: -1f
                     if (percent >= 0) {
@@ -135,6 +142,23 @@ private fun statusLine(progress: LiveProgress?): String {
         progress.speed?.let(::add)
         if (progress.etaSeconds > 0) add(stringResource(R.string.eta_left, Notifications.formatDuration(progress.etaSeconds)))
     }.joinToString(" · ")
+}
+
+/** Copies what yt-dlp printed for a failed download, so it can be pasted into a bug report. */
+@Composable
+private fun CopyDetailsButton(downloadId: Long) {
+    val context = LocalContext.current
+    TextButton(
+        onClick = {
+            val details = DownloadLog.read(context, downloadId) ?: return@TextButton
+            context.getSystemService(ClipboardManager::class.java)
+                ?.setPrimaryClip(ClipData.newPlainText("Yoink details", details))
+            Toast.makeText(context, R.string.copied, Toast.LENGTH_SHORT).show()
+        },
+        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
+    ) {
+        Text(stringResource(R.string.copy_details), style = MaterialTheme.typography.labelLarge)
+    }
 }
 
 @Composable
