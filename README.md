@@ -59,6 +59,11 @@ Requires Android 10 or newer. Your browser will ask you to allow installing apps
 
 If downloads start failing, open **Settings → Update downloader**. YouTube changes often and the downloader can be updated without a new app version.
 
+## Updates
+
+- **The downloader (yt-dlp)** updates itself once a day in the background, so most YouTube changes are fixed without a new version of the app.
+- **The app itself** checks GitHub Releases once a day. When a newer version is out, a card appears on the home screen (and a notification). Tap **Update**, then confirm in Android's installer. The first time, Android asks you to allow Yoink to install apps. You can also check by hand in **Settings → App updates**.
+
 ## How it works
 
 Yoink bundles [yt-dlp](https://github.com/yt-dlp/yt-dlp) together with Python, ffmpeg and the QuickJS JavaScript engine through [youtubedl-android](https://github.com/JunkFood02/youtubedl-android). Downloads come from your own internet connection, and ffmpeg combines the video and audio streams into an MP4 (or converts to MP3). See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
@@ -85,6 +90,8 @@ Pushing a tag like `v1.0.0` runs `.github/workflows/release.yml`. It builds the 
 git tag v1.0.0
 git push origin v1.0.0
 ```
+
+To ship a fix, tag a higher version (`v1.0.1`, `v1.1.0`, …). Installed copies find it within a day and offer the update. Updates only install over the old version when they're signed with the **same keystore**, so keep it backed up.
 
 ### Signing releases
 

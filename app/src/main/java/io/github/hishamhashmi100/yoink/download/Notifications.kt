@@ -22,6 +22,8 @@ object Notifications {
 
     private const val CHANNEL_PROGRESS = "progress"
     private const val CHANNEL_STATUS = "status"
+    private const val CHANNEL_UPDATES = "updates"
+    private const val UPDATE_ID = 999
 
     fun createChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -35,6 +37,11 @@ object Notifications {
                 NotificationChannel(
                     CHANNEL_STATUS,
                     context.getString(R.string.channel_status),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ),
+                NotificationChannel(
+                    CHANNEL_UPDATES,
+                    context.getString(R.string.channel_updates),
                     NotificationManager.IMPORTANCE_DEFAULT,
                 ),
             )
@@ -92,6 +99,23 @@ object Notifications {
             .addAction(0, context.getString(R.string.action_retry), action(context, NotificationActionReceiver.ACTION_RETRY, download.id))
             .build()
         post(context, resultId(download.id), notification)
+    }
+
+    fun updateAvailable(context: Context, version: String) {
+        val open = PendingIntent.getActivity(
+            context,
+            UPDATE_ID,
+            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_UPDATES)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(context.getString(R.string.update_available_title))
+            .setContentText(context.getString(R.string.update_available_text, version))
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .build()
+        post(context, UPDATE_ID, notification)
     }
 
     fun cancelResult(context: Context, downloadId: Long) {

@@ -42,6 +42,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,6 +57,9 @@ import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.ThemeMode
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
+import io.github.hishamhashmi100.yoink.update.AppUpdater
+import io.github.hishamhashmi100.yoink.update.UpdateState
+import kotlinx.coroutines.launch
 
 class SettingsActivity : ComponentActivity() {
 
@@ -177,6 +181,7 @@ private fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             val appVersion = remember {
                 context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
             }
+            AppUpdatesItem()
             ListItem(
                 headlineContent = { Text(stringResource(R.string.settings_source)) },
                 supportingContent = { Text(stringResource(R.string.settings_app_version, appVersion)) },
@@ -203,6 +208,45 @@ private fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             onDismiss = { pickingQuality = false },
         )
     }
+}
+
+/** Manual "check for updates"; the same flow as the card on Home. */
+@Composable
+private fun AppUpdatesItem() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val state by AppUpdater.state.collectAsStateWithLifecycle()
+    val current = remember { AppUpdater.currentVersion(context) }
+    val selfUpdate = remember { AppUpdater.canSelfUpdate(context) }
+
+    val summary = when (val s = state) {
+        UpdateState.Idle -> stringResource(R.string.settings_check_updates, current)
+        UpdateState.Checking -> stringResource(R.string.settings_checking)
+        UpdateState.UpToDate -> stringResource(R.string.settings_latest, current)
+        is UpdateState.Available -> stringResource(
+            if (selfUpdate) R.string.settings_update_available else R.string.settings_update_debug,
+            s.release.version,
+        )
+        is UpdateState.Downloading -> stringResource(R.string.update_downloading, (s.progress * 100).toInt())
+        is UpdateState.ReadyToInstall -> stringResource(R.string.update_ready)
+        is UpdateState.Failed -> s.message
+    }
+
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.settings_app_updates)) },
+        supportingContent = { Text(summary) },
+        trailingContent = {
+            if (state is UpdateState.Checking) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+        },
+        modifier = Modifier.clickable(enabled = state !is UpdateState.Checking && state !is UpdateState.Downloading) {
+            when (val s = state) {
+                is UpdateState.Available -> if (selfUpdate) AppUpdater.download(context)
+                is UpdateState.Failed -> if (s.release != null && selfUpdate) AppUpdater.download(context) else scope.launch { AppUpdater.check(context, force = true) }
+                is UpdateState.ReadyToInstall -> AppUpdater.install(context)
+                else -> scope.launch { AppUpdater.check(context, force = true) }
+            }
+        },
+    )
 }
 
 @Composable

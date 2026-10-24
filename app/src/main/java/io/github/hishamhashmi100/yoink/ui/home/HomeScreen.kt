@@ -72,6 +72,7 @@ fun HomeScreen(
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
+            UpdateCard()
             val selected = tab ?: HomeTab.LIBRARY
             PrimaryTabRow(selectedTabIndex = selected.ordinal) {
                 Tab(
