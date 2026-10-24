@@ -2,7 +2,8 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
+    # A capital V (V1.2.3) works too.
+    tags: ["v*", "V*"]
 
 permissions:
   contents: write
@@ -38,7 +39,7 @@ jobs:
           fi
 
       - name: Build release APKs
-        run: ./gradlew assembleRelease -PappVersion="${GITHUB_REF_NAME#v}" --stacktrace
+        run: ./gradlew assembleRelease -PappVersion="${GITHUB_REF_NAME#[vV]}" --stacktrace
 
       # The file names never change: the website links to releases/latest/download/<name>.
       - name: Sign and rename
