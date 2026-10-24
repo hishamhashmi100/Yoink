@@ -88,7 +88,7 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier) {
                 }
             },
             singleLine = true,
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -195,7 +195,7 @@ private fun LibraryItem(
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val clickable = Modifier
-        .clip(RoundedCornerShape(12.dp))
+        .clip(MaterialTheme.shapes.medium)
         .combinedClickable(onClick = onPlay, onLongClick = { menuOpen = true })
     // The ⋮ button and long-press open the same menu, anchored to the button.
     val more: @Composable () -> Unit = {

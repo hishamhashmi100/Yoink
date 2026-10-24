@@ -43,6 +43,7 @@ import coil3.compose.AsyncImage
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.Quality
+import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,7 +97,7 @@ private fun VideoHeader(state: ShareUiState, onClose: () -> Unit) {
             Modifier
                 .width(132.dp)
                 .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(MaterialTheme.shapes.medium)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             AsyncImage(
@@ -148,12 +149,12 @@ private fun VideoHeader(state: ShareUiState, onClose: () -> Unit) {
 private fun VideoOrAudioButtons(videoQuality: Quality, onPick: (Quality) -> Unit) {
     val resources = LocalContext.current.resources
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = { onPick(videoQuality) }, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+        Button(onClick = { onPick(videoQuality) }, shape = ButtonShape, modifier = Modifier.fillMaxWidth().height(56.dp)) {
             Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.share_video_with, videoQuality.label(resources)))
         }
-        FilledTonalButton(onClick = { onPick(Quality.AUDIO) }, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+        FilledTonalButton(onClick = { onPick(Quality.AUDIO) }, shape = ButtonShape, modifier = Modifier.fillMaxWidth().height(56.dp)) {
             Icon(Icons.Rounded.MusicNote, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             Text(Quality.AUDIO.label(resources))
@@ -168,6 +169,7 @@ private fun QualityButtons(available: Set<Quality>, onPick: (Quality) -> Unit) {
         Button(
             onClick = { onPick(Quality.BEST) },
             enabled = Quality.BEST in available,
+            shape = ButtonShape,
             modifier = Modifier.fillMaxWidth().height(52.dp),
         ) {
             Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(20.dp))
@@ -179,6 +181,7 @@ private fun QualityButtons(available: Set<Quality>, onPick: (Quality) -> Unit) {
                 OutlinedButton(
                     onClick = { onPick(quality) },
                     enabled = quality in available,
+                    shape = ButtonShape,
                     modifier = Modifier.weight(1f).height(48.dp),
                 ) {
                     Text(quality.label(resources))
@@ -188,6 +191,7 @@ private fun QualityButtons(available: Set<Quality>, onPick: (Quality) -> Unit) {
         FilledTonalButton(
             onClick = { onPick(Quality.AUDIO) },
             enabled = Quality.AUDIO in available,
+            shape = ButtonShape,
             modifier = Modifier.fillMaxWidth().height(48.dp),
         ) {
             Icon(Icons.Rounded.MusicNote, contentDescription = null, modifier = Modifier.size(20.dp))

@@ -4,13 +4,14 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.hishamhashmi100.yoink.download.Quality
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-
-enum class ThemeMode { SYSTEM, LIGHT, DARK }
+import kotlinx.coroutines.runBlocking
 
 /** What happens when a link is shared to Yoink. */
 enum class ShareMode {
@@ -30,8 +31,7 @@ data class Settings(
     val videoQuality: Quality = Quality.BEST,
     /** Also publish finished files to Movies/Yoink and Music/Yoink. */
     val saveToGallery: Boolean = false,
-    val theme: ThemeMode = ThemeMode.SYSTEM,
-    val dynamicColor: Boolean = true,
+    val appearance: Appearance = Appearance(),
 )
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
@@ -54,10 +54,23 @@ class SettingsStore(context: Context) {
                 ?: legacy?.takeUnless { it.isAudio }
                 ?: Quality.BEST,
             saveToGallery = p[SAVE_TO_GALLERY] ?: false,
-            theme = p[THEME]?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } } ?: ThemeMode.SYSTEM,
-            dynamicColor = p[DYNAMIC_COLOR] ?: true,
+            appearance = Appearance(
+                theme = enumOf(p[THEME], ThemeMode.SYSTEM),
+                pureBlack = p[PURE_BLACK] ?: false,
+                dynamicColor = p[DYNAMIC_COLOR] ?: true,
+                seedColor = p[SEED_COLOR] ?: YOINK_RED,
+                palette = enumOf(p[PALETTE], PaletteStyle.TONAL),
+                contrast = enumOf(p[CONTRAST], Contrast.STANDARD),
+                corners = enumOf(p[CORNERS], CornerStyle.ROUND),
+                font = enumOf(p[FONT], FontStyle.DEFAULT),
+            ),
         )
     }
+
+    /** The settings right now. Activities use it so their first frame is already in the chosen theme. */
+    fun current(): Settings = runBlocking { settings.first() }
+
+    val savedThemes: Flow<List<SavedTheme>> = store.data.map { SavedTheme.listFromJson(it[SAVED_THEMES]) }
 
     val firstUpdateCheckDone: Flow<Boolean> = store.data.map { it[FIRST_UPDATE_DONE] ?: false }
 
@@ -68,8 +81,27 @@ class SettingsStore(context: Context) {
     suspend fun setVideoQuality(quality: Quality) = store.edit { it[VIDEO_QUALITY] = quality.name }
 
     suspend fun setSaveToGallery(value: Boolean) = set(SAVE_TO_GALLERY, value)
-    suspend fun setTheme(mode: ThemeMode) = store.edit { it[THEME] = mode.name }
-    suspend fun setDynamicColor(value: Boolean) = set(DYNAMIC_COLOR, value)
+
+    suspend fun setAppearance(appearance: Appearance) = store.edit {
+        it[THEME] = appearance.theme.name
+        it[PURE_BLACK] = appearance.pureBlack
+        it[DYNAMIC_COLOR] = appearance.dynamicColor
+        it[SEED_COLOR] = appearance.seedColor
+        it[PALETTE] = appearance.palette.name
+        it[CONTRAST] = appearance.contrast.name
+        it[CORNERS] = appearance.corners.name
+        it[FONT] = appearance.font.name
+    }
+
+    /** Saves [appearance] under [name], replacing a saved theme with the same name. */
+    suspend fun saveTheme(name: String, appearance: Appearance) = store.edit { p ->
+        val themes = SavedTheme.listFromJson(p[SAVED_THEMES]).filterNot { it.name.equals(name, ignoreCase = true) }
+        p[SAVED_THEMES] = SavedTheme.listToJson(themes + SavedTheme(name, appearance))
+    }
+
+    suspend fun deleteTheme(name: String) = store.edit { p ->
+        p[SAVED_THEMES] = SavedTheme.listToJson(SavedTheme.listFromJson(p[SAVED_THEMES]).filterNot { it.name == name })
+    }
     suspend fun setFirstUpdateCheckDone() = set(FIRST_UPDATE_DONE, true)
     suspend fun setNotifiedVersion(version: String) = store.edit { it[NOTIFIED_VERSION] = version }
 
@@ -82,6 +114,13 @@ class SettingsStore(context: Context) {
         val SAVE_TO_GALLERY = booleanPreferencesKey("save_to_gallery")
         val THEME = stringPreferencesKey("theme")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        val PURE_BLACK = booleanPreferencesKey("pure_black")
+        val SEED_COLOR = intPreferencesKey("seed_color")
+        val PALETTE = stringPreferencesKey("palette")
+        val CONTRAST = stringPreferencesKey("contrast")
+        val CORNERS = stringPreferencesKey("corners")
+        val FONT = stringPreferencesKey("font")
+        val SAVED_THEMES = stringPreferencesKey("saved_themes")
         val FIRST_UPDATE_DONE = booleanPreferencesKey("first_update_done")
         val NOTIFIED_VERSION = stringPreferencesKey("notified_version")
     }

@@ -26,6 +26,7 @@ import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.update.AppUpdater
 import io.github.hishamhashmi100.yoink.update.Release
 import io.github.hishamhashmi100.yoink.update.UpdateState
+import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 
 /** Shown at the top of Home when a newer Yoink is out: Update → download → Android's installer. */
 @Composable
@@ -64,9 +65,9 @@ fun UpdateCard(modifier: Modifier = Modifier) {
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 when (state) {
-                    is UpdateState.Available -> Button(onClick = { AppUpdater.download(context) }) { Text(stringResource(R.string.update_action)) }
-                    is UpdateState.Failed -> Button(onClick = { AppUpdater.download(context) }) { Text(stringResource(R.string.update_retry)) }
-                    is UpdateState.ReadyToInstall -> Button(onClick = { AppUpdater.install(context) }) { Text(stringResource(R.string.update_install)) }
+                    is UpdateState.Available -> Button(onClick = { AppUpdater.download(context) }, shape = ButtonShape) { Text(stringResource(R.string.update_action)) }
+                    is UpdateState.Failed -> Button(onClick = { AppUpdater.download(context) }, shape = ButtonShape) { Text(stringResource(R.string.update_retry)) }
+                    is UpdateState.ReadyToInstall -> Button(onClick = { AppUpdater.install(context) }, shape = ButtonShape) { Text(stringResource(R.string.update_install)) }
                     else -> Unit
                 }
                 if (release.pageUrl.isNotEmpty()) {

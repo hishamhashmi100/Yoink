@@ -1,22 +1,62 @@
 package io.github.hishamhashmi100.yoink.ui.theme
 
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.app.WallpaperManager
+import android.content.Context
+import android.content.ContextWrapper
+import android.graphics.Typeface
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
+import com.google.android.material.color.utilities.DynamicColor
+import com.google.android.material.color.utilities.DynamicScheme
+import com.google.android.material.color.utilities.Hct
+import com.google.android.material.color.utilities.MaterialDynamicColors
+import com.google.android.material.color.utilities.SchemeContent
+import com.google.android.material.color.utilities.SchemeExpressive
+import com.google.android.material.color.utilities.SchemeFruitSalad
+import com.google.android.material.color.utilities.SchemeMonochrome
+import com.google.android.material.color.utilities.SchemeNeutral
+import com.google.android.material.color.utilities.SchemeRainbow
+import com.google.android.material.color.utilities.SchemeTonalSpot
+import com.google.android.material.color.utilities.SchemeVibrant
+import io.github.hishamhashmi100.yoink.data.Appearance
+import io.github.hishamhashmi100.yoink.data.Contrast
+import io.github.hishamhashmi100.yoink.data.CornerStyle
+import io.github.hishamhashmi100.yoink.data.FontStyle
+import io.github.hishamhashmi100.yoink.data.PaletteStyle
 import io.github.hishamhashmi100.yoink.data.Settings
 import io.github.hishamhashmi100.yoink.data.ThemeMode
+import io.github.hishamhashmi100.yoink.data.YOINK_RED
 
 /** The brand red from docs/logo.svg, used as the Material 3 seed color. */
-val YoinkRed = Color(0xFFD90F1A)
+val YoinkRed = Color(YOINK_RED)
 
-// Tonal palette generated from the YoinkRed seed.
+// Hand-tuned scheme for the default look: Yoink red with the balanced palette.
 private val LightColors = lightColorScheme(
     primary = Color(0xFFC00012),
     onPrimary = Color(0xFFFFFFFF),
@@ -78,22 +118,190 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun isDarkTheme(settings: Settings): Boolean = when (settings.theme) {
+fun isDarkTheme(appearance: Appearance): Boolean = when (appearance.theme) {
     ThemeMode.SYSTEM -> isSystemInDarkTheme()
     ThemeMode.LIGHT -> false
     ThemeMode.DARK -> true
 }
 
 @Composable
-fun YoinkTheme(settings: Settings, content: @Composable () -> Unit) {
-    val dark = isDarkTheme(settings)
-    val colors = when {
-        settings.dynamicColor && Build.VERSION.SDK_INT >= 31 -> {
-            val context = LocalContext.current
-            if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+fun YoinkTheme(settings: Settings, content: @Composable () -> Unit) = YoinkTheme(settings.appearance, content)
+
+@Composable
+fun YoinkTheme(appearance: Appearance, content: @Composable () -> Unit) {
+    val dark = isDarkTheme(appearance)
+    val context = LocalContext.current
+    val colors = remember(appearance, dark) { colorScheme(context, appearance, dark) }
+    val typography = remember(appearance.font) { typography(appearance.font) }
+
+    // enableEdgeToEdge() follows the system's dark mode; keep the bar icons readable when the app overrides it.
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            view.context.findActivity()?.window?.let { window ->
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = !dark
+                    isAppearanceLightNavigationBars = !dark
+                }
+            }
         }
-        dark -> DarkColors
-        else -> LightColors
     }
-    MaterialTheme(colorScheme = colors, content = content)
+
+    MaterialTheme(colorScheme = colors, shapes = shapes(appearance.corners), typography = typography) {
+        CompositionLocalProvider(LocalButtonShape provides buttonShape(appearance.corners), content = content)
+    }
+}
+
+private val LocalButtonShape = staticCompositionLocalOf<CornerBasedShape> { CircleShape }
+
+/** Material buttons are always pill shaped; Yoink's follow the chosen corner style. */
+val ButtonShape: CornerBasedShape
+    @Composable @ReadOnlyComposable get() = LocalButtonShape.current
+
+fun colorScheme(context: Context, appearance: Appearance, dark: Boolean): ColorScheme {
+    val wallpaper = appearance.dynamicColor && Build.VERSION.SDK_INT >= 31
+    val standard = appearance.palette == PaletteStyle.TONAL && appearance.contrast == Contrast.STANDARD
+    val scheme = when {
+        // The exact system palette, so Yoink matches the rest of the phone.
+        wallpaper && standard -> if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        wallpaper -> generate(wallpaperColor(context) ?: dynamicLightColorScheme(context).primary.toArgb(), appearance, dark)
+        appearance.seedColor == YOINK_RED && standard -> if (dark) DarkColors else LightColors
+        else -> generate(appearance.seedColor, appearance, dark)
+    }
+    return if (dark && appearance.pureBlack) scheme.black() else scheme
+}
+
+private fun wallpaperColor(context: Context): Int? = if (Build.VERSION.SDK_INT >= 27) {
+    runCatching {
+        WallpaperManager.getInstance(context).getWallpaperColors(WallpaperManager.FLAG_SYSTEM)?.primaryColor?.toArgb()
+    }.getOrNull()
+} else {
+    null
+}
+
+@SuppressLint("RestrictedApi")
+private fun generate(seed: Int, appearance: Appearance, dark: Boolean): ColorScheme {
+    val source = Hct.fromInt(seed)
+    val contrast = appearance.contrast.level
+    val s: DynamicScheme = when (appearance.palette) {
+        PaletteStyle.TONAL -> SchemeTonalSpot(source, dark, contrast)
+        PaletteStyle.VIBRANT -> SchemeVibrant(source, dark, contrast)
+        PaletteStyle.EXPRESSIVE -> SchemeExpressive(source, dark, contrast)
+        PaletteStyle.FIDELITY -> SchemeContent(source, dark, contrast)
+        PaletteStyle.NEUTRAL -> SchemeNeutral(source, dark, contrast)
+        PaletteStyle.MONOCHROME -> SchemeMonochrome(source, dark, contrast)
+        PaletteStyle.RAINBOW -> SchemeRainbow(source, dark, contrast)
+        PaletteStyle.FRUIT_SALAD -> SchemeFruitSalad(source, dark, contrast)
+    }
+    val m = MaterialDynamicColors()
+    fun c(color: DynamicColor) = Color(color.getArgb(s))
+    return (if (dark) darkColorScheme() else lightColorScheme()).copy(
+        primary = c(m.primary()),
+        onPrimary = c(m.onPrimary()),
+        primaryContainer = c(m.primaryContainer()),
+        onPrimaryContainer = c(m.onPrimaryContainer()),
+        inversePrimary = c(m.inversePrimary()),
+        secondary = c(m.secondary()),
+        onSecondary = c(m.onSecondary()),
+        secondaryContainer = c(m.secondaryContainer()),
+        onSecondaryContainer = c(m.onSecondaryContainer()),
+        tertiary = c(m.tertiary()),
+        onTertiary = c(m.onTertiary()),
+        tertiaryContainer = c(m.tertiaryContainer()),
+        onTertiaryContainer = c(m.onTertiaryContainer()),
+        background = c(m.background()),
+        onBackground = c(m.onBackground()),
+        surface = c(m.surface()),
+        onSurface = c(m.onSurface()),
+        surfaceVariant = c(m.surfaceVariant()),
+        onSurfaceVariant = c(m.onSurfaceVariant()),
+        surfaceTint = c(m.surfaceTint()),
+        inverseSurface = c(m.inverseSurface()),
+        inverseOnSurface = c(m.inverseOnSurface()),
+        error = c(m.error()),
+        onError = c(m.onError()),
+        errorContainer = c(m.errorContainer()),
+        onErrorContainer = c(m.onErrorContainer()),
+        outline = c(m.outline()),
+        outlineVariant = c(m.outlineVariant()),
+        scrim = c(m.scrim()),
+        surfaceBright = c(m.surfaceBright()),
+        surfaceContainer = c(m.surfaceContainer()),
+        surfaceContainerHigh = c(m.surfaceContainerHigh()),
+        surfaceContainerHighest = c(m.surfaceContainerHighest()),
+        surfaceContainerLow = c(m.surfaceContainerLow()),
+        surfaceContainerLowest = c(m.surfaceContainerLowest()),
+        surfaceDim = c(m.surfaceDim()),
+    )
+}
+
+/** Dark mode with true black behind everything, for OLED screens. */
+private fun ColorScheme.black() = copy(
+    background = Color.Black,
+    surface = Color.Black,
+    surfaceDim = Color.Black,
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = surfaceContainerLow.blend(0.5f),
+    surfaceContainer = surfaceContainer.blend(0.6f),
+    surfaceContainerHigh = surfaceContainerHigh.blend(0.7f),
+    surfaceContainerHighest = surfaceContainerHighest.blend(0.8f),
+)
+
+private fun Color.blend(amount: Float) = Color(red * amount, green * amount, blue * amount, alpha)
+
+fun shapes(style: CornerStyle): Shapes = when (style) {
+    CornerStyle.BUBBLY -> Shapes(
+        extraSmall = RoundedCornerShape(8.dp),
+        small = RoundedCornerShape(14.dp),
+        medium = RoundedCornerShape(20.dp),
+        large = RoundedCornerShape(28.dp),
+        extraLarge = RoundedCornerShape(36.dp),
+    )
+    CornerStyle.ROUND -> Shapes()
+    CornerStyle.SOFT -> Shapes(
+        extraSmall = RoundedCornerShape(2.dp),
+        small = RoundedCornerShape(4.dp),
+        medium = RoundedCornerShape(6.dp),
+        large = RoundedCornerShape(8.dp),
+        extraLarge = RoundedCornerShape(12.dp),
+    )
+    CornerStyle.SQUARE -> RoundedCornerShape(0.dp).let { Shapes(it, it, it, it, it) }
+}
+
+fun buttonShape(style: CornerStyle): CornerBasedShape = when (style) {
+    CornerStyle.BUBBLY, CornerStyle.ROUND -> CircleShape
+    CornerStyle.SOFT -> RoundedCornerShape(8.dp)
+    CornerStyle.SQUARE -> RoundedCornerShape(0.dp)
+}
+
+fun fontFamily(font: FontStyle): FontFamily =
+    font.family?.let { FontFamily(Typeface.create(it, Typeface.NORMAL)) } ?: FontFamily.Default
+
+private fun typography(font: FontStyle): Typography {
+    val base = Typography()
+    if (font == FontStyle.DEFAULT) return base
+    val family = fontFamily(font)
+    return Typography(
+        displayLarge = base.displayLarge.copy(fontFamily = family),
+        displayMedium = base.displayMedium.copy(fontFamily = family),
+        displaySmall = base.displaySmall.copy(fontFamily = family),
+        headlineLarge = base.headlineLarge.copy(fontFamily = family),
+        headlineMedium = base.headlineMedium.copy(fontFamily = family),
+        headlineSmall = base.headlineSmall.copy(fontFamily = family),
+        titleLarge = base.titleLarge.copy(fontFamily = family),
+        titleMedium = base.titleMedium.copy(fontFamily = family),
+        titleSmall = base.titleSmall.copy(fontFamily = family),
+        bodyLarge = base.bodyLarge.copy(fontFamily = family),
+        bodyMedium = base.bodyMedium.copy(fontFamily = family),
+        bodySmall = base.bodySmall.copy(fontFamily = family),
+        labelLarge = base.labelLarge.copy(fontFamily = family),
+        labelMedium = base.labelMedium.copy(fontFamily = family),
+        labelSmall = base.labelSmall.copy(fontFamily = family),
+    )
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

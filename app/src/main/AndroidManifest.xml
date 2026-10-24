@@ -64,6 +64,11 @@
             android:label="@string/settings" />
 
         <activity
+            android:name=".ui.settings.AppearanceActivity"
+            android:exported="false"
+            android:label="@string/settings_appearance" />
+
+        <activity
             android:name=".ui.player.PlayerActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:exported="false"
