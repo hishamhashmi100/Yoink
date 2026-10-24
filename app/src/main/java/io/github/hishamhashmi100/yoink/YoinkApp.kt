@@ -31,6 +31,7 @@ class YoinkApp : Application() {
             // Unpacks Python on first run, so the share sheet doesn't have to wait for it later.
             runCatching { Engine.ensureReady(this@YoinkApp) }
             repository.reconcile(getString(R.string.error_interrupted), createdBefore = startedAt)
+            runCatching { repository.fillMissingResolutions() }
             if (!settings.firstUpdateCheckDone.first()) UpdateWorker.enqueue(this@YoinkApp)
         }
         DailyCheckWorker.schedule(this)

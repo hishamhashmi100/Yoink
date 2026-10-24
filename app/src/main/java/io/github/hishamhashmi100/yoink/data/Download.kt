@@ -21,4 +21,6 @@ data class Download(
     val status: DownloadStatus,
     val error: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
+    /** The video's actual resolution (its short side in pixels, e.g. 1080), read from the file. */
+    val resolution: Int? = null,
 )

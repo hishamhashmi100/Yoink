@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
+import io.github.hishamhashmi100.yoink.download.MediaInfo
 import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import io.github.hishamhashmi100.yoink.ui.player.PlayerActivity
@@ -254,6 +255,19 @@ private fun ThumbnailWithBadges(download: Download, modifier: Modifier) {
                     .padding(horizontal = 4.dp, vertical = 1.dp),
             )
         }
+        // The real resolution of the file, top right.
+        download.resolution?.takeUnless { download.quality.isAudio }?.let {
+            Text(
+                MediaInfo.label(it),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp)
+                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
+            )
+        }
         if (download.quality.isAudio) {
             Icon(
                 Icons.Rounded.MusicNote,
@@ -279,6 +293,7 @@ private fun ItemText(download: Download) {
         overflow = TextOverflow.Ellipsis,
     )
     val details = listOfNotNull(
+        if (download.quality.isAudio) "MP3" else download.resolution?.let(MediaInfo::label),
         download.channel,
         download.sizeBytes?.let { Formatter.formatShortFileSize(context, it) },
         DateUtils.getRelativeTimeSpanString(
