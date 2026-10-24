@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Yoink — Save YouTube videos on Android</title>
-  <meta name="description" content="Yoink is a free, open-source Android app. Tap Share → Yoink in YouTube and the video saves to your phone.">
+  <title>Yoink — Download YouTube videos on your phone</title>
+  <meta name="description" content="Download YouTube videos on your phone with Yoink, a free, open-source Android app. Tap Share → Yoink in YouTube, pick a quality, done.">
+  <meta name="author" content="Hisham Hashmi">
   <meta name="theme-color" content="#e0141e">
   <link rel="canonical" href="https://yoink.download/">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -13,14 +14,14 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Yoink">
   <meta property="og:url" content="https://yoink.download/">
-  <meta property="og:title" content="Yoink — Save YouTube videos on Android">
-  <meta property="og:description" content="Free, open-source Android app. Tap Share → Yoink, pick a quality, and the video saves to your phone. No ads, no account.">
+  <meta property="og:title" content="Yoink — Download YouTube videos on your phone">
+  <meta property="og:description" content="Free, open-source Android app. Tap Share → Yoink, pick a quality, and the video downloads to your phone. No ads, no account.">
   <meta property="og:image" content="https://yoink.download/og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Yoink: save YouTube videos to your phone">
+  <meta property="og:image:alt" content="Yoink: download YouTube videos on your phone">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Yoink — Save YouTube videos on Android">
+  <meta name="twitter:title" content="Yoink — Download YouTube videos on your phone">
   <meta name="twitter:description" content="Free, open-source Android app. Tap Share → Yoink, pick a quality, done.">
   <meta name="twitter:image" content="https://yoink.download/og.png">
 
@@ -32,7 +33,8 @@
     "name": "Yoink",
     "operatingSystem": "Android 10+",
     "applicationCategory": "MultimediaApplication",
-    "description": "Free, open-source Android app that saves YouTube videos and audio from the Share menu. Everything runs on your phone.",
+    "description": "Free, open-source Android app that downloads YouTube videos and audio from the Share menu. Everything runs on your phone.",
+    "author": { "@type": "Person", "name": "Hisham Hashmi", "sameAs": "https://www.linkedin.com/in/syed-hisham-ali-hashmi" },
     "url": "https://yoink.download/",
     "downloadUrl": "https://github.com/hishamhashmi100/Yoink/releases/latest/download/yoink-arm64-v8a.apk",
     "license": "https://www.gnu.org/licenses/gpl-3.0.html",
@@ -361,6 +363,10 @@
 
     footer { padding: 32px 0 48px; color: var(--muted); font-size: 13px; text-align: center; }
     footer p { margin: 6px 0; }
+    footer .credit { margin-top: 16px; font-size: 14px; color: var(--text); }
+    footer .credit a { display: inline-flex; align-items: center; gap: 6px; color: inherit; font-weight: 600; text-decoration: none; }
+    footer .credit a:hover { color: var(--accent); }
+    footer .credit svg { width: 16px; height: 16px; }
 
     @media (max-width: 480px) {
       .hero { padding-top: 36px; }
@@ -511,7 +517,7 @@
           // Keep the cartoon playing, unless the visitor has asked their device for less motion.
           if (!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) document.getElementById("yoink").classList.add("play");
         </script>
-        <h1>Save YouTube videos to your phone</h1>
+        <h1>Download YouTube videos on your phone</h1>
         <p class="lead">In YouTube, tap <b>Share → Yoink</b>, pick a quality, done. Free, open source, no ads.</p>
 
         <a class="btn" id="download-btn" href="#">
@@ -620,7 +626,7 @@
           </details>
           <details>
             <summary>Downloads stopped working. What do I do?</summary>
-            <p>YouTube changes things often. Open Yoink → <b>Settings</b> → <b>Update downloader</b>. That fixes it almost every time. If not, check this page for a newer version.</p>
+            <p>YouTube changes things often. Yoink updates its downloader by itself once a day, so it usually fixes itself. To fix it right away, open Yoink → <b>Settings</b> → <b>Update downloader</b>. If that doesn't help, check <b>Settings</b> → <b>App updates</b> for a newer version of Yoink.</p>
           </details>
           <details>
             <summary>Where do my videos go?</summary>
@@ -628,7 +634,7 @@
           </details>
           <details>
             <summary>How do I update Yoink?</summary>
-            <p>Download the latest version from this page and install it over the old one. Your library is kept.</p>
+            <p>Yoink updates itself. It checks for a new version once a day, and when one is out you'll see an <b>Update</b> card on the home screen and a notification. Tap <b>Update</b> and confirm in Android's installer. You can also check any time in <b>Settings</b> → <b>App updates</b>. Your library and settings are kept.</p>
           </details>
         </div>
       </section>
@@ -637,6 +643,7 @@
     <footer>
       <p>Yoink is free software under the <a id="license-link" href="#">GPL-3.0 license</a>.</p>
       <p>For personal use with content you have the right to download. Respect copyright and YouTube's Terms of Service. Yoink is not affiliated with YouTube or Google.</p>
+      <p class="credit">Made by <a href="https://www.linkedin.com/in/syed-hisham-ali-hashmi" target="_blank" rel="noopener">Hisham Hashmi<svg viewBox="0 0 24 24" aria-label="LinkedIn" role="img"><rect width="24" height="24" rx="4" fill="#0a66c2"/><path fill="#fff" d="M6.94 9.5H4.5V19h2.44V9.5zM5.72 5.5a1.42 1.42 0 1 0 0 2.84 1.42 1.42 0 0 0 0-2.84zM19.5 13.6c0-2.55-1.36-3.74-3.18-3.74-1.47 0-2.13.81-2.5 1.38V9.5h-2.44c.03.69 0 9.5 0 9.5h2.44v-5.3c0-.28.02-.57.1-.77.22-.57.73-1.15 1.59-1.15 1.12 0 1.57.86 1.57 2.11V19h2.43l-.01-5.4z"/></svg></a></p>
     </footer>
   </div>
 
