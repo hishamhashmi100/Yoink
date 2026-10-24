@@ -31,7 +31,13 @@ data class NowPlaying(
     val hasNext: Boolean,
     /** One of Player.REPEAT_MODE_OFF, _ALL (the whole queue) or _ONE (this track). */
     val repeatMode: Int,
+    val shuffle: Boolean = false,
+    /** Position of this track in [AudioController.queue]. */
+    val index: Int = 0,
 )
+
+/** One track in the play queue, as the full-screen player lists it. */
+data class QueueEntry(val index: Int, val title: String, val artist: String?, val artworkUri: Uri?)
 
 /**
  * Plays MP3s in the background without opening the full-screen player, like a music app: the library's
@@ -47,6 +53,9 @@ object AudioController {
 
     private val _nowPlaying = MutableStateFlow<NowPlaying?>(null)
     val nowPlaying: StateFlow<NowPlaying?> = _nowPlaying.asStateFlow()
+
+    private val _queue = MutableStateFlow<List<QueueEntry>>(emptyList())
+    val queue: StateFlow<List<QueueEntry>> = _queue.asStateFlow()
 
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) = publish(player)
@@ -92,6 +101,18 @@ object AudioController {
         app.appScope.launch { app.settings.setAudioRepeat(next) }
     }
 
+    fun toggleShuffle(context: Context) = withController(context) { it.shuffleModeEnabled = !it.shuffleModeEnabled }
+
+    fun seekTo(context: Context, positionMs: Long) = withController(context) { it.seekTo(positionMs) }
+
+    /** Jumps to the track at [index] in the queue. */
+    fun skipTo(context: Context, index: Int) = withController(context) { c ->
+        if (index in 0 until c.mediaItemCount) {
+            c.seekTo(index, 0L)
+            c.play()
+        }
+    }
+
     fun next(context: Context) = withController(context) { it.seekToNextMediaItem() }
 
     /** Back to the start of the track, or the previous track if it just started. */
@@ -119,9 +140,14 @@ object AudioController {
 
     /** 0–1 through the current track. */
     fun progress(): Float {
-        val c = future?.takeIf { it.isDone }?.let { runCatching { it.get() }.getOrNull() } ?: return 0f
-        val duration = c.duration
-        return if (duration > 0) (c.currentPosition.toFloat() / duration).coerceIn(0f, 1f) else 0f
+        val (position, duration) = position()
+        return if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
+    }
+
+    /** Where the current track is and how long it is, in milliseconds (duration 0 while unknown). */
+    fun position(): Pair<Long, Long> {
+        val c = future?.takeIf { it.isDone }?.let { runCatching { it.get() }.getOrNull() } ?: return 0L to 0L
+        return c.currentPosition.coerceAtLeast(0L) to c.duration.coerceAtLeast(0L)
     }
 
     private fun withController(context: Context, block: (MediaController) -> Unit) {
@@ -159,19 +185,29 @@ object AudioController {
 
     private fun publish(player: Player) {
         val item = player.currentMediaItem
-        _nowPlaying.value = if (item == null || !item.mediaId.startsWith(PREFIX)) {
-            null
-        } else {
-            NowPlaying(
-                downloadId = item.mediaId.removePrefix(PREFIX).toLongOrNull(),
-                title = item.mediaMetadata.title?.toString().orEmpty(),
-                artist = item.mediaMetadata.artist?.toString(),
-                artworkUri = item.mediaMetadata.extras?.getString(EXTRA_THUMBNAIL)?.let { Uri.fromFile(File(it)) }
-                    ?: item.mediaMetadata.artworkUri,
-                isPlaying = player.isPlaying || (player.playWhenReady && player.playbackState == Player.STATE_BUFFERING),
-                hasNext = player.hasNextMediaItem(),
-                repeatMode = player.repeatMode,
-            )
+        if (item == null || !item.mediaId.startsWith(PREFIX)) {
+            _nowPlaying.value = null
+            _queue.value = emptyList()
+            return
+        }
+        _nowPlaying.value = NowPlaying(
+            downloadId = item.mediaId.removePrefix(PREFIX).toLongOrNull(),
+            title = item.mediaMetadata.title?.toString().orEmpty(),
+            artist = item.mediaMetadata.artist?.toString(),
+            artworkUri = thumbnail(item),
+            isPlaying = player.isPlaying || (player.playWhenReady && player.playbackState == Player.STATE_BUFFERING),
+            hasNext = player.hasNextMediaItem(),
+            repeatMode = player.repeatMode,
+            shuffle = player.shuffleModeEnabled,
+            index = player.currentMediaItemIndex,
+        )
+        _queue.value = (0 until player.mediaItemCount).map { i ->
+            val entry = player.getMediaItemAt(i)
+            QueueEntry(i, entry.mediaMetadata.title?.toString().orEmpty(), entry.mediaMetadata.artist?.toString(), thumbnail(entry))
         }
     }
+
+    /** The real thumbnail; the artwork the system sees is the themed copy. */
+    private fun thumbnail(item: MediaItem): Uri? =
+        item.mediaMetadata.extras?.getString(EXTRA_THUMBNAIL)?.let { Uri.fromFile(File(it)) } ?: item.mediaMetadata.artworkUri
 }

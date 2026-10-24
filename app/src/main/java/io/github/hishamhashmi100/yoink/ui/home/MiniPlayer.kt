@@ -1,6 +1,7 @@
 package io.github.hishamhashmi100.yoink.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -52,7 +53,7 @@ import kotlinx.coroutines.delay
 
 /** The bar at the bottom of Home while an MP3 is playing: cover, title, 🔁 ⏮ ⏯ ⏭ and ✕. */
 @Composable
-fun MiniPlayer() {
+fun MiniPlayer(onOpen: () -> Unit) {
     val nowPlaying by AudioController.nowPlaying.collectAsStateWithLifecycle()
     val playing = nowPlaying ?: return
     val context = LocalContext.current
@@ -75,8 +76,11 @@ fun MiniPlayer() {
     ) {
         Column(Modifier.navigationBarsPadding()) {
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(2.dp))
+            // Tap the cover or title to open the full-screen player.
             Row(
-                Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                Modifier
+                    .clickable(onClick = onOpen)
+                    .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 AsyncImage(
