@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import io.github.hishamhashmi100.yoink.R
+import io.github.hishamhashmi100.yoink.data.ShareMode
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.download.YouTubeUrl
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
@@ -30,6 +31,8 @@ import kotlinx.coroutines.launch
 class ShareActivity : ComponentActivity() {
 
     private val videoId = MutableStateFlow<String?>(null)
+    private var quick = false
+    private var videoQuality = Quality.BEST
     private var pendingQuality: Quality? = null
 
     private val notificationPermission =
@@ -51,12 +54,19 @@ class ShareActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             val settings = yoink.settings.settings.first()
-            val defaultQuality = settings.defaultQuality
-            if (defaultQuality != null && savedInstanceState == null) {
+            videoQuality = settings.videoQuality
+            // "Right away" modes skip the sheet entirely.
+            val immediate = when (settings.shareMode) {
+                ShareMode.VIDEO -> settings.videoQuality
+                ShareMode.AUDIO -> Quality.AUDIO
+                else -> null
+            }
+            if (immediate != null && savedInstanceState == null) {
                 videoId.value = id
-                onQualityPicked(defaultQuality)
+                onQualityPicked(immediate)
                 return@launch
             }
+            quick = settings.shareMode == ShareMode.VIDEO_OR_AUDIO
             show(id)
             if (Build.VERSION.SDK_INT >= 33 && !notificationsAllowed()) {
                 askForNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -66,7 +76,13 @@ class ShareActivity : ComponentActivity() {
                     val current = videoId.collectAsStateWithLifecycle().value ?: return@YoinkTheme
                     val state = remember(current) { Probes.state(current) }
                         .collectAsStateWithLifecycle(ShareUiState(videoId = current)).value
-                    ShareSheet(state = state, onPick = ::onQualityPicked, onMinimize = ::minimize, onClose = ::close)
+                    ShareSheet(
+                        state = state,
+                        videoQuality = videoQuality,
+                        onPick = ::onQualityPicked,
+                        onMinimize = ::minimize,
+                        onClose = ::close,
+                    )
                 }
             }
         }
@@ -94,7 +110,7 @@ class ShareActivity : ComponentActivity() {
     private fun show(id: String) {
         videoId.value = id
         Probes.visibleVideo = id
-        Probes.start(this, id)
+        Probes.start(this, id, quick = quick, videoQuality = videoQuality)
         Probes.restored(this, id)
     }
 

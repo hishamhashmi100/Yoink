@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Settings
+import io.github.hishamhashmi100.yoink.data.ShareMode
 import io.github.hishamhashmi100.yoink.data.ThemeMode
 import io.github.hishamhashmi100.yoink.download.Engine
 import io.github.hishamhashmi100.yoink.download.Quality
@@ -37,7 +38,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { _ytDlpVersion.value = runCatching { Engine.version(application) }.getOrNull() }
     }
 
-    fun setDefaultQuality(quality: Quality?) = viewModelScope.launch { store.setDefaultQuality(quality) }
+    fun setShareMode(mode: ShareMode) = viewModelScope.launch { store.setShareMode(mode) }
+    fun setVideoQuality(quality: Quality) = viewModelScope.launch { store.setVideoQuality(quality) }
     fun setSaveToGallery(value: Boolean) = viewModelScope.launch { store.setSaveToGallery(value) }
     fun setTheme(mode: ThemeMode) = viewModelScope.launch { store.setTheme(mode) }
     fun setDynamicColor(value: Boolean) = viewModelScope.launch { store.setDynamicColor(value) }

@@ -86,6 +86,15 @@
     <string name="settings_default_quality">Default quality</string>
     <string name="settings_ask_every_time">Ask every time</string>
     <string name="settings_default_quality_hint">When set, sharing a link downloads right away without the quality sheet.</string>
+    <string name="settings_share_mode">When you share a link</string>
+    <string name="settings_share_mode_hint">Choose what happens when you share a video to Yoink.</string>
+    <string name="share_mode_ask">Ask every time (all qualities)</string>
+    <string name="share_mode_quick">Choose video or audio</string>
+    <string name="share_mode_video">Download video right away</string>
+    <string name="share_mode_audio">Download audio (MP3) right away</string>
+    <string name="settings_video_quality">Video quality</string>
+    <string name="settings_video_quality_hint">Used for \"Video\" whenever Yoink doesn\'t ask for a quality.</string>
+    <string name="share_video_with">Video · %1$s</string>
     <string name="settings_gallery">Show in gallery</string>
     <string name="settings_gallery_on">Saved to Movies/Yoink and Music/Yoink</string>
     <string name="settings_gallery_off">Kept in Yoink\'s own folder only</string>

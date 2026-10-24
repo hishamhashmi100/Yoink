@@ -41,8 +41,11 @@ object ShareNotifications {
                 .setSilent(!alert)
                 .setAutoCancel(true)
                 .apply {
-                    if (Quality.BEST in state.available) {
-                        addAction(0, Quality.BEST.label(context.resources), quick(context, state, Quality.BEST))
+                    // The best video option on offer (Best, or the chosen quality in the Video / Audio sheet).
+                    state.available.filterNot { it.isAudio }.minByOrNull { it.ordinal }?.let { video ->
+                        val label = if (state.quick) context.getString(R.string.share_video_with, video.label(context.resources))
+                        else video.label(context.resources)
+                        addAction(0, label, quick(context, state, video))
                     }
                     if (Quality.AUDIO in state.available) {
                         addAction(0, Quality.AUDIO.label(context.resources), quick(context, state, Quality.AUDIO))
