@@ -66,6 +66,21 @@ object AudioController {
     /** Back to the start of the track, or the previous track if it just started. */
     fun previous(context: Context) = withController(context) { it.seekToPrevious() }
 
+    /**
+     * Takes a deleted download out of the player. If it was playing, the next track starts (or playback stops
+     * when nothing is left), so a deleted MP3 doesn't keep playing from memory.
+     */
+    fun remove(context: Context, downloadId: Long) {
+        if (future == null) return // Nothing has been played this session.
+        withController(context) { c ->
+            val ids = setOf(PREFIX + downloadId, downloadId.toString())
+            for (i in c.mediaItemCount - 1 downTo 0) {
+                if (c.getMediaItemAt(i).mediaId in ids) c.removeMediaItem(i)
+            }
+            if (c.mediaItemCount == 0) c.stop()
+        }
+    }
+
     fun stop(context: Context) = withController(context) { c ->
         c.stop()
         c.clearMediaItems()

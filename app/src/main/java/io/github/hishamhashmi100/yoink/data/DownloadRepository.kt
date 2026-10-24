@@ -8,6 +8,7 @@ import io.github.hishamhashmi100.yoink.download.DownloadWorker
 import io.github.hishamhashmi100.yoink.download.LiveProgress
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.download.Storage
+import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -63,6 +64,8 @@ class DownloadRepository(private val context: Context, val dao: DownloadDao) {
 
     /** Removes a finished download together with its file and thumbnail. */
     suspend fun delete(download: Download) {
+        // Stop it first if it's in the player, otherwise it keeps playing from memory.
+        AudioController.remove(context, download.id)
         withContext(Dispatchers.IO) {
             download.fileUri?.let { Storage.delete(context, it) }
             download.thumbnailPath?.let { File(it).delete() }
