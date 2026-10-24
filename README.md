@@ -31,7 +31,8 @@ In the YouTube app, tap **Share → Yoink**, pick a quality, and keep watching. 
 - **Library** with search, a Video / Audio filter, and list or grid view. Long-press to share, open in another app, or delete.
 - **Built-in player** in full screen and landscape. MP3s keep playing in the background.
 - **Paste a link** with the **+** button if you copy links instead of sharing them.
-- **Settings:** a default quality that skips the sheet, the option to show downloads in your gallery (`Movies/Yoink`, `Music/Yoink`), light or dark theme, and an **Update downloader** button.
+- **Settings:** a default quality that skips the sheet, the option to show downloads in your gallery (`Movies/Yoink`, `Music/Yoink`), and an **Update downloader** button.
+- **Make it yours:** ready-made themes, any color (or your wallpaper's), palette styles, contrast, pure black for OLED, corner styles and fonts. Save your own looks as themes and switch between them.
 
 ## Install
 
