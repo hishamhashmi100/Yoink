@@ -38,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.hishamhashmi100.yoink.R
+import io.github.hishamhashmi100.yoink.ui.player.NowPlayingSheet
 import io.github.hishamhashmi100.yoink.ui.share.ShareActivity
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
 import io.github.hishamhashmi100.yoink.ui.theme.LocalHazeState
@@ -50,6 +51,8 @@ enum class HomeTab { DOWNLOADING, LIBRARY }
 fun HomeScreen(
     requestedTab: HomeTab?,
     onTabHandled: () -> Unit,
+    openPlayer: Boolean = false,
+    onPlayerHandled: () -> Unit = {},
     actions: @Composable () -> Unit = {},
     viewModel: HomeViewModel = viewModel(),
 ) {
@@ -57,6 +60,7 @@ fun HomeScreen(
     val active by viewModel.active.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf<HomeTab?>(null) }
     var addingLink by rememberSaveable { mutableStateOf(false) }
+    var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
     val glass = LocalGlass.current
     val hazeState = rememberHazeState()
 
@@ -64,6 +68,12 @@ fun HomeScreen(
     LaunchedEffect(active == null) {
         if (tab == null && active != null) {
             tab = if (active.orEmpty().isNotEmpty()) HomeTab.DOWNLOADING else HomeTab.LIBRARY
+        }
+    }
+    LaunchedEffect(openPlayer) {
+        if (openPlayer) {
+            nowPlayingOpen = true
+            onPlayerHandled()
         }
     }
     LaunchedEffect(requestedTab) {
@@ -81,7 +91,7 @@ fun HomeScreen(
                 actions = { actions() },
             )
         },
-        bottomBar = { MiniPlayer() },
+        bottomBar = { MiniPlayer(onOpen = { nowPlayingOpen = true }) },
         floatingActionButton = {
             val fabShape = MaterialTheme.shapes.large
             FloatingActionButton(
@@ -140,6 +150,9 @@ fun HomeScreen(
     }
     }
 
+    if (nowPlayingOpen) {
+        NowPlayingSheet(onDismiss = { nowPlayingOpen = false })
+    }
     if (addingLink) {
         AddLinkDialog(
             onDismiss = { addingLink = false },

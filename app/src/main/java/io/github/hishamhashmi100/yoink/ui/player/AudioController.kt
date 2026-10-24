@@ -3,6 +3,7 @@ package io.github.hishamhashmi100.yoink.ui.player
 import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
+import android.os.Bundle
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -12,12 +13,13 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import io.github.hishamhashmi100.yoink.data.Download
 import io.github.hishamhashmi100.yoink.yoink
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.io.File
 
 data class NowPlaying(
@@ -29,7 +31,13 @@ data class NowPlaying(
     val hasNext: Boolean,
     /** One of Player.REPEAT_MODE_OFF, _ALL (the whole queue) or _ONE (this track). */
     val repeatMode: Int,
+    val shuffle: Boolean = false,
+    /** Position of this track in [AudioController.queue]. */
+    val index: Int = 0,
 )
+
+/** One track in the play queue, as the full-screen player lists it. */
+data class QueueEntry(val index: Int, val title: String, val artist: String?, val artworkUri: Uri?)
 
 /**
  * Plays MP3s in the background without opening the full-screen player, like a music app: the library's
@@ -39,11 +47,15 @@ object AudioController {
 
     // Audio queue items are tagged so the mini player ignores videos playing in PlayerActivity.
     private const val PREFIX = "audio:"
+    private const val EXTRA_THUMBNAIL = "thumbnail"
 
     private var future: ListenableFuture<MediaController>? = null
 
     private val _nowPlaying = MutableStateFlow<NowPlaying?>(null)
     val nowPlaying: StateFlow<NowPlaying?> = _nowPlaying.asStateFlow()
+
+    private val _queue = MutableStateFlow<List<QueueEntry>>(emptyList())
+    val queue: StateFlow<List<QueueEntry>> = _queue.asStateFlow()
 
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) = publish(player)
@@ -52,12 +64,24 @@ object AudioController {
     fun connect(context: Context) = withController(context) {}
 
     /** Plays [queue] in order, starting at [start]. */
-    fun play(context: Context, queue: List<Download>, start: Int) = withController(context) { c ->
-        // Videos share the player and have their own loop setting, so put the MP3 one back.
-        c.repeatMode = runBlocking { context.yoink.settings.audioRepeat.first() }
-        c.setMediaItems(queue.map(::item), start.coerceIn(0, queue.lastIndex.coerceAtLeast(0)), 0L)
-        c.prepare()
-        c.play()
+    fun play(context: Context, queue: List<Download>, start: Int) {
+        val app = context.yoink
+        app.appScope.launch {
+            val appearance = app.settings.settings.first().appearance
+            // Videos share the player and have their own loop setting, so put the MP3 one back.
+            val repeat = app.settings.audioRepeat.first()
+            val items = withContext(Dispatchers.IO) {
+                queue.map { item(it, ThemedArtwork.uri(app, it.thumbnailPath, appearance)) }
+            }
+            withContext(Dispatchers.Main) {
+                withController(app) { c ->
+                    c.repeatMode = repeat
+                    c.setMediaItems(items, start.coerceIn(0, queue.lastIndex.coerceAtLeast(0)), 0L)
+                    c.prepare()
+                    c.play()
+                }
+            }
+        }
     }
 
     fun togglePlayPause(context: Context) = withController(context) { c ->
@@ -71,14 +95,22 @@ object AudioController {
 
     /** Off → repeat all → repeat this track → off, like a music app. */
     fun cycleRepeat(context: Context) = withController(context) { c ->
-        val next = when (c.repeatMode) {
-            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-            else -> Player.REPEAT_MODE_OFF
-        }
+        val next = PlaybackService.nextRepeatMode(c.repeatMode)
         c.repeatMode = next
         val app = context.yoink
         app.appScope.launch { app.settings.setAudioRepeat(next) }
+    }
+
+    fun toggleShuffle(context: Context) = withController(context) { it.shuffleModeEnabled = !it.shuffleModeEnabled }
+
+    fun seekTo(context: Context, positionMs: Long) = withController(context) { it.seekTo(positionMs) }
+
+    /** Jumps to the track at [index] in the queue. */
+    fun skipTo(context: Context, index: Int) = withController(context) { c ->
+        if (index in 0 until c.mediaItemCount) {
+            c.seekTo(index, 0L)
+            c.play()
+        }
     }
 
     fun next(context: Context) = withController(context) { it.seekToNextMediaItem() }
@@ -108,9 +140,14 @@ object AudioController {
 
     /** 0–1 through the current track. */
     fun progress(): Float {
-        val c = future?.takeIf { it.isDone }?.let { runCatching { it.get() }.getOrNull() } ?: return 0f
-        val duration = c.duration
-        return if (duration > 0) (c.currentPosition.toFloat() / duration).coerceIn(0f, 1f) else 0f
+        val (position, duration) = position()
+        return if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
+    }
+
+    /** Where the current track is and how long it is, in milliseconds (duration 0 while unknown). */
+    fun position(): Pair<Long, Long> {
+        val c = future?.takeIf { it.isDone }?.let { runCatching { it.get() }.getOrNull() } ?: return 0L to 0L
+        return c.currentPosition.coerceAtLeast(0L) to c.duration.coerceAtLeast(0L)
     }
 
     private fun withController(context: Context, block: (MediaController) -> Unit) {
@@ -130,7 +167,8 @@ object AudioController {
         f.addListener({ runCatching { f.get() }.getOrNull()?.let(block) }, executor)
     }
 
-    private fun item(download: Download): MediaItem = MediaItem.Builder()
+    /** [artwork] is the themed cover, which the system media player takes its colors from. */
+    private fun item(download: Download, artwork: Uri?): MediaItem = MediaItem.Builder()
         .setMediaId(PREFIX + download.id)
         .setUri(download.fileUri)
         .setMimeType(download.mimeType)
@@ -138,25 +176,38 @@ object AudioController {
             MediaMetadata.Builder()
                 .setTitle(download.title)
                 .setArtist(download.channel)
-                .setArtworkUri(download.thumbnailPath?.let { Uri.fromFile(File(it)) })
+                .setArtworkUri(artwork ?: download.thumbnailPath?.let { Uri.fromFile(File(it)) })
+                // The real thumbnail, for the mini player.
+                .setExtras(Bundle().apply { putString(EXTRA_THUMBNAIL, download.thumbnailPath) })
                 .build()
         )
         .build()
 
     private fun publish(player: Player) {
         val item = player.currentMediaItem
-        _nowPlaying.value = if (item == null || !item.mediaId.startsWith(PREFIX)) {
-            null
-        } else {
-            NowPlaying(
-                downloadId = item.mediaId.removePrefix(PREFIX).toLongOrNull(),
-                title = item.mediaMetadata.title?.toString().orEmpty(),
-                artist = item.mediaMetadata.artist?.toString(),
-                artworkUri = item.mediaMetadata.artworkUri,
-                isPlaying = player.isPlaying || (player.playWhenReady && player.playbackState == Player.STATE_BUFFERING),
-                hasNext = player.hasNextMediaItem(),
-                repeatMode = player.repeatMode,
-            )
+        if (item == null || !item.mediaId.startsWith(PREFIX)) {
+            _nowPlaying.value = null
+            _queue.value = emptyList()
+            return
+        }
+        _nowPlaying.value = NowPlaying(
+            downloadId = item.mediaId.removePrefix(PREFIX).toLongOrNull(),
+            title = item.mediaMetadata.title?.toString().orEmpty(),
+            artist = item.mediaMetadata.artist?.toString(),
+            artworkUri = thumbnail(item),
+            isPlaying = player.isPlaying || (player.playWhenReady && player.playbackState == Player.STATE_BUFFERING),
+            hasNext = player.hasNextMediaItem(),
+            repeatMode = player.repeatMode,
+            shuffle = player.shuffleModeEnabled,
+            index = player.currentMediaItemIndex,
+        )
+        _queue.value = (0 until player.mediaItemCount).map { i ->
+            val entry = player.getMediaItemAt(i)
+            QueueEntry(i, entry.mediaMetadata.title?.toString().orEmpty(), entry.mediaMetadata.artist?.toString(), thumbnail(entry))
         }
     }
+
+    /** The real thumbnail; the artwork the system sees is the themed copy. */
+    private fun thumbnail(item: MediaItem): Uri? =
+        item.mediaMetadata.extras?.getString(EXTRA_THUMBNAIL)?.let { Uri.fromFile(File(it)) } ?: item.mediaMetadata.artworkUri
 }

@@ -31,9 +31,11 @@ import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
 import io.github.hishamhashmi100.yoink.ui.MainActivity
 import io.github.hishamhashmi100.yoink.yoink
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @OptIn(UnstableApi::class)
@@ -43,6 +45,7 @@ class PlayerActivity : ComponentActivity() {
     private lateinit var playerView: PlayerView
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var download: Download? = null
+    private var artwork: Uri? = null
 
     private val playerListener = object : Player.Listener {
         override fun onVideoSizeChanged(videoSize: VideoSize) {
@@ -127,6 +130,8 @@ class PlayerActivity : ComponentActivity() {
                 finish()
                 return@launch
             }
+            val appearance = yoink.settings.settings.first().appearance
+            artwork = withContext(Dispatchers.IO) { ThemedArtwork.uri(this@PlayerActivity, found.thumbnailPath, appearance) }
             download = found
             controller()?.let { play(it, found) }
         }
@@ -166,7 +171,7 @@ class PlayerActivity : ComponentActivity() {
         val metadata = MediaMetadata.Builder()
             .setTitle(download.title)
             .setArtist(download.channel)
-            .setArtworkUri(download.thumbnailPath?.let { Uri.fromFile(File(it)) })
+            .setArtworkUri(artwork ?: download.thumbnailPath?.let { Uri.fromFile(File(it)) })
             .build()
         val item = MediaItem.Builder()
             .setMediaId(mediaId)
