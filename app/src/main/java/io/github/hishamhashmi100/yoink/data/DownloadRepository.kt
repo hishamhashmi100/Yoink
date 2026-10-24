@@ -6,6 +6,7 @@ import androidx.work.WorkManager
 import io.github.hishamhashmi100.yoink.download.DownloadLog
 import io.github.hishamhashmi100.yoink.download.DownloadWorker
 import io.github.hishamhashmi100.yoink.download.LiveProgress
+import io.github.hishamhashmi100.yoink.download.MediaInfo
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.download.Storage
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
@@ -71,6 +72,15 @@ class DownloadRepository(private val context: Context, val dao: DownloadDao) {
             download.thumbnailPath?.let { File(it).delete() }
         }
         dao.delete(download.id)
+    }
+
+    /** Fills in the resolution of videos downloaded before it was recorded. */
+    suspend fun fillMissingResolutions() = withContext(Dispatchers.IO) {
+        dao.getByStatus(DownloadStatus.COMPLETED)
+            .filter { !it.quality.isAudio && it.resolution == null && it.fileUri != null }
+            .forEach { download ->
+                MediaInfo.read(context, download.fileUri!!)?.resolution?.let { dao.setResolution(download.id, it) }
+            }
     }
 
     /** Marks rows whose work vanished (e.g. app data cleared mid-download) as failed. */

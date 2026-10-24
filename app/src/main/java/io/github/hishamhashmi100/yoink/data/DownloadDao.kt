@@ -18,6 +18,9 @@ interface DownloadDao {
     @Query("SELECT * FROM downloads WHERE status = :status")
     suspend fun getByStatus(status: DownloadStatus): List<Download>
 
+    @Query("UPDATE downloads SET resolution = :resolution WHERE id = :id")
+    suspend fun setResolution(id: Long, resolution: Int)
+
     @Insert
     suspend fun insert(download: Download): Long
 

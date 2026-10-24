@@ -4,14 +4,25 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Download::class], version = 1, exportSchema = false)
+@Database(entities = [Download::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun downloadDao(): DownloadDao
 
     companion object {
         fun build(context: Context): AppDatabase =
-            Room.databaseBuilder(context, AppDatabase::class.java, "yoink.db").build()
+            Room.databaseBuilder(context, AppDatabase::class.java, "yoink.db")
+                .addMigrations(MIGRATION_1_2)
+                .build()
+
+        /** Version 2 adds each video's resolution. */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE downloads ADD COLUMN resolution INTEGER")
+            }
+        }
     }
 }

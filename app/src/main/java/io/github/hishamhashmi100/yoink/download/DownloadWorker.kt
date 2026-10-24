@@ -3,7 +3,6 @@ package io.github.hishamhashmi100.yoink.download
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
-import android.media.MediaMetadataRetriever
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -184,7 +183,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val duration = info?.optDouble("duration")?.takeUnless { it.isNaN() }?.toLong() ?: download.durationSec
 
         // YouTube sometimes sends only the start of a stream. Don't save that as a finished download.
-        val actual = mediaDurationSec(media)
+        val mediaInfo = MediaInfo.read(applicationContext, media.absolutePath)
+        val actual = mediaInfo?.durationSec
         if (duration != null && actual != null && duration >= 15 && actual < duration * 0.9) {
             workDir.deleteRecursively() // Otherwise a retry would find the short file and call it done.
             throw IncompleteDownloadException(actual, duration)
@@ -208,21 +208,10 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             fileUri = saved.uri,
             mimeType = saved.mimeType,
             sizeBytes = saved.sizeBytes,
+            resolution = mediaInfo?.resolution?.takeUnless { download.quality.isAudio },
             status = DownloadStatus.COMPLETED,
             error = null,
         )
-    }
-
-    private fun mediaDurationSec(file: File): Long? {
-        val retriever = MediaMetadataRetriever()
-        return try {
-            retriever.setDataSource(file.absolutePath)
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()?.div(1000)
-        } catch (e: Exception) {
-            null
-        } finally {
-            retriever.release()
-        }
     }
 
     private suspend fun report(title: String, progress: LiveProgress) {
