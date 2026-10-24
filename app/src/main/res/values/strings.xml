@@ -4,8 +4,8 @@
 
     <!-- Share sheet -->
     <string name="share_not_youtube">That doesn\'t look like a YouTube link</string>
-    <string name="share_checking">Checking available qualities…</string>
-    <string name="share_formats_failed">Couldn\'t list qualities. You can still try Best or Audio.</string>
+    <string name="share_checking">Checking which qualities this video has…</string>
+    <string name="share_formats_failed">Couldn\'t check the qualities, but any option will still work.</string>
     <string name="share_started">Download started</string>
     <string name="share_checking_tap">Checking available qualities… Tap to open.</string>
     <string name="share_ready">Ready to download</string>
