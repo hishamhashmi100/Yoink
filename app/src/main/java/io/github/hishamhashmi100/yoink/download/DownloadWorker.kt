@@ -56,6 +56,9 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     // The last lines yt-dlp printed, saved with a failed download for "Copy details".
     private val log = ArrayDeque<String>()
 
+    // The tallest video stream YouTube listed for this video, read from yt-dlp's info file.
+    private var tallestOffered: Int? = null
+
     override suspend fun getForegroundInfo(): ForegroundInfo =
         foregroundInfo(app.getString(R.string.app_name), queued())
 
@@ -187,11 +190,14 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val got = download.resolution ?: return null
         val wanted = download.quality.height ?: 720 // "Best" should be at least HD for most videos.
         if (got >= wanted * 0.9) return null
-        val heldBack = synchronized(log) { log.any { HELD_BACK.containsMatchIn(it) } }
-        return applicationContext.getString(
-            if (heldBack) R.string.note_held_back else R.string.note_best_available,
-            MediaInfo.label(got),
-        )
+        val heldBack = synchronized(log) { log.any { WARNING.containsMatchIn(it) && HELD_BACK.containsMatchIn(it) } }
+        val note = when {
+            heldBack -> R.string.note_held_back
+            // Only claim it's the best on offer when the video's format list really has nothing taller.
+            tallestOffered?.let { it < got * 1.1 } == true -> R.string.note_best_available
+            else -> return null
+        }
+        return applicationContext.getString(note, MediaInfo.label(got))
     }
 
     private suspend fun finish(download: Download, workDir: File): Download {
@@ -207,6 +213,11 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val channel = info?.let { it.optString("channel").ifBlank { it.optString("uploader") } }?.takeIf { it.isNotBlank() }
             ?: download.channel
         val duration = info?.optDouble("duration")?.takeUnless { it.isNaN() }?.toLong() ?: download.durationSec
+        tallestOffered = info?.optJSONArray("formats")?.let { formats ->
+            (0 until formats.length()).mapNotNull { i ->
+                formats.optJSONObject(i)?.takeIf { it.optString("vcodec") != "none" }?.optInt("height")?.takeIf { it > 0 }
+            }.maxOrNull()
+        }
 
         // YouTube sometimes sends only the start of a stream. Don't save that as a finished download.
         val mediaInfo = MediaInfo.read(applicationContext, media.absolutePath)
@@ -269,6 +280,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             RegexOption.IGNORE_CASE,
         )
 
+        private val WARNING = Regex("WARNING|ERROR")
         private val HELD_BACK = Regex("challenge|PO Token|formats? (may be|are) missing|missing a URL|SABR|skipped", RegexOption.IGNORE_CASE)
 
         private val SPEED = Regex("""at\s+(~?\s*[\d.]+\s*[KMGT]?i?B/s)""")

@@ -31,7 +31,8 @@ enum class Quality(val height: Int?, @StringRes val labelRes: Int?, private val 
             else -> {
                 val h = height!!
                 request.addOption("-f", "bv*[height<=$h]+ba/b[height<=$h]/b")
-                request.addOption("-S", "vcodec:h264,acodec:aac")
+                // Resolution has to come first: with the codec first, a 360p H.264 stream beats 1080p VP9.
+                request.addOption("-S", "res:$h,vcodec:h264,acodec:aac")
                 request.addOption("--merge-output-format", "mp4")
             }
         }
