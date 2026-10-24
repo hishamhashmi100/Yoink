@@ -38,6 +38,9 @@ class SettingsStore(context: Context) {
 
     val firstUpdateCheckDone: Flow<Boolean> = store.data.map { it[FIRST_UPDATE_DONE] ?: false }
 
+    /** The app version we last sent an "update available" notification for. */
+    val notifiedVersion: Flow<String?> = store.data.map { it[NOTIFIED_VERSION] }
+
     suspend fun setDefaultQuality(quality: Quality?) = store.edit {
         if (quality == null) {
             it.remove(DEFAULT_QUALITY)
@@ -50,6 +53,7 @@ class SettingsStore(context: Context) {
     suspend fun setTheme(mode: ThemeMode) = store.edit { it[THEME] = mode.name }
     suspend fun setDynamicColor(value: Boolean) = set(DYNAMIC_COLOR, value)
     suspend fun setFirstUpdateCheckDone() = set(FIRST_UPDATE_DONE, true)
+    suspend fun setNotifiedVersion(version: String) = store.edit { it[NOTIFIED_VERSION] = version }
 
     private suspend fun set(key: Preferences.Key<Boolean>, value: Boolean) = store.edit { it[key] = value }
 
@@ -59,5 +63,6 @@ class SettingsStore(context: Context) {
         val THEME = stringPreferencesKey("theme")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val FIRST_UPDATE_DONE = booleanPreferencesKey("first_update_done")
+        val NOTIFIED_VERSION = stringPreferencesKey("notified_version")
     }
 }

@@ -152,8 +152,16 @@ The repository exposes `Flow<List<Download>>`. Compose screens observe it togeth
 YouTube changes its player JS and API regularly, and every downloader breaks from time to time. Yoink handles this without a new app release:
 
 - `YoutubeDL.updateYoutubeDL(context, STABLE)` pulls the latest yt-dlp release from GitHub into app storage.
-- A check runs on first launch (and optionally daily through a periodic `WorkManager` job). Settings also has a manual **Update downloader** button.
-- Only changes to the native layer (Python, ffmpeg, JS runtime) need a new APK.
+- A check runs on first launch and then daily through a periodic `WorkManager` job (`DailyCheckWorker`). Settings also has a manual **Update downloader** button.
+- Only changes to the native layer (Python, ffmpeg, JS runtime) or the app's own code need a new APK.
+
+### App updates
+
+Without Google Play there are no automatic app updates, so the app updates itself from GitHub Releases (`AppUpdater`):
+
+- The daily job (and opening the app) asks `api.github.com/repos/…/releases/latest` for the newest tag and compares it with `versionName`, which the release workflow sets from the tag.
+- If it's newer, Home shows an **Update** card and a one-time notification. The app downloads the APK matching `Build.SUPPORTED_ABIS` (falling back to `yoink-universal.apk`), checks it against `SHA256SUMS.txt`, and opens Android's installer through `FileProvider` (`REQUEST_INSTALL_PACKAGES`).
+- Android always asks the user to confirm, and the update only installs if it's signed with the same key. Debug builds (`.debug`) skip all of this.
 
 ---
 

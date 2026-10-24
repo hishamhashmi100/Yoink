@@ -94,6 +94,28 @@
     <string name="settings_source">Source code and license (GPL-3.0)</string>
     <string name="settings_disclaimer">For personal use with content you have the right to download. Respect YouTube\'s Terms of Service and copyright.</string>
 
+    <!-- App updates -->
+    <string name="channel_updates">App updates</string>
+    <string name="update_available_title">Update available</string>
+    <string name="update_available_text">Yoink %1$s is ready. Tap to update.</string>
+    <string name="update_card_title">Yoink %1$s is available</string>
+    <string name="update_card_body">Update to get the latest fixes.</string>
+    <string name="update_action">Update</string>
+    <string name="update_install">Install</string>
+    <string name="update_whats_new">What\'s new</string>
+    <string name="update_downloading">Downloading… %1$d%%</string>
+    <string name="update_ready">Downloaded. Tap Install and confirm.</string>
+    <string name="update_allow_install">If Android asks, allow Yoink to install apps, then tap Install again.</string>
+    <string name="update_check_failed">Couldn\'t check for updates. Check your connection.</string>
+    <string name="update_download_failed">The update didn\'t download. Try again.</string>
+    <string name="update_retry">Try again</string>
+    <string name="settings_app_updates">App updates</string>
+    <string name="settings_check_updates">Version %1$s · Tap to check for updates</string>
+    <string name="settings_checking">Checking…</string>
+    <string name="settings_latest">You have the latest version (%1$s)</string>
+    <string name="settings_update_available">Version %1$s is available. Tap to update.</string>
+    <string name="settings_update_debug">Version %1$s is out. Debug builds can\'t update themselves; install it from the website.</string>
+
     <!-- Add link -->
     <string name="add_link">Add link</string>
     <string name="add_link_title">Download from a link</string>

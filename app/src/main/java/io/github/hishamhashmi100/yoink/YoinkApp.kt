@@ -8,6 +8,7 @@ import io.github.hishamhashmi100.yoink.data.SettingsStore
 import io.github.hishamhashmi100.yoink.download.Engine
 import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.UpdateWorker
+import io.github.hishamhashmi100.yoink.update.DailyCheckWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,6 +33,7 @@ class YoinkApp : Application() {
             repository.reconcile(getString(R.string.error_interrupted), createdBefore = startedAt)
             if (!settings.firstUpdateCheckDone.first()) UpdateWorker.enqueue(this@YoinkApp)
         }
+        DailyCheckWorker.schedule(this)
     }
 }
 
