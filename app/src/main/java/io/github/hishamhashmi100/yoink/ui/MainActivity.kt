@@ -11,10 +11,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.hishamhashmi100.yoink.R
-import io.github.hishamhashmi100.yoink.data.Settings
 import io.github.hishamhashmi100.yoink.ui.home.HomeScreen
 import io.github.hishamhashmi100.yoink.ui.home.HomeTab
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
         AudioController.connect(this)
         if (savedInstanceState == null) requestedTab.value = tabFrom(intent)
         setContent {
-            val settings by yoink.settings.settings.collectAsStateWithLifecycle(Settings())
+            val settings by yoink.settings.settings.collectAsStateWithLifecycle(remember { yoink.settings.current() })
             YoinkTheme(settings) {
                 HomeScreen(
                     requestedTab = requestedTab.value,

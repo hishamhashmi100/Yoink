@@ -2,7 +2,6 @@ package io.github.hishamhashmi100.yoink.ui.settings
 
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +18,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,9 +28,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
@@ -55,7 +52,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.ShareMode
-import io.github.hishamhashmi100.yoink.data.ThemeMode
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
 import io.github.hishamhashmi100.yoink.update.AppUpdater
@@ -165,32 +161,11 @@ private fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
 
             SectionHeader(R.string.settings_appearance)
             ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_theme)) },
-                supportingContent = {
-                    val options = listOf(
-                        ThemeMode.SYSTEM to R.string.theme_system,
-                        ThemeMode.LIGHT to R.string.theme_light,
-                        ThemeMode.DARK to R.string.theme_dark,
-                    )
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                        options.forEachIndexed { index, (mode, label) ->
-                            SegmentedButton(
-                                selected = settings.theme == mode,
-                                onClick = { viewModel.setTheme(mode) },
-                                shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                            ) { Text(stringResource(label)) }
-                        }
-                    }
-                },
+                headlineContent = { Text(stringResource(R.string.settings_customize)) },
+                supportingContent = { Text(stringResource(R.string.settings_customize_summary)) },
+                leadingContent = { Icon(Icons.Rounded.Palette, contentDescription = null) },
+                modifier = Modifier.clickable { context.startActivity(Intent(context, AppearanceActivity::class.java)) },
             )
-            if (Build.VERSION.SDK_INT >= 31) {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_dynamic_color)) },
-                    supportingContent = { Text(stringResource(R.string.settings_dynamic_color_summary)) },
-                    trailingContent = { Switch(checked = settings.dynamicColor, onCheckedChange = null) },
-                    modifier = Modifier.clickable { viewModel.setDynamicColor(!settings.dynamicColor) },
-                )
-            }
 
             SectionHeader(R.string.settings_about)
             val appVersion = remember {

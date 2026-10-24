@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Settings
 import io.github.hishamhashmi100.yoink.data.ShareMode
-import io.github.hishamhashmi100.yoink.data.ThemeMode
 import io.github.hishamhashmi100.yoink.download.Engine
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.yoink
@@ -23,7 +22,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val store = application.yoink.settings
 
     val settings: StateFlow<Settings> =
-        store.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Settings())
+        store.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), store.current())
 
     private val _ytDlpVersion = MutableStateFlow<String?>(null)
     val ytDlpVersion = _ytDlpVersion.asStateFlow()
@@ -41,8 +40,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setShareMode(mode: ShareMode) = viewModelScope.launch { store.setShareMode(mode) }
     fun setVideoQuality(quality: Quality) = viewModelScope.launch { store.setVideoQuality(quality) }
     fun setSaveToGallery(value: Boolean) = viewModelScope.launch { store.setSaveToGallery(value) }
-    fun setTheme(mode: ThemeMode) = viewModelScope.launch { store.setTheme(mode) }
-    fun setDynamicColor(value: Boolean) = viewModelScope.launch { store.setDynamicColor(value) }
 
     fun updateDownloader() {
         if (_updating.value) return
