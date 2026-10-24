@@ -59,6 +59,9 @@
     <string name="player_pause">Pause</string>
     <string name="player_next">Next</string>
     <string name="player_stop">Stop</string>
+    <string name="player_repeat_off">Repeat off</string>
+    <string name="player_repeat_all">Repeat all</string>
+    <string name="player_repeat_one">Repeat this track</string>
 
     <!-- Home -->
     <string name="tab_downloading">Downloading</string>
@@ -171,6 +174,18 @@
     <string name="font_mono">Mono</string>
     <string name="font_casual">Casual</string>
     <string name="font_cursive">Cursive</string>
+    <string name="font_rounded">Rounded</string>
+    <string name="font_modern">Modern</string>
+    <string name="font_elegant">Elegant</string>
+    <string name="font_comfy">Comfy</string>
+    <string name="font_bubbly">Bubbly</string>
+    <string name="font_script">Script</string>
+    <string name="font_retro">Retro</string>
+    <string name="font_groovy">Groovy</string>
+    <string name="font_future">Future</string>
+    <string name="font_pixel">Pixel</string>
+    <string name="font_comic">Comic</string>
+    <string name="font_typewriter">Typewriter</string>
     <string name="preset_yoink">Yoink</string>
     <string name="preset_midnight">Midnight</string>
     <string name="preset_forest">Forest</string>
@@ -180,6 +195,11 @@
     <string name="preset_candy">Candy</string>
     <string name="preset_retro">Retro</string>
     <string name="preset_noir">Noir</string>
+    <string name="preset_cozy">Cozy</string>
+    <string name="preset_royal">Royal</string>
+    <string name="preset_arcade">Arcade</string>
+    <string name="preset_comic">Comic</string>
+    <string name="preset_space">Space</string>
     <string name="settings_about">About</string>
     <string name="settings_app_version">Version %1$s</string>
     <string name="settings_source">Source code and license (GPL-3.0)</string>

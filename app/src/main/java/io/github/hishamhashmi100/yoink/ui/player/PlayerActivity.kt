@@ -21,6 +21,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
+import androidx.media3.common.util.RepeatModeUtil
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -30,7 +31,9 @@ import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
 import io.github.hishamhashmi100.yoink.ui.MainActivity
 import io.github.hishamhashmi100.yoink.yoink
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.File
 
 @OptIn(UnstableApi::class)
@@ -41,12 +44,19 @@ class PlayerActivity : ComponentActivity() {
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var download: Download? = null
 
-    private val sizeListener = object : Player.Listener {
+    private val playerListener = object : Player.Listener {
         override fun onVideoSizeChanged(videoSize: VideoSize) {
             // Landscape videos go landscape; vertical ones (Shorts) stay as they are.
             if (videoSize.width > videoSize.height) {
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             }
+        }
+
+        // The loop button in the controls: remember it for the next video.
+        override fun onRepeatModeChanged(repeatMode: Int) {
+            if (download == null) return
+            val app = yoink
+            app.appScope.launch { app.settings.setVideoRepeat(repeatMode) }
         }
     }
 
@@ -61,6 +71,7 @@ class PlayerActivity : ComponentActivity() {
             keepScreenOn = true
             setShowNextButton(false)
             setShowPreviousButton(false)
+            setRepeatToggleModes(RepeatModeUtil.REPEAT_TOGGLE_MODE_ONE)
             artworkDisplayMode = PlayerView.ARTWORK_DISPLAY_MODE_FIT
         }
 
@@ -129,14 +140,14 @@ class PlayerActivity : ComponentActivity() {
         future.addListener({
             val controller = controller() ?: return@addListener
             playerView.player = controller
-            controller.addListener(sizeListener)
+            controller.addListener(playerListener)
             download?.let { play(controller, it) }
         }, ContextCompat.getMainExecutor(this))
     }
 
     override fun onStop() {
         controller()?.let { controller ->
-            controller.removeListener(sizeListener)
+            controller.removeListener(playerListener)
             if (download?.mimeType?.startsWith("audio/") != true) controller.pause()
         }
         playerView.player = null
@@ -163,6 +174,7 @@ class PlayerActivity : ComponentActivity() {
             .setMimeType(download.mimeType)
             .setMediaMetadata(metadata)
             .build()
+        controller.repeatMode = runBlocking { yoink.settings.videoRepeat.first() }
         controller.setMediaItem(item)
         controller.prepare()
         controller.play()

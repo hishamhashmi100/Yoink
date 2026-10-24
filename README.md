@@ -29,10 +29,10 @@ In the YouTube app, tap **Share → Yoink**, pick a quality, and keep watching. 
 - **Share sheet:** shows the title and thumbnail instantly, then unlocks **Best**, **1080p**, **720p**, **480p** and **Audio (MP3)** once it knows which qualities the video has.
 - **Background downloads** with a progress notification (speed and time left), **Cancel**, and **Retry** if something goes wrong. Up to two downloads run at once; the rest wait their turn.
 - **Library** with search, a Video / Audio filter, and list or grid view. Long-press to share, open in another app, or delete.
-- **Built-in player** in full screen and landscape. MP3s keep playing in the background.
+- **Built-in player** in full screen and landscape, with a loop button. MP3s play in the background from a mini player with repeat (all or one track).
 - **Paste a link** with the **+** button if you copy links instead of sharing them.
 - **Settings:** a default quality that skips the sheet, the option to show downloads in your gallery (`Movies/Yoink`, `Music/Yoink`), and an **Update downloader** button.
-- **Make it yours:** ready-made themes, any color (or your wallpaper's), palette styles, contrast, pure black for OLED, corner styles and fonts. Save your own looks as themes and switch between them.
+- **Make it yours:** ready-made themes, any color (or your wallpaper's), palette styles, contrast, pure black for OLED, corner styles and 18 fonts. Save your own looks as themes and switch between them.
 
 ## Install
 
@@ -137,4 +137,4 @@ Yoink is for personal use with content you have the right to download. Respect Y
 
 ## License
 
-[GPL-3.0](LICENSE). The bundled youtubedl-android library and ffmpeg build are GPL-licensed, so the app is too. yt-dlp is released under the Unlicense.
+[GPL-3.0](LICENSE). The bundled youtubedl-android library and ffmpeg build are GPL-licensed, so the app is too. yt-dlp is released under the Unlicense. The bundled fonts are under the SIL Open Font License (Special Elite: Apache 2.0); their licenses are in `app/src/main/assets/licenses/fonts/`.

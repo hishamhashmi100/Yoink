@@ -43,6 +43,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -143,8 +144,11 @@ class AppearanceViewModel(application: Application) : AndroidViewModel(applicati
 
 /** Seed colors offered as one-tap swatches. */
 private val SWATCHES = listOf(
-    YOINK_RED, 0xFFFF6D00, 0xFFFFC83D, 0xFF7CB342, 0xFF2E7D32, 0xFF00897B,
-    0xFF039BE5, 0xFF3D5AFE, 0xFF8E24AA, 0xFFEC407A, 0xFF795548, 0xFF607D8B,
+    YOINK_RED, 0xFF8B0000, 0xFFFF7043, 0xFFFF6D00, 0xFFFFAB00, 0xFFFFC83D,
+    0xFFC0CA33, 0xFF7CB342, 0xFF2E7D32, 0xFF26A69A, 0xFF00897B, 0xFF00ACC1,
+    0xFF039BE5, 0xFF1E88E5, 0xFF3D5AFE, 0xFF1A237E, 0xFF7C4DFF, 0xFF8E24AA,
+    0xFFD500F9, 0xFFEC407A, 0xFFF8BBD0, 0xFF795548, 0xFFC8A97E, 0xFF607D8B,
+    0xFF424242,
 ).map { it.toInt() }
 
 @StringRes
@@ -158,6 +162,11 @@ private fun ThemePreset.label() = when (this) {
     ThemePreset.CANDY -> R.string.preset_candy
     ThemePreset.RETRO -> R.string.preset_retro
     ThemePreset.NOIR -> R.string.preset_noir
+    ThemePreset.COZY -> R.string.preset_cozy
+    ThemePreset.ROYAL -> R.string.preset_royal
+    ThemePreset.ARCADE -> R.string.preset_arcade
+    ThemePreset.COMIC -> R.string.preset_comic
+    ThemePreset.SPACE -> R.string.preset_space
 }
 
 @StringRes
@@ -188,6 +197,18 @@ private fun FontStyle.label() = when (this) {
     FontStyle.MONO -> R.string.font_mono
     FontStyle.CASUAL -> R.string.font_casual
     FontStyle.CURSIVE -> R.string.font_cursive
+    FontStyle.ROUNDED -> R.string.font_rounded
+    FontStyle.MODERN -> R.string.font_modern
+    FontStyle.ELEGANT -> R.string.font_elegant
+    FontStyle.COMFY -> R.string.font_comfy
+    FontStyle.BUBBLY -> R.string.font_bubbly
+    FontStyle.SCRIPT -> R.string.font_script
+    FontStyle.RETRO -> R.string.font_retro
+    FontStyle.GROOVY -> R.string.font_groovy
+    FontStyle.FUTURE -> R.string.font_future
+    FontStyle.PIXEL -> R.string.font_pixel
+    FontStyle.COMIC -> R.string.font_comic
+    FontStyle.TYPEWRITER -> R.string.font_typewriter
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -211,217 +232,220 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
             )
         },
     ) { padding ->
-        Column(
-            Modifier
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 24.dp),
-        ) {
+        Column(Modifier.padding(padding)) {
+            // Stays on screen while the options scroll underneath, so every change is visible.
             LookPreview()
-
-            Header(R.string.appearance_themes)
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            HorizontalDivider()
+            Column(
+                Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 24.dp),
             ) {
-                items(ThemePreset.entries) { preset ->
-                    ThemeCard(
-                        name = stringResource(preset.label()),
-                        look = preset.applyTo(appearance),
-                        selected = preset.matches(appearance),
-                        onClick = { viewModel.update(preset::applyTo) },
-                    )
-                }
-                items(savedThemes, key = { "saved:" + it.name }) { theme ->
-                    ThemeCard(
-                        name = theme.name,
-                        look = theme.appearance,
-                        selected = theme.appearance == appearance,
-                        onClick = { viewModel.update { theme.appearance } },
-                        onDelete = { deleting = theme.name },
-                    )
-                }
-                item {
-                    Column(
-                        Modifier
-                            .width(76.dp)
-                            .clickable { saving = true },
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Box(
-                            Modifier
-                                .size(64.dp)
-                                .clip(MaterialTheme.shapes.large)
-                                .border(2.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.large),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(Icons.Rounded.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        }
-                        Text(
-                            stringResource(R.string.appearance_save),
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 2,
-                            modifier = Modifier.padding(top = 6.dp),
+                Header(R.string.appearance_themes)
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(ThemePreset.entries) { preset ->
+                        ThemeCard(
+                            name = stringResource(preset.label()),
+                            look = preset.applyTo(appearance),
+                            selected = preset.matches(appearance),
+                            onClick = { viewModel.update(preset::applyTo) },
                         )
                     }
+                    items(savedThemes, key = { "saved:" + it.name }) { theme ->
+                        ThemeCard(
+                            name = theme.name,
+                            look = theme.appearance,
+                            selected = theme.appearance == appearance,
+                            onClick = { viewModel.update { theme.appearance } },
+                            onDelete = { deleting = theme.name },
+                        )
+                    }
+                    item {
+                        Column(
+                            Modifier
+                                .width(76.dp)
+                                .clickable { saving = true },
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(64.dp)
+                                    .clip(MaterialTheme.shapes.large)
+                                    .border(2.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.large),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(Icons.Rounded.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                            Text(
+                                stringResource(R.string.appearance_save),
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 2,
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
+                    }
                 }
-            }
 
-            Header(R.string.appearance_mode)
-            val modes = listOf(
-                ThemeMode.SYSTEM to R.string.theme_system,
-                ThemeMode.LIGHT to R.string.theme_light,
-                ThemeMode.DARK to R.string.theme_dark,
-            )
-            SingleChoiceSegmentedButtonRow(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-            ) {
-                modes.forEachIndexed { index, (mode, label) ->
-                    SegmentedButton(
-                        selected = appearance.theme == mode,
-                        onClick = { viewModel.update { it.copy(theme = mode) } },
-                        shape = SegmentedButtonDefaults.itemShape(index, modes.size, ButtonShape),
-                    ) { Text(stringResource(label)) }
+                Header(R.string.appearance_mode)
+                val modes = listOf(
+                    ThemeMode.SYSTEM to R.string.theme_system,
+                    ThemeMode.LIGHT to R.string.theme_light,
+                    ThemeMode.DARK to R.string.theme_dark,
+                )
+                SingleChoiceSegmentedButtonRow(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                ) {
+                    modes.forEachIndexed { index, (mode, label) ->
+                        SegmentedButton(
+                            selected = appearance.theme == mode,
+                            onClick = { viewModel.update { it.copy(theme = mode) } },
+                            shape = SegmentedButtonDefaults.itemShape(index, modes.size, ButtonShape),
+                        ) { Text(stringResource(label)) }
+                    }
                 }
-            }
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.appearance_pure_black)) },
-                supportingContent = { Text(stringResource(R.string.appearance_pure_black_summary)) },
-                trailingContent = { Switch(checked = appearance.pureBlack, onCheckedChange = null) },
-                modifier = Modifier.clickable { viewModel.update { it.copy(pureBlack = !it.pureBlack) } },
-            )
-
-            Header(R.string.appearance_color)
-            if (Build.VERSION.SDK_INT >= 31) {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_dynamic_color)) },
-                    supportingContent = { Text(stringResource(R.string.settings_dynamic_color_summary)) },
-                    trailingContent = { Switch(checked = appearance.dynamicColor, onCheckedChange = null) },
-                    modifier = Modifier.clickable { viewModel.update { it.copy(dynamicColor = !it.dynamicColor) } },
+                    headlineContent = { Text(stringResource(R.string.appearance_pure_black)) },
+                    supportingContent = { Text(stringResource(R.string.appearance_pure_black_summary)) },
+                    trailingContent = { Switch(checked = appearance.pureBlack, onCheckedChange = null) },
+                    modifier = Modifier.clickable { viewModel.update { it.copy(pureBlack = !it.pureBlack) } },
                 )
-            }
-            val wallpaper = appearance.dynamicColor && Build.VERSION.SDK_INT >= 31
-            FlowRow(
-                Modifier
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .alpha(if (wallpaper) 0.45f else 1f),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                SWATCHES.forEach { color ->
+
+                Header(R.string.appearance_color)
+                if (Build.VERSION.SDK_INT >= 31) {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.settings_dynamic_color)) },
+                        supportingContent = { Text(stringResource(R.string.settings_dynamic_color_summary)) },
+                        trailingContent = { Switch(checked = appearance.dynamicColor, onCheckedChange = null) },
+                        modifier = Modifier.clickable { viewModel.update { it.copy(dynamicColor = !it.dynamicColor) } },
+                    )
+                }
+                val wallpaper = appearance.dynamicColor && Build.VERSION.SDK_INT >= 31
+                FlowRow(
+                    Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .alpha(if (wallpaper) 0.45f else 1f),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    SWATCHES.forEach { color ->
+                        Swatch(
+                            brush = Brush.linearGradient(listOf(Color(color), Color(color))),
+                            selected = !wallpaper && appearance.seedColor == color,
+                            onClick = { viewModel.update { it.copy(dynamicColor = false, seedColor = color) } },
+                        )
+                    }
+                    val custom = !wallpaper && appearance.seedColor !in SWATCHES
                     Swatch(
-                        brush = Brush.linearGradient(listOf(Color(color), Color(color))),
-                        selected = !wallpaper && appearance.seedColor == color,
-                        onClick = { viewModel.update { it.copy(dynamicColor = false, seedColor = color) } },
+                        brush = if (custom) {
+                            Brush.linearGradient(listOf(Color(appearance.seedColor), Color(appearance.seedColor)))
+                        } else {
+                            Brush.sweepGradient(HUES)
+                        },
+                        selected = custom,
+                        icon = !custom,
+                        onClick = { pickingColor = true },
                     )
                 }
-                val custom = !wallpaper && appearance.seedColor !in SWATCHES
-                Swatch(
-                    brush = if (custom) {
-                        Brush.linearGradient(listOf(Color(appearance.seedColor), Color(appearance.seedColor)))
-                    } else {
-                        Brush.sweepGradient(HUES)
-                    },
-                    selected = custom,
-                    icon = !custom,
-                    onClick = { pickingColor = true },
-                )
-            }
 
-            Header(R.string.appearance_palette)
-            Hint(R.string.appearance_palette_hint)
-            FlowRow(
-                Modifier.padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                PaletteStyle.entries.forEach { style ->
-                    FilterChip(
-                        selected = appearance.palette == style,
-                        onClick = { viewModel.update { it.copy(palette = style) } },
-                        label = { Text(stringResource(style.label())) },
-                    )
-                }
-            }
-
-            Header(R.string.appearance_contrast)
-            val contrasts = listOf(
-                Contrast.STANDARD to R.string.contrast_standard,
-                Contrast.MEDIUM to R.string.contrast_medium,
-                Contrast.HIGH to R.string.contrast_high,
-            )
-            SingleChoiceSegmentedButtonRow(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-            ) {
-                contrasts.forEachIndexed { index, (contrast, label) ->
-                    SegmentedButton(
-                        selected = appearance.contrast == contrast,
-                        onClick = { viewModel.update { it.copy(contrast = contrast) } },
-                        shape = SegmentedButtonDefaults.itemShape(index, contrasts.size, ButtonShape),
-                    ) { Text(stringResource(label)) }
-                }
-            }
-
-            Header(R.string.appearance_shape)
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                CornerStyle.entries.forEach { style ->
-                    val selected = appearance.corners == style
-                    val shape = shapes(style).large
-                    Column(
-                        Modifier
-                            .clip(MaterialTheme.shapes.medium)
-                            .clickable { viewModel.update { it.copy(corners = style) } }
-                            .padding(6.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Box(
-                            Modifier
-                                .size(56.dp)
-                                .clip(shape)
-                                .background(
-                                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
-                                ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
-                        }
-                        Text(
-                            stringResource(style.label()),
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.padding(top = 6.dp),
+                Header(R.string.appearance_palette)
+                Hint(R.string.appearance_palette_hint)
+                FlowRow(
+                    Modifier.padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    PaletteStyle.entries.forEach { style ->
+                        FilterChip(
+                            selected = appearance.palette == style,
+                            onClick = { viewModel.update { it.copy(palette = style) } },
+                            label = { Text(stringResource(style.label())) },
                         )
                     }
                 }
-            }
 
-            Header(R.string.appearance_font)
-            FlowRow(
-                Modifier.padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                FontStyle.entries.forEach { font ->
-                    FilterChip(
-                        selected = appearance.font == font,
-                        onClick = { viewModel.update { it.copy(font = font) } },
-                        label = { Text(stringResource(font.label()), fontFamily = fontFamily(font)) },
-                    )
+                Header(R.string.appearance_contrast)
+                val contrasts = listOf(
+                    Contrast.STANDARD to R.string.contrast_standard,
+                    Contrast.MEDIUM to R.string.contrast_medium,
+                    Contrast.HIGH to R.string.contrast_high,
+                )
+                SingleChoiceSegmentedButtonRow(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                ) {
+                    contrasts.forEachIndexed { index, (contrast, label) ->
+                        SegmentedButton(
+                            selected = appearance.contrast == contrast,
+                            onClick = { viewModel.update { it.copy(contrast = contrast) } },
+                            shape = SegmentedButtonDefaults.itemShape(index, contrasts.size, ButtonShape),
+                        ) { Text(stringResource(label)) }
+                    }
                 }
-            }
 
-            TextButton(
-                onClick = { viewModel.update { Appearance() } },
-                enabled = appearance != Appearance(),
-                shape = ButtonShape,
-                modifier = Modifier.padding(start = 8.dp, top = 24.dp),
-            ) { Text(stringResource(R.string.appearance_reset)) }
+                Header(R.string.appearance_shape)
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    CornerStyle.entries.forEach { style ->
+                        val selected = appearance.corners == style
+                        val shape = shapes(style).large
+                        Column(
+                            Modifier
+                                .clip(MaterialTheme.shapes.medium)
+                                .clickable { viewModel.update { it.copy(corners = style) } }
+                                .padding(6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(56.dp)
+                                    .clip(shape)
+                                    .background(
+                                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                            }
+                            Text(
+                                stringResource(style.label()),
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
+                    }
+                }
+
+                Header(R.string.appearance_font)
+                FlowRow(
+                    Modifier.padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FontStyle.entries.forEach { font ->
+                        FilterChip(
+                            selected = appearance.font == font,
+                            onClick = { viewModel.update { it.copy(font = font) } },
+                            label = { Text(stringResource(font.label()), fontFamily = fontFamily(font)) },
+                        )
+                    }
+                }
+
+                TextButton(
+                    onClick = { viewModel.update { Appearance() } },
+                    enabled = appearance != Appearance(),
+                    shape = ButtonShape,
+                    modifier = Modifier.padding(start = 8.dp, top = 24.dp),
+                ) { Text(stringResource(R.string.appearance_reset)) }
+            }
         }
     }
 
