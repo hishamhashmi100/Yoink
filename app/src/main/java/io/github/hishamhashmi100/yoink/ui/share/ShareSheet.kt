@@ -15,12 +15,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -44,9 +46,10 @@ import io.github.hishamhashmi100.yoink.download.Quality
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShareSheet(state: ShareUiState, onPick: (Quality) -> Unit, onDismiss: () -> Unit) {
+fun ShareSheet(state: ShareUiState, onPick: (Quality) -> Unit, onMinimize: () -> Unit, onClose: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    // Swipe down / Back / tap outside tucks the sheet away; the ✕ closes it for good.
+    ModalBottomSheet(onDismissRequest = onMinimize, sheetState = sheetState) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -54,7 +57,7 @@ fun ShareSheet(state: ShareUiState, onPick: (Quality) -> Unit, onDismiss: () -> 
                 .padding(bottom = 16.dp)
                 .navigationBarsPadding(),
         ) {
-            VideoHeader(state)
+            VideoHeader(state, onClose)
             Spacer(Modifier.height(16.dp))
 
             if (state.loadingFormats) {
@@ -81,8 +84,8 @@ fun ShareSheet(state: ShareUiState, onPick: (Quality) -> Unit, onDismiss: () -> 
 }
 
 @Composable
-private fun VideoHeader(state: ShareUiState) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+private fun VideoHeader(state: ShareUiState, onClose: () -> Unit) {
+    Row(verticalAlignment = Alignment.Top) {
         Box(
             Modifier
                 .width(132.dp)
@@ -127,6 +130,9 @@ private fun VideoHeader(state: ShareUiState) {
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
+        }
+        IconButton(onClick = onClose) {
+            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.share_close))
         }
     }
 }

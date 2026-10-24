@@ -15,6 +15,9 @@ import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 /**
@@ -93,6 +96,24 @@ object Engine {
                     YoutubeDL.UpdateChannel.STABLE,
                 ) == YoutubeDL.UpdateStatus.DONE
             }
+        }
+    }
+
+    @Volatile private var freshnessChecked = false
+
+    /**
+     * The yt-dlp bundled in the APK can be many months old by the time someone installs the app, and YouTube
+     * breaks old versions (they may get only part of a video). Before the first download or quality check in
+     * each app session, update it if it's more than 30 days old. Failures are ignored; the daily job retries.
+     */
+    suspend fun ensureFresh(context: Context) {
+        if (freshnessChecked) return
+        freshnessChecked = true
+        val released = runCatching { version(context) }.getOrNull()
+            ?.let { runCatching { LocalDate.parse(it.take(10), DateTimeFormatter.ofPattern("yyyy.MM.dd")) }.getOrNull() }
+            ?: return
+        if (ChronoUnit.DAYS.between(released, LocalDate.now()) > 30) {
+            runCatching { update(context) }
         }
     }
 

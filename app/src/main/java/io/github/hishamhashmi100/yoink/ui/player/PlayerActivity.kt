@@ -6,9 +6,13 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Bundle
+import android.view.Gravity
+import android.widget.FrameLayout
+import android.widget.ImageButton
 import androidx.activity.ComponentActivity
 import androidx.annotation.OptIn
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -22,7 +26,9 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.media3.ui.PlayerView
 import com.google.common.util.concurrent.ListenableFuture
+import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
+import io.github.hishamhashmi100.yoink.ui.MainActivity
 import io.github.hishamhashmi100.yoink.yoink
 import kotlinx.coroutines.launch
 import java.io.File
@@ -57,7 +63,33 @@ class PlayerActivity : ComponentActivity() {
             setShowPreviousButton(false)
             artworkDisplayMode = PlayerView.ARTWORK_DISPLAY_MODE_FIT
         }
-        setContentView(playerView)
+
+        // An ✕ in the corner to leave the player, shown and hidden together with the other controls.
+        val density = resources.displayMetrics.density
+        val close = ImageButton(this).apply {
+            setImageResource(R.drawable.ic_close)
+            setBackgroundResource(R.drawable.bg_player_button)
+            contentDescription = getString(R.string.close_player)
+            val pad = (10 * density).toInt()
+            setPadding(pad, pad, pad, pad)
+            setOnClickListener { finish() }
+        }
+        val size = (44 * density).toInt()
+        val margin = (16 * density).toInt()
+        val root = FrameLayout(this).apply {
+            addView(playerView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            addView(close, FrameLayout.LayoutParams(size, size, Gravity.TOP or Gravity.START))
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(close) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            (view.layoutParams as FrameLayout.LayoutParams).setMargins(bars.left + margin, bars.top + margin, 0, 0)
+            view.requestLayout()
+            insets
+        }
+        playerView.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+            close.visibility = visibility
+        })
+        setContentView(root)
         loadDownload(intent)
     }
 
@@ -72,6 +104,15 @@ class PlayerActivity : ComponentActivity() {
         lifecycleScope.launch {
             val found = yoink.repository.dao.get(id)
             if (found?.fileUri == null) {
+                finish()
+                return@launch
+            }
+            if (found.mimeType?.startsWith("audio/") == true) {
+                AudioController.play(this@PlayerActivity, listOf(found), 0)
+                startActivity(
+                    Intent(this@PlayerActivity, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                )
                 finish()
                 return@launch
             }

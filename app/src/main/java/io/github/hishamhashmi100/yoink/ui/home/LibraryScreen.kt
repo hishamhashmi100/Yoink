@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Share
@@ -58,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
 import io.github.hishamhashmi100.yoink.download.Notifications
+import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import io.github.hishamhashmi100.yoink.ui.player.PlayerActivity
 
 @Composable
@@ -142,7 +144,15 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier) {
                     LibraryItem(
                         download = download,
                         grid = grid,
-                        onPlay = { context.startActivity(PlayerActivity.intent(context, download.id)) },
+                        onPlay = {
+                            if (download.quality.isAudio) {
+                                // Like a music app: the library's MP3s, in order, starting with this one.
+                                val queue = items.filter { it.quality.isAudio }
+                                AudioController.play(context, queue, queue.indexOf(download))
+                            } else {
+                                context.startActivity(PlayerActivity.intent(context, download.id))
+                            }
+                        },
                         onShare = { FileActions.share(context, download) },
                         onOpenWith = { FileActions.openWith(context, download) },
                         onDelete = { toDelete = download },
@@ -181,39 +191,49 @@ private fun LibraryItem(
     onDelete: () -> Unit,
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
-    Box {
-        val clickable = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .combinedClickable(onClick = onPlay, onLongClick = { menuOpen = true })
-        if (grid) {
-            Column(clickable.fillMaxWidth()) {
-                ThumbnailWithBadges(download, Modifier.fillMaxWidth())
-                Spacer(Modifier.height(6.dp))
-                ItemText(download)
+    val clickable = Modifier
+        .clip(RoundedCornerShape(12.dp))
+        .combinedClickable(onClick = onPlay, onLongClick = { menuOpen = true })
+    // The ⋮ button and long-press open the same menu, anchored to the button.
+    val more: @Composable () -> Unit = {
+        Box {
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more_options))
             }
-        } else {
-            Row(clickable.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                ThumbnailWithBadges(download, Modifier.width(144.dp))
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) { ItemText(download) }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_share)) },
+                    leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
+                    onClick = { menuOpen = false; onShare() },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_open_with)) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
+                    onClick = { menuOpen = false; onOpenWith() },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_delete)) },
+                    leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
+                    onClick = { menuOpen = false; onDelete() },
+                )
             }
         }
-        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_share)) },
-                leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
-                onClick = { menuOpen = false; onShare() },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_open_with)) },
-                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
-                onClick = { menuOpen = false; onOpenWith() },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.action_delete)) },
-                leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
-                onClick = { menuOpen = false; onDelete() },
-            )
+    }
+    if (grid) {
+        Column(clickable.fillMaxWidth()) {
+            ThumbnailWithBadges(download, Modifier.fillMaxWidth())
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) { ItemText(download) }
+                more()
+            }
+        }
+    } else {
+        Row(clickable.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            ThumbnailWithBadges(download, Modifier.width(144.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) { ItemText(download) }
+            more()
         }
     }
 }
