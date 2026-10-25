@@ -92,6 +92,10 @@ class SettingsStore(context: Context) {
     val videoRepeat: Flow<Int> = store.data.map { it[VIDEO_REPEAT] ?: 0 }
 
     suspend fun setAudioRepeat(mode: Int) = store.edit { it[AUDIO_REPEAT] = mode }
+
+    /** Shuffle for MP3s, kept between sessions like repeat. */
+    val audioShuffle: Flow<Boolean> = store.data.map { it[AUDIO_SHUFFLE] ?: false }
+    suspend fun setAudioShuffle(on: Boolean) = store.edit { it[AUDIO_SHUFFLE] = on }
     suspend fun setVideoRepeat(mode: Int) = store.edit { it[VIDEO_REPEAT] = mode }
 
     suspend fun setShareMode(mode: ShareMode) = store.edit { it[SHARE_MODE] = mode.name }
@@ -149,6 +153,7 @@ class SettingsStore(context: Context) {
         val BACKDROP_COLOR_2 = intPreferencesKey("backdrop_color_2")
         val SAVED_THEMES = stringPreferencesKey("saved_themes")
         val AUDIO_REPEAT = intPreferencesKey("audio_repeat")
+        val AUDIO_SHUFFLE = booleanPreferencesKey("audio_shuffle")
         val VIDEO_REPEAT = intPreferencesKey("video_repeat")
         val FIRST_UPDATE_DONE = booleanPreferencesKey("first_update_done")
         val NOTIFIED_VERSION = stringPreferencesKey("notified_version")

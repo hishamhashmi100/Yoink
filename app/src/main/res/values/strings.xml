@@ -62,6 +62,8 @@
     <string name="player_repeat_off">Repeat off</string>
     <string name="player_shuffle_on">Shuffle on</string>
     <string name="player_shuffle_off">Shuffle off</string>
+    <string name="player_shuffle_on_toast">Shuffle on: tracks play in random order</string>
+    <string name="player_shuffle_off_toast">Shuffle off: tracks play in order</string>
     <string name="now_playing">Now playing</string>
     <string name="now_playing_queue">Up next</string>
     <string name="player_repeat_all">Repeat all</string>
