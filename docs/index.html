@@ -227,7 +227,7 @@
     .yt-actions { display: flex; gap: 8px; padding: 4px 14px; }
     .yt-actions span { height: 30px; flex: 1; border-radius: 999px; background: var(--m-skeleton); }
     .yt-actions .share { flex: 1.3; display: grid; place-items: center; background: var(--m-text); color: var(--m-screen); font-size: 11px; font-weight: 700; }
-    .scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); }
+    .scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); opacity: 1; }
     .sheet {
       position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 16px 22px;
       border-radius: 26px 26px 0 0; background: var(--m-surface); box-shadow: 0 -10px 30px rgba(0, 0, 0, .18);
@@ -245,26 +245,107 @@
     .s-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 7px 0; }
     .s-row .s-btn { height: 38px; border: 1px solid var(--m-outline); color: var(--m-primary); position: relative; }
     .s-audio { height: 38px; background: var(--m-tonal); color: var(--m-on-tonal); }
-    .tap { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: rgba(120, 120, 120, .35); opacity: 0; pointer-events: none; }
+    /* YouTube's share panel and Android's share sheet */
+    .panel {
+      position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px 20px; transform: translateY(105%);
+      border-radius: 26px 26px 0 0; background: var(--m-surface); box-shadow: 0 -10px 30px rgba(0, 0, 0, .18);
+    }
+    .p-title { margin: 0 4px 12px; font-size: 13px; font-weight: 700; }
+    .apps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 4px; }
+    .app { position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 3px 0; border-radius: 14px; font-size: 9.5px; line-height: 1.2; text-align: center; color: var(--m-muted); }
+    .app i { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; color: #fff; }
+    .app i svg { width: 18px; height: 18px; }
+    .app i.more { background: var(--m-skeleton); color: var(--m-text); }
+    .app svg.logo { width: 38px; height: 38px; }
+    .p-link { display: flex; align-items: center; gap: 10px; margin: 0 4px 14px; padding-bottom: 12px; border-bottom: 1px solid var(--m-skeleton); }
+    .p-link .s-thumb { width: 52px; border-radius: 6px; }
+    .p-link b { display: block; font-size: 11.5px; line-height: 1.3; }
+    .p-link small { display: block; font-size: 10px; color: var(--m-muted); }
+
+    /* What to tap next: a yellow ring, then a tap */
+    .ring { position: absolute; inset: -4px; border-radius: 16px; border: 3px solid #ffc83d; box-shadow: 0 0 0 2px #1d1411; opacity: 0; pointer-events: none; }
+    .yt-actions .share { position: relative; }
+    .yt-actions .ring, .s-row .ring { border-radius: 999px; }
+    .tap { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: rgba(120, 120, 120, .45); opacity: 0; pointer-events: none; }
+
     .toast {
       position: absolute; left: 50%; bottom: 30px; transform: translateX(-50%); padding: 10px 16px; border-radius: 12px;
       background: var(--m-toast); color: var(--m-on-toast); font-size: 12.5px; white-space: nowrap; opacity: 0;
     }
-    /* The phone acts it out: the sheet slides up, 1080p gets tapped, the sheet closes and the download starts */
-    @media (prefers-reduced-motion: no-preference) {
-      .play-demo .scrim { animation: demo-scrim 7s ease infinite; }
-      .play-demo .sheet { animation: demo-sheet 7s cubic-bezier(.2, .8, .2, 1) infinite; }
-      .play-demo .tap { animation: demo-tap 7s ease-out infinite; }
-      .play-demo .press { animation: demo-press 7s ease infinite; }
-      .play-demo .toast { animation: demo-toast 7s ease infinite; }
-      .play-demo .yt-actions .share { animation: demo-share 7s ease infinite; }
+    .status { position: relative; z-index: 2; }
+    .home {
+      position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 128px 12px 34px;
+      background: linear-gradient(165deg, #ffcf7a, #ff8a5c 45%, #7b3f8c); opacity: 0;
     }
-    @keyframes demo-share { 0%, 4% { transform: scale(1); } 7% { transform: scale(.92); } 10%, 100% { transform: scale(1); } }
-    @keyframes demo-scrim { 0%, 8% { opacity: 0; } 14%, 58% { opacity: 1; } 64%, 100% { opacity: 0; } }
-    @keyframes demo-sheet { 0%, 9% { transform: translateY(105%); } 17%, 56% { transform: translateY(0); } 63%, 100% { transform: translateY(105%); } }
-    @keyframes demo-tap { 0%, 44% { opacity: 0; transform: scale(.4); } 46% { opacity: 1; transform: scale(.8); } 52% { opacity: 0; transform: scale(2.4); } 100% { opacity: 0; } }
-    @keyframes demo-press { 0%, 45% { background: transparent; } 47%, 52% { background: rgba(192, 20, 28, .14); } 55%, 100% { background: transparent; } }
-    @keyframes demo-toast { 0%, 62% { opacity: 0; transform: translate(-50%, 10px); } 66%, 90% { opacity: 1; transform: translate(-50%, 0); } 95%, 100% { opacity: 0; transform: translate(-50%, 0); } }
+    .home .clock { color: #fff; text-align: center; font-size: 46px; font-weight: 300; line-height: 1; text-shadow: 0 2px 10px rgba(0, 0, 0, .2); }
+    .home .clock small { display: block; margin-top: 6px; font-size: 13px; font-weight: 500; }
+    .home .app { color: #fff; }
+    .drop {
+      position: absolute; left: 8px; right: 8px; top: 38px; display: flex; gap: 10px; padding: 10px 12px; border-radius: 18px;
+      background: var(--m-surface); box-shadow: 0 8px 24px rgba(0, 0, 0, .22); transform: translateY(-160%);
+    }
+    .drop svg { width: 26px; height: 26px; }
+    .drop div { flex: 1; min-width: 0; }
+    .drop b { display: block; font-size: 11.5px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .drop small { display: block; font-size: 10px; color: var(--m-muted); }
+    .drop .bar { height: 4px; margin-top: 6px; border-radius: 4px; background: var(--m-skeleton); overflow: hidden; }
+    .drop .bar i { display: block; width: 40%; height: 100%; background: var(--m-primary); }
+
+    .demo-caption { position: relative; width: 100%; height: 52px; margin-top: 24px; text-align: center; font-size: 17px; font-weight: 700; }
+    .demo-caption span { position: absolute; inset: 0; opacity: 0; }
+    .demo-caption .c4 { opacity: 1; }
+    .demo-caption small { display: block; font-size: 14px; font-weight: 500; color: var(--muted); }
+    .demo-caption b { padding: 1px 8px; border-radius: 8px; background: var(--yellow); color: var(--ink); }
+
+    /* The phone acts out the whole thing: Share, More, Yoink, a quality, and the download starts. Every
+       part runs on the same 16-second loop; the rings and taps share one timing, shifted by a delay. */
+    @media (prefers-reduced-motion: no-preference) {
+      .play-demo *, .play-demo ~ .demo-caption span { animation-duration: 16s; animation-iteration-count: infinite; animation-fill-mode: both; animation-timing-function: ease; }
+      .play-demo .scrim { animation-name: d-scrim; }
+      .play-demo .yt-share { animation-name: d-yt; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+      .play-demo .sys-share { animation-name: d-sys; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+      .play-demo .sheet { animation-name: d-sheet; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+      .play-demo .ring { animation-name: d-ring; }
+      .play-demo .tap { animation-name: d-tap; animation-timing-function: ease-out; }
+      .play-demo .on-share > b { animation-delay: .32s; }
+      .play-demo .on-more > b { animation-delay: 2.4s; }
+      .play-demo .on-yoink > b { animation-delay: 4.8s; }
+      .play-demo .on-quality > b { animation-delay: 7.36s; }
+      .play-demo .yt-actions .share { animation-name: d-press; }
+      .play-demo .toast { animation-name: d-toast; }
+      .play-demo .home { animation-name: d-home; }
+      .play-demo .drop { animation-name: d-drop; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+      .play-demo .drop .bar i { animation-name: d-bar; animation-timing-function: linear; }
+      .play-demo ~ .demo-caption .c1 { animation-name: d-c1; }
+      .play-demo ~ .demo-caption .c2 { animation-name: d-c2; }
+      .play-demo ~ .demo-caption .c3 { animation-name: d-c3; }
+      .play-demo ~ .demo-caption .c4 { animation-name: d-c4; }
+      .play-demo ~ .demo-caption .c5 { animation-name: d-c5; }
+      .play-demo ~ .demo-caption .c6 { animation-name: d-c6; }
+    }
+    @keyframes d-scrim { 0%, 10.5% { opacity: 0; } 13%, 56% { opacity: 1; } 59%, 100% { opacity: 0; } }
+    @keyframes d-yt { 0%, 11% { transform: translateY(105%); } 14%, 24% { transform: translateY(0); } 26.5%, 100% { transform: translateY(105%); } }
+    @keyframes d-sys { 0%, 25% { transform: translateY(105%); } 28%, 39.5% { transform: translateY(0); } 42%, 100% { transform: translateY(105%); } }
+    @keyframes d-sheet { 0%, 41% { transform: translateY(105%); } 44%, 55.5% { transform: translateY(0); } 58.5%, 100% { transform: translateY(105%); } }
+    @keyframes d-ring {
+      0% { opacity: 0; transform: scale(.9); }
+      1.5% { opacity: 1; transform: scale(1); }
+      3% { transform: scale(1.07); } 4.5% { transform: scale(1); } 6% { transform: scale(1.07); }
+      7.5% { opacity: 1; transform: scale(1); }
+      9%, 100% { opacity: 0; transform: scale(1); }
+    }
+    @keyframes d-tap { 0%, 7.5% { opacity: 0; transform: scale(.4); } 8% { opacity: 1; transform: scale(.8); } 10% { opacity: 0; transform: scale(2.2); } 100% { opacity: 0; } }
+    @keyframes d-press { 0%, 9.5% { transform: scale(1); } 10% { transform: scale(.9); } 11%, 100% { transform: scale(1); } }
+    @keyframes d-toast { 0%, 58.5% { opacity: 0; transform: translate(-50%, 10px); } 60.5%, 65% { opacity: 1; transform: translate(-50%, 0); } 66.5%, 100% { opacity: 0; transform: translate(-50%, 0); } }
+    @keyframes d-home { 0%, 66% { opacity: 0; transform: scale(1.08); } 69%, 96% { opacity: 1; transform: scale(1); } 99%, 100% { opacity: 0; transform: scale(1); } }
+    @keyframes d-drop { 0%, 71% { transform: translateY(-160%); } 74%, 94% { transform: translateY(0); } 97%, 100% { transform: translateY(-160%); } }
+    @keyframes d-bar { 0%, 74% { width: 3%; } 93%, 100% { width: 100%; } }
+    @keyframes d-c1 { 0% { opacity: 0; } 1.5%, 10% { opacity: 1; } 11.5%, 100% { opacity: 0; } }
+    @keyframes d-c2 { 0%, 11.5% { opacity: 0; } 13%, 24% { opacity: 1; } 25.5%, 100% { opacity: 0; } }
+    @keyframes d-c3 { 0%, 25.5% { opacity: 0; } 27%, 39.5% { opacity: 1; } 41%, 100% { opacity: 0; } }
+    @keyframes d-c4 { 0%, 41% { opacity: 0; } 42.5%, 56% { opacity: 1; } 57.5%, 100% { opacity: 0; } }
+    @keyframes d-c5 { 0%, 57.5% { opacity: 0; } 59%, 65% { opacity: 1; } 66.5%, 100% { opacity: 0; } }
+    @keyframes d-c6 { 0%, 66.5% { opacity: 0; } 68%, 97% { opacity: 1; } 99%, 100% { opacity: 0; } }
 
     .screen { border-radius: 36px; }
 
@@ -696,8 +777,8 @@
           </li>
           <li class="inked">
             <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
-            <h3>Keep watching</h3>
-            <p>Downloads run in the background. A notification shows the speed and how long is left.</p>
+            <h3>Runs in the background</h3>
+            <p>Close YouTube or lock your phone and it keeps downloading. A notification shows the speed and how long is left.</p>
           </li>
           <li class="inked">
             <div class="ico"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l11-6.5a1 1 0 0 0 0-1.72l-11-6.5A1 1 0 0 0 8 5.5Z"/></svg></div>
@@ -729,9 +810,10 @@
           <h2>How to use it</h2>
           <p class="sub">You never have to copy a link.</p>
           <ol class="steps">
-            <li><b>Tap Share</b><span>Under any video in the YouTube app, or on youtube.com in your browser. The first time, you might need to tap <span class="pill">More</span> to find Yoink.</span></li>
-            <li><b>Pick a quality</b><span>A small sheet opens over YouTube. Tap the quality you want and it closes again.</span></li>
-            <li><b>That's it</b><span>The video downloads while you keep watching. When it's done, it's waiting in Yoink's Library.</span></li>
+            <li><b>Tap Share</b><span>Under any video in the YouTube app, or on youtube.com in your browser.</span></li>
+            <li><b>Tap Yoink</b><span>If it isn't in the first row, tap <span class="pill">More</span> and find Yoink in the list. After the first time, Yoink usually shows up right away.</span></li>
+            <li><b>Pick a quality</b><span>A small sheet opens over YouTube. Tap the quality you want, or Audio (MP3).</span></li>
+            <li><b>You're free to go</b><span>No need to keep YouTube open or keep watching. Close it, lock your phone, use other apps. Yoink downloads in the background, tells you when it's done, and the video waits in its Library.</span></li>
           </ol>
         </div>
 
@@ -745,9 +827,33 @@
               </span></div>
               <div class="yt-video"><b class="sun"></b><b class="hills"></b></div>
               <div class="yt-meta"><div class="line" style="width:88%"></div><div class="line" style="width:62%"></div><div class="line" style="width:40%;height:8px"></div></div>
-              <div class="yt-actions"><span></span><span></span><span class="share">Share</span><span></span></div>
+              <div class="yt-actions"><span></span><span></span><span class="share on-share">Share<b class="ring"></b><b class="tap"></b></span><span></span></div>
               <div class="yt-meta"><div class="line" style="width:94%"></div><div class="line" style="width:76%"></div><div class="line" style="width:84%"></div></div>
               <div class="scrim"></div>
+              <div class="panel yt-share">
+                <div class="handle"></div>
+                <div class="p-title">Share</div>
+                <div class="apps">
+                  <div class="app"><i style="background:#5f6368"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></i>Copy link</div>
+                  <div class="app"><i style="background:#1e88e5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12Z"/></svg></i>Messages</div>
+                  <div class="app"><i style="background:#e8453c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></i>Email</div>
+                  <div class="app on-more"><i class="more"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></i>More<b class="ring"></b><b class="tap"></b></div>
+                </div>
+              </div>
+              <div class="panel sys-share">
+                <div class="handle"></div>
+                <div class="p-link"><div class="s-thumb"></div><div><b>Golden hour drive through the mountains</b><small>youtube.com</small></div></div>
+                <div class="apps">
+                  <div class="app"><i style="background:#1e88e5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12Z"/></svg></i>Messages</div>
+                  <div class="app"><i style="background:#e8453c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></i>Email</div>
+                  <div class="app"><i style="background:#f9ab00"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></i>Notes</div>
+                  <div class="app"><i style="background:#34a853"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19.5 10 4 4 0 0 1 18 18z"/></svg></i>Drive</div>
+                  <div class="app"><i style="background:#5c6bc0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></svg></i>Bluetooth</div>
+                  <div class="app"><i style="background:#00897b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg></i>Nearby</div>
+                  <div class="app on-yoink"><svg class="logo" viewBox="0 0 64 64"><use href="#logo"/></svg>Yoink<b class="ring"></b><b class="tap"></b></div>
+                  <div class="app"><i style="background:#8d6e63"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></i>Files</div>
+                </div>
+              </div>
               <div class="sheet">
                 <div class="handle"></div>
                 <div class="s-head">
@@ -756,11 +862,29 @@
                   <svg class="s-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
                 </div>
                 <div class="s-btn s-best"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>Best</div>
-                <div class="s-row"><div class="s-btn press">1080p<b class="tap"></b></div><div class="s-btn">720p</div><div class="s-btn">480p</div></div>
+                <div class="s-row"><div class="s-btn on-quality">1080p<b class="ring"></b><b class="tap"></b></div><div class="s-btn">720p</div><div class="s-btn">480p</div></div>
                 <div class="s-btn s-audio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Audio (MP3)</div>
               </div>
               <div class="toast">Download started</div>
+              <div class="home">
+                <div class="clock">9:41<small>Saturday</small></div>
+                <div class="apps">
+                  <div class="app"><i style="background:#1e88e5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12Z"/></svg></i>Messages</div>
+                  <div class="app"><i style="background:#43a047"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2Z"/></svg></i>Phone</div>
+                  <div class="app"><i style="background:#8e24aa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></i>Gallery</div>
+                  <div class="app"><svg class="logo" viewBox="0 0 64 64"><use href="#logo"/></svg>Yoink</div>
+                </div>
+              </div>
+              <div class="drop"><svg viewBox="0 0 64 64"><use href="#logo"/></svg><div><b>Golden hour drive through the mountains</b><small>Downloading · 1080p</small><div class="bar"><i></i></div></div></div>
             </div>
+          </div>
+          <div class="demo-caption">
+            <span class="c1">1. Tap <b>Share</b></span>
+            <span class="c2">2. Tap <b>More</b></span>
+            <span class="c3">3. Tap <b>Yoink</b></span>
+            <span class="c4">4. Pick a quality</span>
+            <span class="c5">Download started</span>
+            <span class="c6">Close YouTube, it keeps going<small>Yoink tells you when it's done</small></span>
           </div>
         </div>
       </div>
