@@ -79,7 +79,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -335,17 +335,29 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                 ) {
                     modes.forEachIndexed { index, (mode, label) ->
                         SegmentedButton(
-                            selected = appearance.theme == mode,
-                            onClick = { viewModel.update { it.copy(theme = mode) } },
+                            // Pure black is dark, so it shows as Dark; Light or System turns it off.
+                            selected = if (appearance.pureBlack) mode == ThemeMode.DARK else appearance.theme == mode,
+                            onClick = {
+                                viewModel.update {
+                                    it.copy(theme = mode, pureBlack = it.pureBlack && mode == ThemeMode.DARK)
+                                }
+                            },
                             shape = SegmentedButtonDefaults.itemShape(index, modes.size, ButtonShape),
                         ) { Text(stringResource(label)) }
                     }
+                }
+                if (appearance.customBackdrop && appearance.theme == ThemeMode.SYSTEM) {
+                    Hint(R.string.appearance_mode_follows_glass)
                 }
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.appearance_pure_black)) },
                     supportingContent = { Text(stringResource(R.string.appearance_pure_black_summary)) },
                     trailingContent = { Switch(checked = appearance.pureBlack, onCheckedChange = null) },
-                    modifier = Modifier.clickable { viewModel.update { it.copy(pureBlack = !it.pureBlack) } },
+                    modifier = Modifier.clickable {
+                        viewModel.update {
+                            if (it.pureBlack) it.copy(pureBlack = false) else it.copy(pureBlack = true, theme = ThemeMode.DARK)
+                        }
+                    },
                 )
 
                 Header(R.string.appearance_glass)
@@ -359,6 +371,7 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                     GlassStyle.entries.forEach { style ->
                         GlassTile(
                             style = style,
+                            appearance = appearance,
                             selected = appearance.glass == style,
                             onClick = { viewModel.update { it.copy(glass = style) } },
                             modifier = Modifier.weight(1f),
@@ -383,21 +396,32 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                     )
                 }
                 val wallpaper = appearance.dynamicColor && Build.VERSION.SDK_INT >= 31
+                // With their own glass colors, the app's colors follow those, so nothing here is ticked;
+                // picking a color goes back to theme colors behind the glass.
+                val followsGlass = appearance.customBackdrop
+                if (followsGlass) Hint(R.string.appearance_color_follows_glass)
+                fun pick(color: Int) = viewModel.update {
+                    it.copy(
+                        dynamicColor = false,
+                        seedColor = color,
+                        glassBehind = if (it.customBackdrop) GlassBehind.THEME else it.glassBehind,
+                    )
+                }
                 FlowRow(
                     Modifier
                         .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .alpha(if (wallpaper) 0.45f else 1f),
+                        .alpha(if (wallpaper || followsGlass) 0.45f else 1f),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     SWATCHES.forEach { color ->
                         Swatch(
                             brush = Brush.linearGradient(listOf(Color(color), Color(color))),
-                            selected = !wallpaper && appearance.seedColor == color,
-                            onClick = { viewModel.update { it.copy(dynamicColor = false, seedColor = color) } },
+                            selected = !wallpaper && !followsGlass && appearance.seedColor == color,
+                            onClick = { pick(color) },
                         )
                     }
-                    val custom = !wallpaper && appearance.seedColor !in SWATCHES
+                    val custom = !wallpaper && !followsGlass && appearance.seedColor !in SWATCHES
                     Swatch(
                         brush = if (custom) {
                             Brush.linearGradient(listOf(Color(appearance.seedColor), Color(appearance.seedColor)))
@@ -874,6 +898,7 @@ private fun LookPreview() {
                 onPlayPause = { playing = !playing },
                 onNext = { play((index + 1) % PREVIEW_AUDIO.size) },
                 onClose = { track = null },
+                onSeek = { progress = it },
             )
         }
     }
@@ -949,13 +974,52 @@ private fun ThemeCard(
     }
 }
 
-/** A little picture of each surface style: a panel over the color backdrop. */
+/**
+ * A little picture of each surface style, in the user's own colors: the glass tiles show what's chosen
+ * behind the glass (theme colors, one or two colors, or a wallpaper) with a pane at the chosen opacity;
+ * the solid tile shows the theme's colors with a solid pane.
+ */
 @Composable
-private fun GlassTile(style: GlassStyle, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun GlassTile(
+    style: GlassStyle,
+    appearance: Appearance,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = MaterialTheme.colorScheme
-    val dark = colors.onSurface.luminance() > 0.5f
-    val tile = Glass(style, dark, Color.Unspecified, colors.primary)
+    val context = LocalContext.current
+    val dark = isDarkTheme(appearance)
+    // The theme's own palette (the Color section's), whatever is behind the glass.
+    val palette = remember(appearance, dark) { colorScheme(context, appearance, dark) }
+    val tile = Glass(style, dark, Color.Unspecified, palette.primary, appearance.glassOpacity ?: style.defaultOpacity)
+    val black = appearance.pureBlack && style != GlassStyle.OFF
+    val behind = when {
+        black -> GlassBehind.ONE_COLOR
+        style == GlassStyle.OFF -> GlassBehind.THEME
+        else -> appearance.glassBehind
+    }
+    val color1 = if (black) Color.Black else Color(appearance.backdropColor1)
+    val color2 = if (black) Color.Black else Color(appearance.backdropColor2)
     val shape = MaterialTheme.shapes.medium
+    val drawBackdrop: DrawScope.() -> Unit = {
+        when (behind) {
+            GlassBehind.ONE_COLOR -> drawRect(color1)
+            GlassBehind.TWO_COLORS -> drawRect(Brush.linearGradient(listOf(color1, color2), Offset.Zero, Offset(size.width, size.height)))
+            // A little landscape stands for "your wallpaper".
+            GlassBehind.WALLPAPER -> {
+                drawRect(Brush.verticalGradient(listOf(palette.primaryContainer, palette.surface)))
+                drawCircle(palette.tertiary, size.height * 0.16f, Offset(size.width * 0.78f, size.height * 0.28f))
+                drawCircle(palette.primary, size.width * 0.45f, Offset(size.width * 0.22f, size.height * 1.25f))
+                drawCircle(palette.secondary, size.width * 0.5f, Offset(size.width * 0.85f, size.height * 1.4f))
+            }
+            GlassBehind.THEME -> {
+                drawRect(palette.background)
+                drawCircle(palette.primary, size.minDimension * 0.42f, Offset(size.width * 0.28f, size.height * 0.35f))
+                drawCircle(palette.tertiary, size.minDimension * 0.36f, Offset(size.width * 0.72f, size.height * 0.75f))
+            }
+        }
+    }
     Column(
         modifier
             .clip(shape)
@@ -967,30 +1031,24 @@ private fun GlassTile(style: GlassStyle, selected: Boolean, onClick: () -> Unit,
                 .fillMaxWidth()
                 .height(72.dp)
                 .clip(shape)
-                .then(if (selected) Modifier.border(3.dp, colors.primary, shape) else Modifier),
+                .border(if (selected) 3.dp else 1.dp, if (selected) colors.primary else colors.outlineVariant, shape),
             contentAlignment = Alignment.Center,
         ) {
-            Canvas(Modifier.matchParentSize()) {
-                drawRect(if (dark) Color(0xFF101014) else Color(0xFFF6F6F8))
-                drawCircle(colors.primary, size.minDimension * 0.42f, Offset(size.width * 0.28f, size.height * 0.35f))
-                drawCircle(colors.tertiary, size.minDimension * 0.36f, Offset(size.width * 0.72f, size.height * 0.75f))
-            }
+            Canvas(Modifier.matchParentSize(), onDraw = drawBackdrop)
             val panel = Modifier
                 .fillMaxWidth(0.7f)
                 .height(36.dp)
             val panelShape = MaterialTheme.shapes.small
             when (style) {
-                GlassStyle.OFF -> Box(panel.background(if (dark) Color(0xFF26262C) else Color.White, panelShape))
-                // A real blur of the circles behind, so the tile shows what frosted means.
+                GlassStyle.OFF -> Box(panel.background(palette.surfaceContainerHighest, panelShape))
+                // A real blur of what's behind, so the tile shows what frosted means.
                 GlassStyle.FROSTED -> Box(panel.clip(panelShape)) {
                     Canvas(
                         Modifier
                             .matchParentSize()
                             .blur(10.dp),
-                    ) {
-                        drawCircle(colors.primary, size.height * 1.1f, Offset(size.width * 0.1f, 0f))
-                        drawCircle(colors.tertiary, size.height * 0.9f, Offset(size.width * 0.95f, size.height * 1.2f))
-                    }
+                        onDraw = drawBackdrop,
+                    )
                     Box(Modifier.matchParentSize().glassPanel(tile, panelShape))
                 }
                 GlassStyle.CLEAR -> Box(panel.glassPanel(tile, panelShape))
@@ -1011,7 +1069,12 @@ private fun Swatch(brush: Brush, selected: Boolean, onClick: () -> Unit, icon: B
             .size(44.dp)
             .clip(CircleShape)
             .background(brush)
-            .then(if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape) else Modifier)
+            // Always outlined, so a swatch never disappears into a background of the same color.
+            .border(
+                if (selected) 3.dp else 1.5.dp,
+                MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) 1f else 0.45f),
+                CircleShape,
+            )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

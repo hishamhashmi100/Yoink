@@ -9,8 +9,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,9 +23,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -36,17 +41,14 @@ import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,13 +57,13 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -76,76 +78,70 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 import io.github.hishamhashmi100.yoink.ui.theme.GlassBackdrop
-import io.github.hishamhashmi100.yoink.ui.theme.GlassWindowBlur
 import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdropColors
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
 import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
-import io.github.hishamhashmi100.yoink.ui.theme.windowBlurAvailable
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /**
- * The full-screen "Now playing" view for MP3s, opened from the mini player. Drawn entirely from the
- * Appearance settings: colors, glass, corners and font all come from the theme.
+ * The full-screen "Now playing" view for MP3s, pulled up from the mini player. [progress] runs from 0
+ * (tucked away) to 1 (open): while a finger drags (here or on the mini player) it follows the finger, and
+ * [onDragStopped] settles it open or closed. Drawn entirely from the Appearance settings.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NowPlayingSheet(onDismiss: () -> Unit) {
+fun NowPlayingOverlay(
+    progress: Float,
+    onDrag: (Float) -> Unit,
+    onDragStopped: (Float) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val nowPlaying by AudioController.nowPlaying.collectAsStateWithLifecycle()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
-    val glass = LocalGlass.current
-    val context = LocalContext.current
-    val blur = remember { windowBlurAvailable(context) }
-
-    // Playback stopped (✕ in the mini player, or the queue ran out): nothing left to show. The short wait
-    // covers opening from the notification, before the player has reported what's playing.
-    LaunchedEffect(nowPlaying == null) {
-        if (nowPlaying == null) {
-            delay(1_000)
-            onDismiss()
-        }
-    }
     val playing = nowPlaying ?: return
+    val glass = LocalGlass.current
+    // The color backdrop is drawn here, so the controls' glass can blur it; the wallpaper shows through instead.
+    val blurBackdrop = glass.enabled && !glass.wallpaper
+    val hazeState = rememberHazeState()
+    if (progress >= 1f) HideSystemBars()
 
-    fun close() {
-        scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        // Glass draws its own backdrop below, the same one the rest of the app sits on.
-        containerColor = when {
-            !glass.enabled -> MaterialTheme.colorScheme.surface
-            // Over the wallpaper: the app behind is blurred (below) under a wash of the theme.
-            glass.wallpaper -> (LocalBackdropColors.current ?: MaterialTheme.colorScheme).background
-                .copy(alpha = if (blur) 0.40f else 0.88f)
-            else -> Color.Transparent
-        },
-        dragHandle = null,
-    ) {
-        Box(Modifier.fillMaxSize()) {
-            HideSystemBars()
-            if (glass.enabled && glass.wallpaper) GlassWindowBlur(strength = 40.dp)
-            if (glass.enabled && !glass.wallpaper) GlassBackdrop(LocalBackdropColors.current ?: MaterialTheme.colorScheme)
+    val drag = Modifier.draggable(
+        orientation = Orientation.Vertical,
+        state = rememberDraggableState(onDrag),
+        onDragStopped = { velocity -> onDragStopped(velocity) },
+    )
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val height = constraints.maxHeight.toFloat()
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { translationY = (1f - progress) * height }
+                .background(if (glass.enabled) Color.Transparent else MaterialTheme.colorScheme.surface)
+                // Taps on empty space shouldn't reach the screen underneath.
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
+        ) {
+            if (blurBackdrop) {
+                GlassBackdrop(LocalBackdropColors.current ?: MaterialTheme.colorScheme, Modifier.hazeSource(hazeState))
+            }
             var showQueue by rememberSaveable { mutableStateOf(false) }
             Column(
                 Modifier
                     .fillMaxSize()
-                    .navigationBarsPadding()
+                    .systemBarsPadding()
                     .padding(horizontal = 24.dp),
             ) {
                 Row(
-                    Modifier
+                    drag
                         .fillMaxWidth()
                         .padding(top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton(onClick = ::close) {
+                    IconButton(onClick = onClose) {
                         Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.close_player))
                     }
                     Text(
@@ -166,13 +162,16 @@ fun NowPlayingSheet(onDismiss: () -> Unit) {
                 AnimatedContent(
                     targetState = showQueue,
                     transitionSpec = { fadeIn() togetherWith fadeOut() },
-                    modifier = Modifier.weight(1f),
+                    // The cover can be dragged down to close; the queue scrolls instead.
+                    modifier = Modifier
+                        .weight(1f)
+                        .then(if (showQueue) Modifier else drag),
                     label = "cover or queue",
                 ) { queue ->
                     if (queue) QueueList(playing.index) else Cover(playing)
                 }
 
-                Controls(playing)
+                Controls(playing, hazeState.takeIf { blurBackdrop })
             }
         }
     }
@@ -288,9 +287,12 @@ private fun QueueList(current: Int) {
     }
 }
 
-/** Seek bar and buttons, on a glass pane when glass is on. */
+/**
+ * Seek bar and buttons, on a pane of glass when glass is on: the same glass (and opacity) as everywhere
+ * else, blurring the backdrop behind it when [hazeState] is given.
+ */
 @Composable
-private fun Controls(playing: NowPlaying) {
+private fun Controls(playing: NowPlaying, hazeState: HazeState?) {
     val context = LocalContext.current
     val glass = LocalGlass.current
     val shape = MaterialTheme.shapes.extraLarge
@@ -316,7 +318,7 @@ private fun Controls(playing: NowPlaying) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 16.dp, bottom = 16.dp)
-            .glassPanel(glass, shape),
+            .glassPanel(glass, shape, hazeState),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             val fraction = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
