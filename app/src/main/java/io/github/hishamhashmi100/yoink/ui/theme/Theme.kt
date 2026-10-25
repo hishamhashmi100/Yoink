@@ -126,7 +126,6 @@ private val DarkColors = darkColorScheme(
     surfaceContainerHighest = Color(0xFF3D3231),
 )
 
-@Composable
 /** Text in [text]: titles and body text, with secondary text (hints, details) a little softer. */
 private fun ColorScheme.withText(text: Color): ColorScheme = copy(
     onBackground = text,
@@ -134,6 +133,7 @@ private fun ColorScheme.withText(text: Color): ColorScheme = copy(
     onSurfaceVariant = text.copy(alpha = 0.72f),
 )
 
+@Composable
 fun isDarkTheme(appearance: Appearance): Boolean = when {
     appearance.pureBlack -> true
     appearance.theme == ThemeMode.SYSTEM -> isSystemInDarkTheme()

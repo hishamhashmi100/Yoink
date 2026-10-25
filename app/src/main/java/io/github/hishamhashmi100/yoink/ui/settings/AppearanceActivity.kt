@@ -206,10 +206,11 @@ class AppearanceViewModel(application: Application) : AndroidViewModel(applicati
         toSave.trySend(next)
     }
 
-    // The look before the last random one, for Undo.
+    // The look before the last random one, for Undo, and the random look itself.
     private var beforeRandom: Appearance? = null
+    private var lastRandom: Appearance? = null
 
-    /** Every option at random. The other surface styles keep their own backgrounds. */
+    /** Every option at random, each surface style's background included. */
     fun randomize() {
         beforeRandom = _appearance.value
         update { current ->
@@ -219,9 +220,22 @@ class AppearanceViewModel(application: Application) : AndroidViewModel(applicati
                     val old = current.looks[style]
                     look.copy(picture = old?.picture, pictureColor = old?.pictureColor)
                 }
-                random.copy(looks = current.looks + looks)
+                random.copy(looks = looks)
             }
         }
+        lastRandom = _appearance.value
+    }
+
+    /**
+     * Whether Random would throw away a design of the user's own: the look isn't a saved theme, a ready-made
+     * theme as it comes, or a random look they haven't touched.
+     */
+    fun hasUnsavedDesign(): Boolean {
+        val current = _appearance.value
+        if (current == lastRandom || savedThemes.value.any { it.appearance == current }) return false
+        // Ready-made themes keep the user's light/dark choice and contrast.
+        val plain = Appearance(theme = current.theme, contrast = current.contrast)
+        return current != plain && ThemePreset.entries.none { it.applyTo(plain) == current }
     }
 
     /**
@@ -246,7 +260,11 @@ class AppearanceViewModel(application: Application) : AndroidViewModel(applicati
         update { before }
     }
 
-    fun save(name: String) = viewModelScope.launch { store.saveTheme(name, appearance.value) }
+    fun save(name: String) {
+        // Taken now, so a Random right after saving can't change what's saved.
+        val look = appearance.value
+        viewModelScope.launch { store.saveTheme(name, look) }
+    }
     fun delete(name: String) = viewModelScope.launch { store.deleteTheme(name) }
 }
 
@@ -338,6 +356,9 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
     val appearance by viewModel.appearance.collectAsStateWithLifecycle()
     val savedThemes by viewModel.savedThemes.collectAsStateWithLifecycle()
     var saving by rememberSaveable { mutableStateOf(false) }
+    // Asking whether to save the user's design before Random replaces it, and whether Random follows the save.
+    var askingToSave by rememberSaveable { mutableStateOf(false) }
+    var randomAfterSave by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     var pickingColor by rememberSaveable { mutableStateOf(false) }
     var pickingTextColor by rememberSaveable { mutableStateOf(false) }
@@ -354,6 +375,15 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
         }
     }
     val undo = stringResource(R.string.undo)
+    // A whole new look at random; Undo goes back if it's not a keeper.
+    fun randomize() {
+        viewModel.randomize()
+        scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            val result = snackbar.showSnackbar(randomApplied, undo, duration = SnackbarDuration.Short)
+            if (result == SnackbarResult.ActionPerformed) viewModel.undoRandom()
+        }
+    }
 
     Scaffold(
         contentWindowInsets = SafeArea.content,
@@ -368,16 +398,9 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                     }
                 },
                 actions = {
-                    // A whole new look at random; Undo goes back if it's not a keeper.
+                    // A design of the user's own gets the chance to be saved first, so it isn't lost.
                     FilledTonalButton(
-                        onClick = {
-                            viewModel.randomize()
-                            scope.launch {
-                                snackbar.currentSnackbarData?.dismiss()
-                                val result = snackbar.showSnackbar(randomApplied, undo, duration = SnackbarDuration.Short)
-                                if (result == SnackbarResult.ActionPerformed) viewModel.undoRandom()
-                            }
-                        },
+                        onClick = { if (viewModel.hasUnsavedDesign()) askingToSave = true else randomize() },
                         shape = ButtonShape,
                         contentPadding = PaddingValues(start = 12.dp, end = 16.dp),
                         modifier = Modifier.padding(end = 8.dp),
@@ -672,14 +695,44 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
         }
     }
 
+    if (askingToSave) {
+        YoinkAlertDialog(
+            onDismissRequest = { askingToSave = false },
+            title = { Text(stringResource(R.string.appearance_random_save_title)) },
+            text = { Text(stringResource(R.string.appearance_random_save_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    askingToSave = false
+                    randomAfterSave = true
+                    saving = true
+                }) { Text(stringResource(R.string.appearance_save)) }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { askingToSave = false }) { Text(stringResource(R.string.cancel)) }
+                    TextButton(onClick = {
+                        askingToSave = false
+                        randomize()
+                    }) { Text(stringResource(R.string.appearance_random_dont_save)) }
+                }
+            },
+        )
+    }
     if (saving) {
         SaveThemeDialog(
             existing = savedThemes.map { it.name },
             onSave = { name ->
                 viewModel.save(name)
                 saving = false
+                if (randomAfterSave) {
+                    randomAfterSave = false
+                    randomize()
+                }
             },
-            onDismiss = { saving = false },
+            onDismiss = {
+                saving = false
+                randomAfterSave = false
+            },
         )
     }
     deleting?.let { name ->

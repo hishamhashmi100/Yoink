@@ -171,35 +171,45 @@ data class Appearance(
 
         /**
          * A look with every option picked at random: light or dark, colors, palette, contrast, corners, font,
-         * surface style, what's behind it, its opacity and the player's shade. The text color goes back to
-         * Automatic, so the text stays readable on whatever comes up.
+         * surface style, the player's shade, and for each surface style what's behind it and its opacity. The
+         * text color goes back to Automatic, so the text stays readable on whatever comes up.
          */
         fun random(random: Random = Random): Appearance {
             // Lively colors: any hue, never gray or muddy.
-            fun color() = Color.HSVToColor(
-                floatArrayOf(random.nextFloat() * 360f, 0.45f + random.nextFloat() * 0.55f, 0.55f + random.nextFloat() * 0.45f),
+            fun color(hue: Float = random.nextFloat() * 360f) = Color.HSVToColor(
+                floatArrayOf(hue % 360f, 0.45f + random.nextFloat() * 0.55f, 0.55f + random.nextFloat() * 0.45f),
             )
+            // Two colors half the time, so blends come up often; one color or the theme's own otherwise.
+            // (Not "Your picture": there may be none, and it's the user's to pick.)
+            fun behind() = when (random.nextInt(4)) {
+                0, 1 -> GlassBehind.TWO_COLORS
+                2 -> GlassBehind.ONE_COLOR
+                else -> GlassBehind.THEME
+            }
+            fun look(style: GlassStyle): StyleLook {
+                val hue = random.nextFloat() * 360f
+                return StyleLook(
+                    behind = behind(),
+                    // The second hue at least 60° round the color wheel from the first, so a blend never looks
+                    // like one color.
+                    colors = listOf(color(hue), color(hue + 60f + random.nextFloat() * 240f)),
+                    // Kept between "barely there" and "nearly solid", so the glass still reads as glass.
+                    opacity = if (style == GlassStyle.OFF) null else 0.2f + random.nextFloat() * 0.6f,
+                )
+            }
+            val looks = GlassStyle.entries.associateWith(::look)
             val glass = GlassStyle.entries.random(random)
-            // Not "Your picture": there may be none, and it's the user's to pick.
-            val behind = GlassBehind.entries
-                .filter { it != GlassBehind.PICTURE }
-                .random(random)
-            val look = StyleLook(
-                behind = behind,
-                colors = listOf(color(), color()),
-                // Kept between "barely there" and "nearly solid", so the glass still reads as glass.
-                opacity = if (glass == GlassStyle.OFF) null else 0.2f + random.nextFloat() * 0.6f,
-            )
             return Appearance(
                 theme = ThemeMode.entries.random(random),
-                pureBlack = random.nextInt(5) == 0,
+                // Pure black covers the background, so only now and then, and only over the theme's own colors.
+                pureBlack = looks.getValue(glass).behind == GlassBehind.THEME && random.nextInt(4) == 0,
                 seedColor = color(),
                 palette = PaletteStyle.entries.random(random),
                 contrast = Contrast.entries.random(random),
                 corners = CornerStyle.entries.random(random),
                 font = FontStyle.entries.random(random),
                 glass = glass,
-                looks = mapOf(glass to look),
+                looks = looks,
                 playerShade = random.nextFloat(),
             )
         }

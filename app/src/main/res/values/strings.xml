@@ -211,6 +211,9 @@
     <string name="appearance_save">Save as theme</string>
     <string name="appearance_random">Random</string>
     <string name="appearance_random_applied">Here\'s a random look</string>
+    <string name="appearance_random_save_title">Save your design first?</string>
+    <string name="appearance_random_save_text">Random replaces everything on this screen. Save your design as a theme so you can come back to it any time.</string>
+    <string name="appearance_random_dont_save">Don\'t save</string>
     <string name="appearance_save_hint">Saves everything on this screen so you can switch back to it any time.</string>
     <string name="appearance_theme_name">Theme name</string>
     <string name="appearance_theme_exists">Replaces your theme with the same name</string>
