@@ -11,6 +11,8 @@ import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.view.WindowManager
 import androidx.annotation.FontRes
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -30,10 +32,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -46,8 +51,9 @@ import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.google.android.material.color.utilities.DynamicColor
 import com.google.android.material.color.utilities.DynamicScheme
 import com.google.android.material.color.utilities.Hct
@@ -217,6 +223,26 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
 
     val view = LocalView.current
     val blurPx = with(LocalDensity.current) { 40.dp.roundToPx() }
+
+    // Over the wallpaper every screen is see-through: this screen's content gives way while another of Yoink's
+    // screens covers it (or while it closes), and comes back when it's on top again (see WallpaperScreens).
+    val activity = remember(view) { view.context.findActivity() }
+    val covered = remember(activity) { activity?.let(WallpaperScreens::covered) }
+    val wallpaperNow by rememberUpdatedState(showWallpaper)
+    if (backdrop && !view.isInEditMode) {
+        LifecycleResumeEffect(activity) {
+            covered?.value = false
+            // Some phones stop showing the wallpaper behind the window once another screen has been on top (a video,
+            // say), until the window is laid out again. So it's laid out again whenever the screen comes back.
+            if (wallpaperNow) activity?.window?.let { window -> view.post { window.attributes = window.attributes } }
+            onPauseOrDispose {}
+        }
+    }
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (showWallpaper && covered?.value == true) 0f else 1f,
+        animationSpec = tween(if (covered?.value == true) 120 else 220),
+        label = "covered",
+    )
     if (!view.isInEditMode) {
         SideEffect {
             view.context.findActivity()?.window?.let { window ->
@@ -265,7 +291,7 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
                     showWallpaper -> Box(Modifier.fillMaxSize().background(solid.background.copy(alpha = 0.30f)))
                     (glass.enabled || customBackdrop) && backdrop -> GlassBackdrop(solid)
                 }
-                content()
+                Box(Modifier.graphicsLayer { alpha = contentAlpha }) { content() }
             }
         }
     }

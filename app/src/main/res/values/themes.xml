@@ -15,6 +15,12 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
+    <!-- "Your wallpaper": the window shows the phone's wallpaper from the start (see WallpaperScreens). -->
+    <style name="Theme.Yoink.Wallpaper">
+        <item name="android:windowShowWallpaper">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
     <style name="Theme.Yoink.Player" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@android:color/black</item>
     </style>

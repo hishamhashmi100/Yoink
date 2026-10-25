@@ -19,6 +19,7 @@ import io.github.hishamhashmi100.yoink.ui.home.HomeScreen
 import io.github.hishamhashmi100.yoink.ui.home.HomeTab
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import io.github.hishamhashmi100.yoink.ui.settings.SettingsActivity
+import io.github.hishamhashmi100.yoink.ui.theme.WallpaperScreens
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
 import io.github.hishamhashmi100.yoink.yoink
 
@@ -28,6 +29,7 @@ class MainActivity : ComponentActivity() {
     private val openPlayer = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        WallpaperScreens.applyTheme(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         AudioController.connect(this)
@@ -51,6 +53,11 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun startActivity(intent: Intent, options: Bundle?) {
+        WallpaperScreens.starting(this, intent)
+        super.startActivity(intent, options)
     }
 
     override fun onNewIntent(intent: Intent) {
