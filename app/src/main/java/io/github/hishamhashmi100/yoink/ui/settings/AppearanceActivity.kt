@@ -40,8 +40,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -57,8 +55,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -96,7 +92,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -104,7 +99,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.takeOrElse
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -136,6 +130,8 @@ import io.github.hishamhashmi100.yoink.ui.player.PlaybackService
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 import io.github.hishamhashmi100.yoink.ui.theme.Glass
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
+import io.github.hishamhashmi100.yoink.ui.theme.OneLineText
+import io.github.hishamhashmi100.yoink.ui.theme.SafeArea
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
 import io.github.hishamhashmi100.yoink.ui.theme.colorScheme
@@ -355,9 +351,11 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
     val undo = stringResource(R.string.undo)
 
     Scaffold(
+        contentWindowInsets = SafeArea.content,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
+                windowInsets = SafeArea.topBar,
                 title = { Text(stringResource(R.string.settings_appearance)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -465,7 +463,7 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                                 }
                             },
                             shape = SegmentedButtonDefaults.itemShape(index, modes.size, ButtonShape),
-                        ) { OneLineLabel(stringResource(label)) }
+                        ) { OneLineText(stringResource(label)) }
                     }
                 }
                 if (appearance.customBackdrop && appearance.theme == ThemeMode.SYSTEM) {
@@ -587,7 +585,7 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                             selected = appearance.contrast == contrast,
                             onClick = { viewModel.update { it.copy(contrast = contrast) } },
                             shape = SegmentedButtonDefaults.itemShape(index, contrasts.size, ButtonShape),
-                        ) { OneLineLabel(stringResource(label)) }
+                        ) { OneLineText(stringResource(label)) }
                     }
                 }
 
@@ -872,20 +870,6 @@ private fun StyleControls(
 }
 
 private val HUES = listOf(0f, 60f, 120f, 180f, 240f, 300f, 360f).map { Color.hsv(it % 360f, 1f, 1f) }
-
-/** A button label that stays on one line, shrinking a little when a wide font (like Pixel) doesn't fit. */
-@Composable
-private fun OneLineLabel(text: String) {
-    val style = LocalTextStyle.current
-    val size = style.fontSize.takeOrElse { 14.sp }
-    BasicText(
-        text,
-        style = style.copy(color = style.color.takeOrElse { LocalContentColor.current }),
-        maxLines = 1,
-        softWrap = false,
-        autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = size, stepSize = 0.5.sp),
-    )
-}
 
 @Composable
 private fun Header(@StringRes title: Int) {
@@ -1292,7 +1276,7 @@ private fun GlassTile(
                 GlassStyle.CLEAR -> Box(panel.glassPanel(pane, panelShape))
             }
         }
-        Text(
+        OneLineText(
             stringResource(style.label()),
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(top = 6.dp, bottom = 4.dp),

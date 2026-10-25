@@ -55,6 +55,8 @@ import io.github.hishamhashmi100.yoink.ui.theme.GlassBackdrop
 import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdropColors
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
 import io.github.hishamhashmi100.yoink.ui.theme.LocalHazeState
+import io.github.hishamhashmi100.yoink.ui.theme.OneLineText
+import io.github.hishamhashmi100.yoink.ui.theme.SafeArea
 import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
 import kotlinx.coroutines.launch
 
@@ -139,10 +141,12 @@ fun HomeScreen(
         )
     }
     Scaffold(
+        contentWindowInsets = SafeArea.content,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = { actions() },
+                windowInsets = SafeArea.topBar,
             )
         },
         bottomBar = {
@@ -191,14 +195,14 @@ fun HomeScreen(
                     text = {
                         val count = active.orEmpty().size
                         BadgedBox(badge = { if (count > 0) Badge { Text("$count") } }) {
-                            Text(stringResource(R.string.tab_downloading))
+                            OneLineText(stringResource(R.string.tab_downloading))
                         }
                     },
                 )
                 Tab(
                     selected = selected == HomeTab.LIBRARY,
                     onClick = { tab = HomeTab.LIBRARY },
-                    text = { Text(stringResource(R.string.tab_library)) },
+                    text = { OneLineText(stringResource(R.string.tab_library)) },
                 )
             }
             when (selected) {

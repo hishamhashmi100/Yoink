@@ -14,10 +14,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
@@ -48,7 +48,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,6 +63,7 @@ import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import io.github.hishamhashmi100.yoink.ui.player.NowPlaying
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
 import io.github.hishamhashmi100.yoink.ui.theme.LocalHazeState
+import io.github.hishamhashmi100.yoink.ui.theme.SafeArea
 import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
 import kotlinx.coroutines.delay
 
@@ -125,7 +128,7 @@ fun MiniPlayerBar(
                     state = rememberDraggableState { delta -> onDrag?.invoke(delta) },
                     onDragStopped = { velocity -> onDragStopped?.invoke(velocity) },
                 )
-                .then(if (insets) Modifier.navigationBarsPadding() else Modifier),
+                .then(if (insets) Modifier.windowInsetsPadding(SafeArea.bottomBar) else Modifier),
         ) {
             SeekLine(progress) { fraction ->
                 onSeek?.invoke(fraction) ?: run {
@@ -142,6 +145,9 @@ fun MiniPlayerBar(
                     .align(Alignment.CenterHorizontally)
                     .size(18.dp),
             )
+            // On narrow screens or with a large font size, repeat (also in the full-screen player) makes room
+            // for the title.
+            val roomy = LocalConfiguration.current.screenWidthDp >= 360 && LocalDensity.current.fontScale <= 1.3f
             // Tap the cover or title to open the full-screen player.
             Row(
                 Modifier
@@ -172,7 +178,7 @@ fun MiniPlayerBar(
                         )
                     }
                 }
-                IconButton(onClick = { onRepeat?.invoke() ?: AudioController.cycleRepeat(context) }, modifier = Modifier.size(40.dp)) {
+                if (roomy) IconButton(onClick = { onRepeat?.invoke() ?: AudioController.cycleRepeat(context) }, modifier = Modifier.size(40.dp)) {
                     Icon(
                         if (playing.repeatMode == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
                         contentDescription = stringResource(
