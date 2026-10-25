@@ -52,16 +52,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.ShareMode
 import io.github.hishamhashmi100.yoink.download.Quality
+import io.github.hishamhashmi100.yoink.ui.theme.WallpaperTransitions
+import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
 import io.github.hishamhashmi100.yoink.update.AppUpdater
 import io.github.hishamhashmi100.yoink.update.UpdateState
-import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 import kotlinx.coroutines.launch
 
 class SettingsActivity : ComponentActivity() {
 
+    override fun finish() = WallpaperTransitions.finishing(this) { super.finish() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WallpaperTransitions.opening(this)
         enableEdgeToEdge()
         setContent {
             val viewModel: SettingsViewModel = viewModel()
