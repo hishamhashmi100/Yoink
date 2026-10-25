@@ -153,21 +153,21 @@ fun YoinkTheme(settings: Settings, backdrop: Boolean = true, content: @Composabl
 fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Composable () -> Unit) {
     val customBackdrop = appearance.glass != GlassStyle.OFF &&
         appearance.glassBehind in setOf(GlassBehind.ONE_COLOR, GlassBehind.TWO_COLORS)
-    val backdrop = Backdrop(
+    val behind = Backdrop(
         behind = if (appearance.glass == GlassStyle.OFF) GlassBehind.THEME else appearance.glassBehind,
         color1 = Color(appearance.backdropColor1),
         color2 = Color(if (appearance.glassBehind == GlassBehind.TWO_COLORS) appearance.backdropColor2 else appearance.backdropColor1),
     )
     // On the user's own backdrop colors, light or dark follows the colors, so text is always readable:
     // dark colors get white text, light ones dark text.
-    val dark = if (customBackdrop) (backdrop.color1.luminance() + backdrop.color2.luminance()) / 2 < 0.45f else isDarkTheme(appearance)
+    val dark = if (customBackdrop) (behind.color1.luminance() + behind.color2.luminance()) / 2 < 0.45f else isDarkTheme(appearance)
     val context = LocalContext.current
     val solid = remember(appearance, dark) { colorScheme(context, appearance, dark) }
     val wallpaper = appearance.glassBehind == GlassBehind.WALLPAPER
     val glass = Glass(
         style = appearance.glass,
         dark = dark,
-        backdrop = if (customBackdrop) backdrop.color1 else solid.background,
+        backdrop = if (customBackdrop) behind.color1 else solid.background,
         accent = solid.primary,
         opacity = appearance.effectiveGlassOpacity,
         wallpaper = wallpaper,
@@ -215,7 +215,7 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
             LocalGlass provides glass,
             LocalBackdropColors provides solid,
             LocalGlassOverlay provides overlay,
-            LocalBackdrop provides backdrop,
+            LocalBackdrop provides behind,
         ) {
             when {
                 // A light wash of the theme over the wallpaper, so text on it stays readable.
