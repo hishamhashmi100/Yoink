@@ -180,6 +180,8 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
         accent = solid.primary,
         opacity = appearance.effectiveGlassOpacity,
         wallpaper = wallpaper && !appearance.pureBlack,
+        // The glass is tinted with the user's own colors, as a gradient when there are two.
+        colors = if (customBackdrop) listOfNotNull(behind.color1, behind.color2.takeIf { it != behind.color1 }) else emptyList(),
     )
     val colors = remember(solid, glass, customBackdrop) {
         solid.oneAccent().let {

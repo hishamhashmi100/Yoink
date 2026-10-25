@@ -23,10 +23,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
@@ -55,6 +61,8 @@ data class Glass(
     val opacity: Float = style.defaultOpacity,
     /** The phone's wallpaper shows through instead of the theme's color blobs. */
     val wallpaper: Boolean = false,
+    /** The user's own background colors (one or two), which tint the glass; empty for theme colors. */
+    val colors: List<Color> = emptyList(),
 ) {
 
     val enabled: Boolean get() = style != GlassStyle.OFF
@@ -91,10 +99,22 @@ data class Glass(
             ),
         )
 
+    /**
+     * What panels are painted with: with the user's own colors, a gradient of them (softened toward white,
+     * or black in dark mode) like colored glass; otherwise the plain [tint].
+     */
+    val tintBrush: Brush
+        get() {
+            if (!enabled || colors.isEmpty()) return SolidColor(tint)
+            val neutral = if (dark) Color(0xFF17171C) else Color.White
+            val stops = colors.map { lerp(neutral, it, 0.5f).copy(alpha = opacity) }
+            return Brush.linearGradient(if (stops.size == 1) stops + stops else stops)
+        }
+
     val hazeStyle: HazeStyle
         get() = HazeStyle(
             backgroundColor = backdrop,
-            tint = HazeTint(tint),
+            tint = if (colors.isEmpty()) HazeTint(tint) else HazeTint(tintBrush),
             blurRadius = blur,
             noiseFactor = if (style == GlassStyle.FROSTED) 0.08f else 0f,
         )
@@ -136,7 +156,7 @@ val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
 fun Modifier.glassPanel(glass: Glass, shape: Shape, hazeState: HazeState? = null): Modifier {
     if (!glass.enabled) return this
     return clip(shape)
-        .then(if (hazeState != null) Modifier.hazeEffect(hazeState, glass.hazeStyle) else Modifier.background(glass.tint))
+        .then(if (hazeState != null) Modifier.hazeEffect(hazeState, glass.hazeStyle) else Modifier.background(glass.tintBrush))
         .border(1.dp, glass.rim, shape)
 }
 
@@ -174,24 +194,58 @@ val LocalBackdrop = staticCompositionLocalOf { Backdrop() }
 @Composable
 fun GlassBackdrop(colors: ColorScheme, modifier: Modifier = Modifier, backdrop: Backdrop = LocalBackdrop.current) {
     Canvas(modifier.fillMaxSize()) {
+        val radius = max(size.width, size.height) * 0.62f
+        fun blob(color: Color, alpha: Float, center: Offset, scale: Float = 1f) = drawCircle(
+            Brush.radialGradient(listOf(color.copy(alpha = alpha), color.copy(alpha = 0f)), center, radius * scale),
+            radius * scale,
+            center,
+        )
+        // Soft light from the top and shade at the bottom give flat colors some depth, like a wallpaper.
+        fun depth() {
+            blob(Color.White, 0.22f, Offset(size.width * 0.15f, size.height * 0.05f), 0.8f)
+            blob(Color.Black, 0.12f, Offset(size.width * 0.9f, size.height * 1.0f), 0.9f)
+        }
         when (backdrop.behind) {
-            GlassBehind.ONE_COLOR -> drawRect(backdrop.color1)
-            GlassBehind.TWO_COLORS -> drawRect(
-                Brush.linearGradient(listOf(backdrop.color1, backdrop.color2), Offset.Zero, Offset(size.width, size.height)),
-            )
+            GlassBehind.ONE_COLOR -> {
+                drawRect(backdrop.color1)
+                depth()
+            }
+            GlassBehind.TWO_COLORS -> {
+                drawRect(Brush.linearGradient(listOf(backdrop.color1, backdrop.color2), Offset.Zero, Offset(size.width, size.height)))
+                depth()
+            }
             else -> {
-                drawRect(colors.background)
-                val radius = max(size.width, size.height) * 0.62f
-                fun blob(color: Color, alpha: Float, center: Offset) = drawCircle(
-                    Brush.radialGradient(listOf(color.copy(alpha = alpha), color.copy(alpha = 0f)), center, radius),
-                    radius,
-                    center,
+                drawRect(
+                    Brush.linearGradient(
+                        listOf(colors.primaryContainer, colors.background, colors.tertiaryContainer),
+                        Offset.Zero,
+                        Offset(size.width, size.height),
+                    ),
                 )
-                blob(colors.primary, 0.55f, Offset(size.width * 0.05f, size.height * 0.08f))
-                blob(colors.tertiary, 0.45f, Offset(size.width * 1.0f, size.height * 0.45f))
-                blob(colors.secondary, 0.40f, Offset(size.width * 0.15f, size.height * 0.95f))
+                blob(colors.primary, 0.50f, Offset(size.width * 0.05f, size.height * 0.10f))
+                blob(colors.tertiary, 0.42f, Offset(size.width * 1.0f, size.height * 0.45f))
+                blob(colors.secondary, 0.38f, Offset(size.width * 0.15f, size.height * 0.95f))
             }
         }
+    }
+}
+
+/**
+ * Fades content out over its bottom [height], so lists melt away before they slide under the glass mini
+ * player instead of showing half-hidden thumbnails through it.
+ */
+fun Modifier.fadeOutBottom(height: Dp): Modifier {
+    if (height <= 0.dp) return this
+    return graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
+        drawContent()
+        val fade = height.toPx()
+        val top = size.height - fade - 24.dp.toPx()
+        drawRect(
+            Brush.verticalGradient(listOf(Color.Black, Color.Transparent), startY = top, endY = size.height - fade * 0.4f),
+            topLeft = Offset(0f, top),
+            size = Size(size.width, size.height - top),
+            blendMode = BlendMode.DstIn,
+        )
     }
 }
 
