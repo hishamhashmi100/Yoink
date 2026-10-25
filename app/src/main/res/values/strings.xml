@@ -13,7 +13,7 @@
     <string name="playlist">Playlist</string>
     <string name="playlist_whole">Download the whole playlist</string>
     <string name="playlist_loading_title">Loading playlist…</string>
-    <string name="playlist_checking">Getting the playlist\'s videos…</string>
+    <string name="playlist_checking">Getting the playlist\'s videos… Longer playlists take a little longer to start.</string>
     <string name="playlist_failed">Couldn\'t open this playlist. It may be private, or try again in a moment.</string>
     <string name="playlist_empty">This playlist has no videos Yoink can download.</string>
     <plurals name="playlist_count">
