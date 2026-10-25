@@ -52,6 +52,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.ShareMode
 import io.github.hishamhashmi100.yoink.download.Quality
+import io.github.hishamhashmi100.yoink.ui.theme.SafeArea
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
 import io.github.hishamhashmi100.yoink.update.AppUpdater
@@ -102,8 +103,10 @@ private fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     }
 
     Scaffold(
+        contentWindowInsets = SafeArea.content,
         topBar = {
             TopAppBar(
+                windowInsets = SafeArea.topBar,
                 title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

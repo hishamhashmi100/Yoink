@@ -5,6 +5,7 @@ import android.text.format.Formatter
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,12 +17,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
@@ -30,7 +34,6 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -64,8 +67,8 @@ import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import io.github.hishamhashmi100.yoink.ui.player.PlayerActivity
 import io.github.hishamhashmi100.yoink.ui.theme.OverlayGlass
-import io.github.hishamhashmi100.yoink.ui.theme.fadeOutBottom
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
+import io.github.hishamhashmi100.yoink.ui.theme.fadeOutBottom
 
 @Composable
 fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, bottomInset: Dp = 0.dp) {
@@ -101,6 +104,13 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, botto
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // The chips scroll sideways if they don't fit (narrow screen, large font), so the layout button stays.
+            Row(
+                Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
             LibraryFilter.entries.forEach { option ->
                 FilterChip(
                     selected = filter == option,
@@ -118,7 +128,7 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, botto
                     },
                 )
             }
-            Spacer(Modifier.weight(1f))
+            }
             IconButton(onClick = { viewModel.grid.value = !grid }) {
                 if (grid) {
                     Icon(Icons.AutoMirrored.Rounded.ViewList, contentDescription = stringResource(R.string.layout_list))
@@ -252,7 +262,8 @@ internal fun LibraryItem(
         }
     } else {
         Row(clickable.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            ThumbnailWithBadges(download, Modifier.width(144.dp))
+            // A share of the width rather than a fixed size, so narrow screens keep room for the title.
+            ThumbnailWithBadges(download, Modifier.fillMaxWidth(0.38f).widthIn(max = 200.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) { ItemText(download) }
             more()

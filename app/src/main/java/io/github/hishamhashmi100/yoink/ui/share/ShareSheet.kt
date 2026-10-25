@@ -5,16 +5,19 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -51,7 +54,9 @@ import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
+import io.github.hishamhashmi100.yoink.ui.theme.OneLineText
 import io.github.hishamhashmi100.yoink.ui.theme.OverlayGlass
+import io.github.hishamhashmi100.yoink.ui.theme.SafeArea
 import io.github.hishamhashmi100.yoink.ui.theme.windowBlurAvailable
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -149,7 +154,7 @@ private fun SheetContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)
-                    .height(48.dp),
+                    .heightIn(min = 48.dp),
             ) {
                 Icon(Icons.Rounded.VideoLibrary, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
@@ -187,7 +192,7 @@ private fun GlassSheet(onDismiss: () -> Unit, content: @Composable () -> Unit) {
                 .background(if (glass.enabled && !blur) glass.menuTint else BottomSheetDefaults.ContainerColor)
                 // At low opacity the glass sheet can all but vanish over the app behind; a white edge keeps it clear.
                 .then(if (glass.enabled) Modifier.border(1.5.dp, Color.White.copy(alpha = 0.8f), shape) else Modifier)
-                .navigationBarsPadding(),
+                .windowInsetsPadding(SafeArea.bottomBar),
         ) {
             BottomSheetDefaults.DragHandle(Modifier.align(Alignment.CenterHorizontally))
             Column(
@@ -206,7 +211,8 @@ private fun VideoHeader(state: ShareUiState, onClose: () -> Unit) {
     Row(verticalAlignment = Alignment.Top) {
         Box(
             Modifier
-                .width(132.dp)
+                .fillMaxWidth(0.36f)
+                .widthIn(max = 160.dp)
                 .aspectRatio(16f / 9f)
                 .clip(MaterialTheme.shapes.medium)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
@@ -261,7 +267,8 @@ private fun PlaylistHeader(state: PlaylistUiState, onClose: () -> Unit) {
     Row(verticalAlignment = Alignment.Top) {
         Box(
             Modifier
-                .width(132.dp)
+                .fillMaxWidth(0.36f)
+                .widthIn(max = 160.dp)
                 .aspectRatio(16f / 9f)
                 .clip(MaterialTheme.shapes.medium)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
@@ -324,12 +331,12 @@ private fun PlaylistHeader(state: PlaylistUiState, onClose: () -> Unit) {
 private fun VideoOrAudioButtons(videoQuality: Quality, onPick: (Quality) -> Unit) {
     val resources = LocalContext.current.resources
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = { onPick(videoQuality) }, shape = ButtonShape, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+        Button(onClick = { onPick(videoQuality) }, shape = ButtonShape, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
             Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.share_video_with, videoQuality.label(resources)))
         }
-        FilledTonalButton(onClick = { onPick(Quality.AUDIO) }, shape = ButtonShape, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+        FilledTonalButton(onClick = { onPick(Quality.AUDIO) }, shape = ButtonShape, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
             Icon(Icons.Rounded.MusicNote, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             Text(Quality.AUDIO.label(resources))
@@ -345,7 +352,7 @@ private fun QualityButtons(available: Set<Quality>, onPick: (Quality) -> Unit) {
             onClick = { onPick(Quality.BEST) },
             enabled = Quality.BEST in available,
             shape = ButtonShape,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
         ) {
             Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
@@ -357,9 +364,10 @@ private fun QualityButtons(available: Set<Quality>, onPick: (Quality) -> Unit) {
                     onClick = { onPick(quality) },
                     enabled = quality in available,
                     shape = ButtonShape,
-                    modifier = Modifier.weight(1f).height(48.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
                 ) {
-                    Text(quality.label(resources))
+                    OneLineText(quality.label(resources))
                 }
             }
         }
@@ -367,7 +375,7 @@ private fun QualityButtons(available: Set<Quality>, onPick: (Quality) -> Unit) {
             onClick = { onPick(Quality.AUDIO) },
             enabled = Quality.AUDIO in available,
             shape = ButtonShape,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
         ) {
             Icon(Icons.Rounded.MusicNote, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))

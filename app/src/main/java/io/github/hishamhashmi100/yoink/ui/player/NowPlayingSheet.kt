@@ -26,7 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -92,6 +92,7 @@ import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdropColors
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlassOverlay
 import io.github.hishamhashmi100.yoink.ui.theme.LocalHazeState
+import io.github.hishamhashmi100.yoink.ui.theme.SafeArea
 import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -179,7 +180,7 @@ private fun PlayerPane(
             Column(
                 Modifier
                     .fillMaxSize()
-                    .systemBarsPadding()
+                    .windowInsetsPadding(SafeArea.content)
                     .padding(horizontal = 24.dp),
             ) {
                 Row(
@@ -231,10 +232,12 @@ private fun Cover(playing: NowPlaying) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        // As wide as the screen allows, but smaller when the screen is short (landscape, small phones, large
+        // fonts), so the title below always fits.
         Box(
             Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
+                .weight(1f, fill = false)
+                .aspectRatio(16f / 9f, matchHeightConstraintsFirst = true)
                 .clip(MaterialTheme.shapes.extraLarge)
                 .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,

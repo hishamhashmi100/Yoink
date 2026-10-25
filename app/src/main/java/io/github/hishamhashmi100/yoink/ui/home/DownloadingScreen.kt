@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -52,10 +53,10 @@ import io.github.hishamhashmi100.yoink.download.DownloadLog
 import io.github.hishamhashmi100.yoink.download.LiveProgress
 import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.YouTubeUrl
-import java.io.File
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkCard
 import io.github.hishamhashmi100.yoink.ui.theme.fadeOutBottom
+import java.io.File
 
 @Composable
 fun DownloadingScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, bottomInset: Dp = 0.dp) {
@@ -124,7 +125,7 @@ private fun ActiveDownloadCard(item: ActiveDownload, onCancel: () -> Unit, onRet
     val failed = download.status == DownloadStatus.FAILED
     YoinkCard(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Thumbnail(download, Modifier.width(112.dp))
+            Thumbnail(download, Modifier.fillMaxWidth(0.3f).widthIn(max = 160.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
