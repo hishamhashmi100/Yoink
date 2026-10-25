@@ -31,7 +31,7 @@ object ThemedArtwork {
     fun uri(context: Context, thumbnailPath: String?, appearance: Appearance): Uri? = runCatching {
         val dir = File(context.cacheDir, "artwork").apply { mkdirs() }
         val (shadow, highlight) = duotone(context, appearance)
-        // Named after the two colors, so a new theme (or wallpaper, with wallpaper colors) makes new covers.
+        // Named after the two colors, so a new theme makes new covers.
         val theme = "%08x%08x".format(shadow, highlight)
         dir.listFiles()?.filterNot { it.name.startsWith(theme) }?.forEach { it.delete() }
 
