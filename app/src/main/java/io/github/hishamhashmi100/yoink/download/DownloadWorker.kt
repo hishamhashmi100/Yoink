@@ -72,6 +72,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         return try {
             val finished = slots.withPermit { download(download, workDir) }
             runCatching { DownloadLog.write(applicationContext, finished, synchronized(log) { log.toList() }, null) }
+            afterwards(download)
             Result.success()
         } catch (e: Throwable) {
             if (e is CancellationException || isStopped) {
@@ -82,8 +83,18 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             val lines = synchronized(log) { log.toList() }
             runCatching { DownloadLog.write(applicationContext, download, lines, e) }
             dao.setStatus(downloadId, DownloadStatus.FAILED, message)
-            Notifications.failed(applicationContext, download, message)
+            // A playlist's videos share one notification instead (see afterwards).
+            if (download.playlistId == null) Notifications.failed(applicationContext, download, message)
+            afterwards(download)
             Result.failure()
+        }
+    }
+
+    /** Done or failed: start the next playlist video in line, and update the playlist's notification. */
+    private suspend fun afterwards(download: Download) {
+        runCatching {
+            app.repository.pump()
+            download.playlistId?.let { app.repository.updatePlaylistNotice(it) }
         }
     }
 
@@ -177,7 +188,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val saved = withContext(Dispatchers.IO) { finish(download, workDir) }
         val finished = saved.copy(error = qualityNote(saved))
         dao.update(finished)
-        Notifications.completed(applicationContext, finished)
+        if (finished.playlistId == null) Notifications.completed(applicationContext, finished)
         return finished
     }
 

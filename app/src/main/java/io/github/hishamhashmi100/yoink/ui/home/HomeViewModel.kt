@@ -59,5 +59,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun retry(id: Long) = viewModelScope.launch { repository.retry(id) }
 
+    fun cancelAll() = viewModelScope.launch { repository.cancelAll() }
+
     fun delete(download: Download) = viewModelScope.launch { repository.delete(download) }
 }

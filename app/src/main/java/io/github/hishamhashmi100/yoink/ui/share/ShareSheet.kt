@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -59,12 +61,52 @@ fun ShareSheet(
     onPick: (Quality) -> Unit,
     onMinimize: () -> Unit,
     onClose: () -> Unit,
+    /** Set when the video was shared from a playlist: offers the whole playlist instead. */
+    onWholePlaylist: (() -> Unit)? = null,
 ) {
     // Over another app: dark glass with white text, readable whatever is behind.
-    OverlayGlass { SheetContent(state, videoQuality, onPick, onMinimize, onClose) }
+    OverlayGlass { SheetContent(state, videoQuality, onPick, onMinimize, onClose, onWholePlaylist) }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** A shared playlist: one quality for all its videos. */
+@Composable
+fun PlaylistSheet(state: PlaylistUiState, onPick: (Quality) -> Unit, onClose: () -> Unit) {
+    OverlayGlass {
+        GlassSheet(onDismiss = onClose) {
+            PlaylistHeader(state, onClose)
+            Spacer(Modifier.height(16.dp))
+            if (state.loading) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+                Text(
+                    stringResource(R.string.playlist_checking),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 10.dp),
+                )
+            }
+            state.error?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = 10.dp),
+                )
+            }
+            // Each quality falls back to the nearest one a video has, so every button works for every video.
+            val ready = !state.loading && state.entries.isNotEmpty()
+            QualityButtons(if (ready) Quality.entries.toSet() else emptySet(), onPick)
+            if (ready) {
+                Text(
+                    pluralStringResource(R.plurals.playlist_hint, state.entries.size, state.entries.size),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 10.dp),
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun SheetContent(
     state: ShareUiState,
@@ -72,15 +114,61 @@ private fun SheetContent(
     onPick: (Quality) -> Unit,
     onMinimize: () -> Unit,
     onClose: () -> Unit,
+    onWholePlaylist: (() -> Unit)?,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     // Swipe down / Back / tap outside tucks the sheet away; the ✕ closes it for good.
+    GlassSheet(onDismiss = onMinimize) {
+        VideoHeader(state, onClose)
+        Spacer(Modifier.height(16.dp))
+
+        if (state.loadingFormats) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text(
+                stringResource(R.string.share_checking),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp, bottom = 10.dp),
+            )
+        }
+        state.formatsError?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = 10.dp),
+            )
+        }
+
+        if (state.quick) VideoOrAudioButtons(videoQuality, onPick) else QualityButtons(state.available, onPick)
+
+        if (onWholePlaylist != null) {
+            OutlinedButton(
+                onClick = onWholePlaylist,
+                shape = ButtonShape,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .height(48.dp),
+            ) {
+                Icon(Icons.Rounded.VideoLibrary, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.playlist_whole))
+            }
+        }
+    }
+}
+
+/** The bottom sheet both share sheets sit in, in the app's look. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GlassSheet(onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val glass = LocalGlass.current
     val context = LocalContext.current
     // Glass over another app needs the window blur to stay readable; without it, use the thicker glass.
     val blur = remember { windowBlurAvailable(context) }
     ModalBottomSheet(
-        onDismissRequest = onMinimize,
+        onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = if (glass.enabled && !blur) glass.menuTint else BottomSheetDefaults.ContainerColor,
         // At low opacity the glass sheet can all but vanish over the app behind; a white edge keeps it clear.
@@ -97,28 +185,7 @@ private fun SheetContent(
                 .padding(bottom = 16.dp)
                 .navigationBarsPadding(),
         ) {
-            VideoHeader(state, onClose)
-            Spacer(Modifier.height(16.dp))
-
-            if (state.loadingFormats) {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-                Text(
-                    stringResource(R.string.share_checking),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 6.dp, bottom = 10.dp),
-                )
-            }
-            state.formatsError?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(bottom = 10.dp),
-                )
-            }
-
-            if (state.quick) VideoOrAudioButtons(videoQuality, onPick) else QualityButtons(state.available, onPick)
+            content()
         }
     }
 }
@@ -156,6 +223,70 @@ private fun VideoHeader(state: ShareUiState, onClose: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Text(
                 state.title ?: stringResource(R.string.share_loading_title),
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+            state.channel?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+        IconButton(onClick = onClose) {
+            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.share_close))
+        }
+    }
+}
+
+/** The first video's thumbnail with a "N videos" band, like YouTube shows playlists. */
+@Composable
+private fun PlaylistHeader(state: PlaylistUiState, onClose: () -> Unit) {
+    Row(verticalAlignment = Alignment.Top) {
+        Box(
+            Modifier
+                .width(132.dp)
+                .aspectRatio(16f / 9f)
+                .clip(MaterialTheme.shapes.medium)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            state.thumbnailUrl?.let {
+                AsyncImage(
+                    model = it,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
+            Row(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.7f))
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Icon(Icons.Rounded.VideoLibrary, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                if (!state.loading && state.entries.isNotEmpty()) {
+                    Text(
+                        pluralStringResource(R.plurals.playlist_count, state.entries.size, state.entries.size),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                state.title ?: stringResource(R.string.playlist_loading_title),
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,

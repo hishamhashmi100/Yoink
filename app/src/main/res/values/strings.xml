@@ -10,6 +10,39 @@
     <string name="share_checking_tap">Checking available qualities… Tap to open.</string>
     <string name="share_ready">Ready to download</string>
     <string name="share_close">Close</string>
+    <string name="playlist">Playlist</string>
+    <string name="playlist_whole">Download the whole playlist</string>
+    <string name="playlist_loading_title">Loading playlist…</string>
+    <string name="playlist_checking">Getting the playlist\'s videos… Longer playlists take a little longer to start.</string>
+    <string name="playlist_failed">Couldn\'t open this playlist. It may be private, or try again in a moment.</string>
+    <string name="playlist_empty">This playlist has no videos Yoink can download.</string>
+    <plurals name="playlist_count">
+        <item quantity="one">%d video</item>
+        <item quantity="other">%d videos</item>
+    </plurals>
+    <plurals name="playlist_hint">
+        <item quantity="one">Downloads the video in this quality. You can close YouTube; it keeps going.</item>
+        <item quantity="other">Downloads all %d videos in this quality, two at a time. You can close YouTube; they keep going.</item>
+    </plurals>
+    <plurals name="playlist_started">
+        <item quantity="one">Downloading %d video</item>
+        <item quantity="other">Downloading %d videos</item>
+    </plurals>
+    <string name="playlist_progress">%1$d of %2$d saved</string>
+    <string name="playlist_failed_count">%d couldn\'t be saved</string>
+    <string name="playlist_saving">Saving playlist</string>
+    <string name="playlist_done">Playlist saved</string>
+    <plurals name="downloads_in_list">
+        <item quantity="one">%d in the list</item>
+        <item quantity="other">%d in the list</item>
+    </plurals>
+    <string name="cancel_all">Cancel all</string>
+    <string name="cancel_all_title">Cancel all downloads?</string>
+    <plurals name="cancel_all_text">
+        <item quantity="one">This stops and removes the download in the list. Videos already in your Library stay.</item>
+        <item quantity="other">This stops and removes all %d downloads in the list. Videos already in your Library stay.</item>
+    </plurals>
+    <string name="keep">Keep</string>
     <string name="channel_share_ready">Ready to download</string>
     <string name="share_loading_title">Loading…</string>
     <string name="quality_best">Best</string>
@@ -75,6 +108,7 @@
     <string name="tab_library">Library</string>
     <string name="downloading_empty">Nothing downloading.\nIn YouTube, tap Share → Yoink.</string>
     <string name="status_waiting">Waiting…</string>
+    <string name="status_in_line">Waiting its turn</string>
     <string name="status_failed">Failed</string>
     <string name="library_empty">Your downloads show up here.</string>
     <string name="library_no_results">No matches</string>

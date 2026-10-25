@@ -28,11 +28,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,6 +53,7 @@ import io.github.hishamhashmi100.yoink.download.LiveProgress
 import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.YouTubeUrl
 import java.io.File
+import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkCard
 import io.github.hishamhashmi100.yoink.ui.theme.fadeOutBottom
 
@@ -65,6 +71,7 @@ fun DownloadingScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, b
         }
         return
     }
+    var cancellingAll by rememberSaveable { mutableStateOf(false) }
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -72,6 +79,20 @@ fun DownloadingScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, b
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + bottomInset),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // A playlist can fill the list with hundreds of videos; one button clears them all.
+        if (active.size > 1) {
+            item(key = "header") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        pluralStringResource(R.plurals.downloads_in_list, active.size, active.size),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { cancellingAll = true }) { Text(stringResource(R.string.cancel_all)) }
+                }
+            }
+        }
         items(active, key = { it.download.id }) { item ->
             ActiveDownloadCard(
                 item = item,
@@ -79,6 +100,20 @@ fun DownloadingScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, b
                 onRetry = { viewModel.retry(item.download.id) },
             )
         }
+    }
+    if (cancellingAll) {
+        YoinkAlertDialog(
+            onDismissRequest = { cancellingAll = false },
+            title = { Text(stringResource(R.string.cancel_all_title)) },
+            text = { Text(pluralStringResource(R.plurals.cancel_all_text, active.size, active.size)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    cancellingAll = false
+                    viewModel.cancelAll()
+                }) { Text(stringResource(R.string.cancel_all)) }
+            },
+            dismissButton = { TextButton(onClick = { cancellingAll = false }) { Text(stringResource(R.string.keep)) } },
+        )
     }
 }
 
@@ -108,6 +143,14 @@ private fun ActiveDownloadCard(item: ActiveDownload, onCancel: () -> Unit, onRet
                         overflow = TextOverflow.Ellipsis,
                     )
                     CopyDetailsButton(download.id)
+                } else if (download.status == DownloadStatus.WAITING) {
+                    // A playlist video further down the line.
+                    Text(
+                        stringResource(R.string.status_in_line),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
                 } else {
                     val percent = progress?.percent ?: -1f
                     if (percent >= 0) {
