@@ -31,9 +31,6 @@ data class PlaylistUiState(
 /** Lists the videos in a shared playlist, for the playlist sheet. */
 object Playlists {
 
-    /** More than anyone would want from one share, and keeps a channel's whole upload list from running forever. */
-    private const val MAX_VIDEOS = 1000
-
     // What YouTube lists in place of videos nobody can watch any more.
     private val UNAVAILABLE = setOf("[Private video]", "[Deleted video]", "[Unavailable video]")
     private val VIDEO_ID = Regex("[A-Za-z0-9_-]{11}")
@@ -66,10 +63,10 @@ object Playlists {
     private suspend fun load(app: Application, playlistId: String, videoId: String?) {
         try {
             val request = YoutubeDLRequest(YouTubeUrl.playlistUrl(playlistId, videoId)).apply {
-                // Just the list (ids, titles, lengths), not each video's details: seconds instead of minutes.
+                // Just the list (ids, titles, lengths), not each video's details: seconds instead of minutes,
+                // even for thousands of videos. Every video is listed; there's no cap.
                 addOption("--flat-playlist")
                 addOption("--dump-single-json")
-                addOption("--playlist-end", MAX_VIDEOS.toString())
                 addOption("--socket-timeout", "15")
             }
             Engine.ensureFresh(app)
