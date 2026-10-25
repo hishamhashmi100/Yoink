@@ -20,7 +20,7 @@ import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.download.YouTubeUrl
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 
-/** For people who copy links instead of sharing them. [onSubmit] gets a link with a valid video ID. */
+/** For people who copy links instead of sharing them. [onSubmit] gets a link to a video or a playlist. */
 @Composable
 fun AddLinkDialog(onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
     val context = LocalContext.current
@@ -28,7 +28,7 @@ fun AddLinkDialog(onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
     var showError by rememberSaveable { mutableStateOf(false) }
 
     fun submit() {
-        if (YouTubeUrl.extractId(text) != null) onSubmit(text.trim()) else showError = true
+        if (YouTubeUrl.extractId(text) != null || YouTubeUrl.extractPlaylistId(text) != null) onSubmit(text.trim()) else showError = true
     }
 
     YoinkAlertDialog(

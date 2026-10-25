@@ -7,6 +7,7 @@ import io.github.hishamhashmi100.yoink.download.DownloadLog
 import io.github.hishamhashmi100.yoink.download.DownloadWorker
 import io.github.hishamhashmi100.yoink.download.LiveProgress
 import io.github.hishamhashmi100.yoink.download.MediaInfo
+import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.download.Storage
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
@@ -14,10 +15,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
 class DownloadRepository(private val context: Context, val dao: DownloadDao) {
+
+    companion object {
+        /** Playlist videos handed to the downloader at once; it runs two at a time. */
+        private const val MAX_ACTIVE = 2
+    }
 
     private val workManager = WorkManager.getInstance(context)
 
@@ -47,6 +55,50 @@ class DownloadRepository(private val context: Context, val dao: DownloadDao) {
         return id
     }
 
+    /**
+     * Queues every video in a playlist. They wait in line and start a couple at a time (see [pump]), so a long
+     * playlist doesn't start hundreds of downloads, or notifications, at once. Returns how many were queued.
+     */
+    suspend fun enqueuePlaylist(playlistId: String, playlistTitle: String?, entries: List<PlaylistEntry>, quality: Quality): Int {
+        val now = System.currentTimeMillis()
+        dao.insertAll(
+            entries.mapIndexed { i, entry ->
+                Download(
+                    videoId = entry.videoId,
+                    title = entry.title,
+                    channel = entry.channel,
+                    durationSec = entry.durationSec,
+                    quality = quality,
+                    status = DownloadStatus.WAITING,
+                    // Keeps the playlist's order, in the list and in line.
+                    createdAt = now + i,
+                    playlistId = playlistId,
+                    playlistTitle = playlistTitle,
+                )
+            }
+        )
+        pump()
+        updatePlaylistNotice(playlistId)
+        return entries.size
+    }
+
+    private val queueLock = Mutex()
+
+    /** Hands waiting playlist videos to the downloader whenever fewer than [MAX_ACTIVE] are on their way. */
+    suspend fun pump() = queueLock.withLock {
+        val free = MAX_ACTIVE - dao.countWithStatus(listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING))
+        if (free <= 0) return@withLock
+        for (next in dao.oldestWithStatus(DownloadStatus.WAITING, free)) {
+            dao.setStatus(next.id, DownloadStatus.QUEUED)
+            DownloadWorker.enqueue(context, next.id)
+        }
+    }
+
+    /** The playlist's one notification: how many are saved so far, or that it's done. */
+    suspend fun updatePlaylistNotice(playlistId: String) {
+        Notifications.playlist(context, playlistId, dao.getByPlaylist(playlistId))
+    }
+
     suspend fun retry(id: Long) {
         dao.setStatus(id, DownloadStatus.QUEUED)
         DownloadWorker.enqueue(context, id)
@@ -54,6 +106,7 @@ class DownloadRepository(private val context: Context, val dao: DownloadDao) {
 
     /** Stops a queued or running download and forgets it. */
     suspend fun cancel(id: Long) {
+        val playlistId = dao.get(id)?.playlistId
         // The row goes first: the worker treats a missing row as "cancelled by the user".
         dao.delete(id)
         workManager.cancelUniqueWork(DownloadWorker.workName(id))
@@ -61,6 +114,22 @@ class DownloadRepository(private val context: Context, val dao: DownloadDao) {
             DownloadWorker.jobDir(context, id).deleteRecursively()
             DownloadLog.delete(context, id)
         }
+        pump()
+        playlistId?.let { updatePlaylistNotice(it) }
+    }
+
+    /** Stops and forgets everything in the Downloading list (waiting, running and failed). The Library stays. */
+    suspend fun cancelAll() {
+        val unfinished = dao.getAllExcept(DownloadStatus.COMPLETED)
+        dao.deleteAllExcept(DownloadStatus.COMPLETED)
+        workManager.cancelAllWorkByTag(DownloadWorker.TAG)
+        withContext(Dispatchers.IO) {
+            unfinished.forEach {
+                DownloadWorker.jobDir(context, it.id).deleteRecursively()
+                DownloadLog.delete(context, it.id)
+            }
+        }
+        unfinished.mapNotNull { it.playlistId }.distinct().forEach { Notifications.cancelPlaylist(context, it) }
     }
 
     /** Removes a finished download together with its file and thumbnail. */

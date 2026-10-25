@@ -27,6 +27,7 @@ In the YouTube app, tap **Share → Yoink**, pick a quality, and keep watching. 
 ## Features
 
 - **Share sheet:** shows the title and thumbnail instantly, then unlocks **Best**, **1080p**, **720p**, **480p** and **Audio (MP3)** once it knows which qualities the video has.
+- **Whole playlists:** share a playlist (or a video from one and tap **Download the whole playlist**), pick one quality or MP3, and every video downloads, two at a time, with one notification for the lot.
 - **Background downloads** with a progress notification (speed and time left), **Cancel**, and **Retry** if something goes wrong. Up to two downloads run at once; the rest wait their turn.
 - **Library** with search, a Video / Audio filter, and list or grid view. Long-press to share, open in another app, or delete.
 - **Built-in player** in full screen and landscape, with a loop button. MP3s play in the background from a mini player with repeat (all or one track).

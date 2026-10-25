@@ -29,17 +29,23 @@ import kotlinx.coroutines.launch
  * Receives links from YouTube's Share menu (or youtube.com / youtu.be links) and shows a
  * quality picker over the calling app. Picking a quality queues the download and closes;
  * swiping the sheet away tucks it into a notification while the check carries on.
+ * Playlist links get the playlist sheet, which queues every video in one go.
  */
 class ShareActivity : ComponentActivity() {
 
     private val videoId = MutableStateFlow<String?>(null)
+    /** The playlist the link points to, if any. */
+    private val playlistId = MutableStateFlow<String?>(null)
+    /** Showing the playlist sheet rather than the video's. */
+    private val wholePlaylist = MutableStateFlow(false)
     private var quick = false
     private var videoQuality = Quality.BEST
-    private var pendingQuality: Quality? = null
+    private var pendingDownload: (() -> Unit)? = null
 
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
-            pendingQuality?.let(::startDownload)
+            pendingDownload?.invoke()
+            pendingDownload = null
         }
 
     // Notifications let the sheet be tucked away and come back when the qualities are ready.
@@ -47,8 +53,10 @@ class ShareActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val id = YouTubeUrl.extractId(sharedText(intent))
-        if (id == null) {
+        val text = sharedText(intent)
+        val id = YouTubeUrl.extractId(text)
+        val list = YouTubeUrl.extractPlaylistId(text)
+        if (id == null && list == null) {
             Toast.makeText(this, R.string.share_not_youtube, Toast.LENGTH_SHORT).show()
             finish()
             return
@@ -57,19 +65,19 @@ class ShareActivity : ComponentActivity() {
         lifecycleScope.launch {
             val settings = yoink.settings.settings.first()
             videoQuality = settings.videoQuality
-            // "Right away" modes skip the sheet entirely.
+            // "Right away" modes skip the sheet entirely (a whole playlist always asks first).
             val immediate = when (settings.shareMode) {
                 ShareMode.VIDEO -> settings.videoQuality
                 ShareMode.AUDIO -> Quality.AUDIO
                 else -> null
             }
-            if (immediate != null && savedInstanceState == null) {
+            if (id != null && immediate != null && savedInstanceState == null) {
                 videoId.value = id
                 onQualityPicked(immediate)
                 return@launch
             }
             quick = settings.shareMode == ShareMode.VIDEO_OR_AUDIO
-            show(id)
+            if (id != null) show(id, list) else showPlaylist(list!!)
             if (Build.VERSION.SDK_INT >= 33 && !notificationsAllowed()) {
                 askForNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
@@ -77,16 +85,25 @@ class ShareActivity : ComponentActivity() {
             setContent {
                 // No backdrop: YouTube (blurred, with glass on) shows through behind the sheet.
                 YoinkTheme(settings, backdrop = false) {
-                    val current = videoId.collectAsStateWithLifecycle().value ?: return@YoinkTheme
-                    val state = remember(current) { Probes.state(current) }
-                        .collectAsStateWithLifecycle(ShareUiState(videoId = current)).value
-                    ShareSheet(
-                        state = state,
-                        videoQuality = videoQuality,
-                        onPick = ::onQualityPicked,
-                        onMinimize = ::minimize,
-                        onClose = ::close,
-                    )
+                    val list = playlistId.collectAsStateWithLifecycle().value
+                    val current = videoId.collectAsStateWithLifecycle().value
+                    val whole = wholePlaylist.collectAsStateWithLifecycle().value
+                    if (list != null && (current == null || whole)) {
+                        val state = remember(list) { Playlists.state(list) }
+                            .collectAsStateWithLifecycle(PlaylistUiState(playlistId = list)).value
+                        PlaylistSheet(state = state, onPick = ::onPlaylistPicked, onClose = ::closePlaylist)
+                    } else if (current != null) {
+                        val state = remember(current) { Probes.state(current) }
+                            .collectAsStateWithLifecycle(ShareUiState(videoId = current)).value
+                        ShareSheet(
+                            state = state,
+                            videoQuality = videoQuality,
+                            onPick = ::onQualityPicked,
+                            onMinimize = ::minimize,
+                            onClose = ::close,
+                            onWholePlaylist = if (list != null) ({ showPlaylist(list) }) else null,
+                        )
+                    }
                 }
             }
         }
@@ -116,14 +133,41 @@ class ShareActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         // singleTask: a second share (or tapping a "Ready" notification) switches the sheet to that video.
-        YouTubeUrl.extractId(sharedText(intent))?.let(::show)
+        val text = sharedText(intent)
+        val id = YouTubeUrl.extractId(text)
+        val list = YouTubeUrl.extractPlaylistId(text)
+        when {
+            id != null -> show(id, list)
+            list != null -> {
+                videoId.value?.let { Probes.cancel(this, it) }
+                videoId.value = null
+                showPlaylist(list)
+            }
+        }
     }
 
-    private fun show(id: String) {
+    private fun show(id: String, list: String? = null) {
+        playlistId.value = list
+        wholePlaylist.value = false
         videoId.value = id
         Probes.visibleVideo = id
         Probes.start(this, id, quick = quick, videoQuality = videoQuality)
         Probes.restored(this, id)
+    }
+
+    /** The playlist sheet, for a playlist link or "Download the whole playlist" on a video from one. */
+    private fun showPlaylist(list: String) {
+        // The video's own check isn't needed any more.
+        videoId.value?.let { Probes.cancel(this, it) }
+        playlistId.value = list
+        wholePlaylist.value = true
+        Playlists.start(this, list, videoId.value)
+    }
+
+    /** The playlist sheet has no notification to tuck into: closing it stops listing the videos. */
+    private fun closePlaylist() {
+        playlistId.value?.let(Playlists::cancel)
+        finish()
     }
 
     /** Swiped down, Back, or tapped outside: keep checking, with a notification to come back to. */
@@ -138,20 +182,39 @@ class ShareActivity : ComponentActivity() {
         finish()
     }
 
-    private fun onQualityPicked(quality: Quality) {
+    private fun onQualityPicked(quality: Quality) = withNotifications { startDownload(quality) }
+
+    private fun onPlaylistPicked(quality: Quality) = withNotifications { startPlaylist(quality) }
+
+    /** Downloads report their progress in notifications, so ask for them first if needed. */
+    private fun withNotifications(download: () -> Unit) {
         if (Build.VERSION.SDK_INT >= 33 && !notificationsAllowed()) {
-            pendingQuality = quality
+            pendingDownload = download
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
-            startDownload(quality)
+            download()
         }
     }
 
     private fun notificationsAllowed() =
         ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
+    private fun startPlaylist(quality: Quality) {
+        val list = playlistId.value ?: return
+        val state = Playlists.current(list)?.takeIf { it.entries.isNotEmpty() } ?: return
+        lifecycleScope.launch {
+            val count = yoink.repository.enqueuePlaylist(list, state.title, state.entries, quality)
+            Playlists.cancel(list)
+            Toast.makeText(
+                applicationContext,
+                resources.getQuantityString(R.plurals.playlist_started, count, count),
+                Toast.LENGTH_SHORT,
+            ).show()
+            finish()
+        }
+    }
+
     private fun startDownload(quality: Quality) {
-        pendingQuality = null
         val id = videoId.value ?: return
         val state = Probes.current(id)
         lifecycleScope.launch {

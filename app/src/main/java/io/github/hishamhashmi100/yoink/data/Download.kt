@@ -4,7 +4,14 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import io.github.hishamhashmi100.yoink.download.Quality
 
-enum class DownloadStatus { QUEUED, DOWNLOADING, COMPLETED, FAILED }
+/**
+ * WAITING: a playlist video in line, not handed to the downloader yet (see [DownloadRepository.pump]).
+ * QUEUED: handed to the downloader, about to start.
+ */
+enum class DownloadStatus { WAITING, QUEUED, DOWNLOADING, COMPLETED, FAILED }
+
+/** One video in a shared playlist. */
+data class PlaylistEntry(val videoId: String, val title: String, val channel: String?, val durationSec: Long?)
 
 @Entity(tableName = "downloads")
 data class Download(
@@ -23,4 +30,7 @@ data class Download(
     val createdAt: Long = System.currentTimeMillis(),
     /** The video's actual resolution (its short side in pixels, e.g. 1080), read from the file. */
     val resolution: Int? = null,
+    /** Set for videos downloaded as part of a playlist, so they share one notification. */
+    val playlistId: String? = null,
+    val playlistTitle: String? = null,
 )
