@@ -35,6 +35,7 @@
     "name": "Yoink",
     "operatingSystem": "Android 10+",
     "applicationCategory": "MultimediaApplication",
+    "image": "https://yoink.download/og.png",
     "description": "Free, open-source Android app that downloads YouTube videos and audio from the Share menu. Everything runs on your phone.",
     "author": { "@type": "Person", "name": "Hisham Hashmi", "sameAs": "https://www.linkedin.com/in/syed-hisham-ali-hashmi" },
     "url": "https://yoink.download/",
@@ -43,7 +44,83 @@
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
   }
   </script>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ff4d4d'/%3E%3Cstop offset='1' stop-color='%23d90f1a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M32 15v32M19 34l13 13 13-13' stroke='%23fff' stroke-width='7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <!-- The site's name in search results. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Yoink",
+    "url": "https://yoink.download/"
+  }
+  </script>
+  <!-- The questions at the bottom of the page. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is it safe?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yoink is open source: anyone can read every line of the code on GitHub. The APK is built and signed automatically by GitHub from that public code, and each release lists SHA-256 checksums so you can confirm your file wasn't changed."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why isn't it on the Play Store?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Google Play doesn't allow apps that download from YouTube, so Yoink is distributed here instead, the same way many open-source Android apps are."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does it need a server or an account?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Everything happens on your phone. There's no sign-in, no tracking and no ads."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Downloads stopped working. What do I do?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "YouTube changes things often. Yoink updates its downloader by itself once a day, so it usually fixes itself. To fix it right away, open Yoink → Settings → Update downloader. If that doesn't help, check Settings → App updates for a newer version of Yoink."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Where do my videos go?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Into Yoink's Library. In Settings you can also choose to save them to your gallery (Movies/Yoink and Music/Yoink)."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I update Yoink?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yoink updates itself. It checks for a new version once a day, and when one is out you'll see an Update card on the home screen and a notification. Tap Update and confirm in Android's installer. You can also check any time in Settings → App updates. Your library and settings are kept."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is there an iPhone version?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Apple doesn't allow apps like this on iPhone or iPad, so Yoink is Android only."
+        }
+      }
+    ]
+  }
+  </script>
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon-192.png" type="image/png" sizes="192x192">
   <style>
     /* The page borrows the cartoon's look: cream paper, black ink outlines, red and yellow. */
     :root {
@@ -768,7 +845,7 @@
     <section id="features">
       <div class="wrap">
         <h2>What it does</h2>
-        <p class="sub">It saves YouTube videos and audio to your phone, and stays out of your way.</p>
+        <p class="sub">A free YouTube downloader for Android. It saves videos, or just the audio as MP3, to your phone, and stays out of your way.</p>
         <ul class="features">
           <li class="inked">
             <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg></div>
