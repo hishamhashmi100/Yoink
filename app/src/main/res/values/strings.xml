@@ -151,6 +151,7 @@
     <string name="glass_clear">Glass</string>
     <string name="glass_frosted">Frosted glass</string>
     <string name="appearance_color">Color</string>
+    <string name="appearance_color_follows_glass">The app\'s colors now follow your glass colors. Pick a color here to go back to theme colors behind the glass.</string>
     <string name="appearance_custom_color">Custom color</string>
     <string name="appearance_palette">Palette style</string>
     <string name="appearance_palette_hint">How the rest of the colors are picked from your color</string>

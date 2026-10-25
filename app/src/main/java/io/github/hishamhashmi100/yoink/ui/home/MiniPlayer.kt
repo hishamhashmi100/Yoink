@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -41,7 +42,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -59,7 +59,11 @@ import kotlinx.coroutines.delay
 
 /** The bar at the bottom of Home while an MP3 is playing: cover, title, 🔁 ⏮ ⏯ ⏭ and ✕. */
 @Composable
-fun MiniPlayer(onOpen: () -> Unit) {
+fun MiniPlayer(
+    onOpen: () -> Unit,
+    onDrag: ((Float) -> Unit)? = null,
+    onDragStopped: ((Float) -> Unit)? = null,
+) {
     val nowPlaying by AudioController.nowPlaying.collectAsStateWithLifecycle()
     val playing = nowPlaying ?: return
 
@@ -71,7 +75,7 @@ fun MiniPlayer(onOpen: () -> Unit) {
             delay(500)
         }
     }
-    MiniPlayerBar(playing, progress, onOpen, LocalHazeState.current)
+    MiniPlayerBar(playing, progress, onOpen, LocalHazeState.current, onDrag = onDrag, onDragStopped = onDragStopped)
 }
 
 /**
@@ -91,10 +95,11 @@ fun MiniPlayerBar(
     onPlayPause: (() -> Unit)? = null,
     onNext: (() -> Unit)? = null,
     onClose: (() -> Unit)? = null,
+    /** Pulling the bar up drags the full-screen player along with the finger. */
+    onDrag: ((Float) -> Unit)? = null,
+    onDragStopped: ((Float) -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    val swipeOpenPx = with(LocalDensity.current) { 32.dp.toPx() }
-    var dragged by remember { mutableFloatStateOf(0f) }
     val glass = LocalGlass.current
     Surface(
         tonalElevation = if (glass.enabled) 0.dp else 3.dp,
@@ -102,19 +107,33 @@ fun MiniPlayerBar(
         color = if (glass.enabled) Color.Transparent else MaterialTheme.colorScheme.surface,
         modifier = modifier.glassPanel(glass, RectangleShape, hazeState),
     ) {
-        Column(if (insets) Modifier.navigationBarsPadding() else Modifier) {
+        // The whole bar (arrow included) can be pulled up.
+        Column(
+            Modifier
+                .draggable(
+                    orientation = Orientation.Vertical,
+                    enabled = onDrag != null,
+                    state = rememberDraggableState { delta -> onDrag?.invoke(delta) },
+                    onDragStopped = { velocity -> onDragStopped?.invoke(velocity) },
+                )
+                .then(if (insets) Modifier.navigationBarsPadding() else Modifier),
+        ) {
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(2.dp))
-            // Tap the cover or title, or swipe the bar up, to open the full-screen player.
+            // A small arrow: the bar can be pulled up into the full-screen player.
+            Icon(
+                Icons.Rounded.KeyboardArrowUp,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .size(18.dp),
+            )
+            // Tap the cover or title to open the full-screen player.
             Row(
                 Modifier
                     .clickable(onClick = onOpen)
-                    .draggable(
-                        orientation = Orientation.Vertical,
-                        state = rememberDraggableState { delta -> dragged += delta },
-                        onDragStarted = { dragged = 0f },
-                        onDragStopped = { if (dragged < -swipeOpenPx) onOpen() },
-                    )
-                    .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+
+                    .padding(start = 12.dp, end = 4.dp, top = 0.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 AsyncImage(

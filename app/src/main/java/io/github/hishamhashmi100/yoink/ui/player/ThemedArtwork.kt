@@ -48,8 +48,8 @@ object ThemedArtwork {
 
     /** The darkest and lightest colors of the duotone, both from the theme's primary color. */
     private fun duotone(context: Context, appearance: Appearance): Pair<Int, Int> {
-        val dark = colorScheme(context, appearance, dark = true)
-        val light = colorScheme(context, appearance, dark = false)
+        val dark = colorScheme(context, appearance.colorSource, dark = true)
+        val light = colorScheme(context, appearance.colorSource, dark = false)
         // Lifted toward white so the picture keeps its contrast once the player darkens it.
         return dark.onPrimary.toArgb() to blend(light.primaryContainer.toArgb(), 0xFFFFFFFF.toInt(), 0.45f)
     }

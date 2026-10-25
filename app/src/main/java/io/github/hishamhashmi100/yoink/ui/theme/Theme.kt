@@ -151,8 +151,7 @@ fun YoinkTheme(settings: Settings, backdrop: Boolean = true, content: @Composabl
  */
 @Composable
 fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Composable () -> Unit) {
-    val customBackdrop = appearance.glass != GlassStyle.OFF &&
-        appearance.glassBehind in setOf(GlassBehind.ONE_COLOR, GlassBehind.TWO_COLORS)
+    val customBackdrop = appearance.customBackdrop
     val behind = Backdrop(
         behind = if (appearance.glass == GlassStyle.OFF) GlassBehind.THEME else appearance.glassBehind,
         color1 = Color(appearance.backdropColor1),
@@ -162,7 +161,7 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
     // dark colors get white text, light ones dark text.
     val dark = if (customBackdrop) (behind.color1.luminance() + behind.color2.luminance()) / 2 < 0.45f else isDarkTheme(appearance)
     val context = LocalContext.current
-    val solid = remember(appearance, dark) { colorScheme(context, appearance, dark) }
+    val solid = remember(appearance, dark) { colorScheme(context, appearance.colorSource, dark) }
     val wallpaper = appearance.glassBehind == GlassBehind.WALLPAPER
     val glass = Glass(
         style = appearance.glass,
@@ -175,7 +174,7 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
     val colors = remember(solid, glass) { solid.oneAccent().let { if (glass.enabled) it.glassy(glass) else it } }
     val overlay = remember(appearance, glass) {
         if (!glass.enabled) return@remember null
-        val darkSolid = colorScheme(context, appearance, dark = true)
+        val darkSolid = colorScheme(context, appearance.colorSource, dark = true)
         val darkGlass = glass.copy(dark = true, backdrop = darkSolid.background, accent = darkSolid.primary)
         GlassOverlay(darkSolid.oneAccent().glassy(darkGlass), darkGlass)
     }
@@ -217,17 +216,15 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
             LocalGlassOverlay provides overlay,
             LocalBackdrop provides behind,
         ) {
-            when {
-                // A light wash of the theme over the wallpaper, so text on it stays readable.
-                showWallpaper -> Box {
-                    Box(Modifier.fillMaxSize().background(solid.background.copy(alpha = 0.30f)))
-                    content()
+            // Always the same structure, whatever is drawn behind: switching surface styles mustn't rebuild the
+            // screen (which would, for one, scroll the Appearance screen back to the top).
+            Box {
+                when {
+                    // A light wash of the theme over the wallpaper, so text on it stays readable.
+                    showWallpaper -> Box(Modifier.fillMaxSize().background(solid.background.copy(alpha = 0.30f)))
+                    glass.enabled && backdrop -> GlassBackdrop(solid)
                 }
-                glass.enabled && backdrop -> Box {
-                    GlassBackdrop(solid)
-                    content()
-                }
-                else -> content()
+                content()
             }
         }
     }

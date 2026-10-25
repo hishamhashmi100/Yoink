@@ -56,6 +56,17 @@ data class Appearance(
 ) {
     val effectiveGlassOpacity: Float get() = glassOpacity ?: glass.defaultOpacity
 
+    /** The user picked the color(s) behind the glass. */
+    val customBackdrop: Boolean
+        get() = glass != GlassStyle.OFF && glassBehind in setOf(GlassBehind.ONE_COLOR, GlassBehind.TWO_COLORS)
+
+    /**
+     * The settings the color scheme is built from. With their own glass colors, the accent follows the
+     * first of them, so buttons match the background instead of clashing with it.
+     */
+    val colorSource: Appearance
+        get() = if (customBackdrop) copy(seedColor = backdropColor1, dynamicColor = false) else this
+
     fun toJson(): JSONObject = JSONObject()
         .put("theme", theme.name)
         .put("pureBlack", pureBlack)
