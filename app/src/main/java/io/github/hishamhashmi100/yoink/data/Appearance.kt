@@ -35,10 +35,48 @@ enum class FontStyle {
 /** The brand red from docs/logo.svg. */
 const val YOINK_RED = 0xFFD90F1A.toInt()
 
+/**
+ * One surface style's own background. Solid, Glass and Frosted glass each keep their own, so picking
+ * colors for one doesn't change the others.
+ */
+data class StyleLook(
+    val behind: GlassBehind = GlassBehind.THEME,
+    /** The ticked colors, first to last (one or two of them). */
+    val colors: List<Int> = DEFAULT_LOOK_COLORS,
+    /** Glass opacity, or null for the style's default. */
+    val opacity: Float? = null,
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .put("behind", behind.name)
+        .put("colors", JSONArray(colors))
+        .put("opacity", opacity?.toDouble() ?: -1.0)
+
+    companion object {
+        fun fromJson(json: JSONObject?): StyleLook {
+            if (json == null) return StyleLook()
+            val colors = json.optJSONArray("colors")?.let { array -> (0 until array.length()).map { array.optInt(it) } }
+            return StyleLook(
+                behind = enumOf(json.optString("behind"), GlassBehind.THEME),
+                colors = colors?.takeIf { it.isNotEmpty() }?.take(2) ?: DEFAULT_LOOK_COLORS,
+                opacity = json.optDouble("opacity", -1.0).toFloat().takeIf { it in 0f..1f },
+            )
+        }
+
+        fun mapToJson(looks: Map<GlassStyle, StyleLook>): JSONObject = JSONObject().apply {
+            looks.forEach { (style, look) -> put(style.name, look.toJson()) }
+        }
+
+        fun mapFromJson(json: JSONObject?): Map<GlassStyle, StyleLook> =
+            GlassStyle.entries.mapNotNull { style -> json?.optJSONObject(style.name)?.let { style to fromJson(it) } }.toMap()
+    }
+}
+
+val DEFAULT_LOOK_COLORS = listOf(0xFF3D5AFE.toInt(), 0xFFEC407A.toInt())
+
 /** Everything that changes how Yoink looks. */
 data class Appearance(
     val theme: ThemeMode = ThemeMode.SYSTEM,
-    /** Black instead of dark grey backgrounds in dark mode. */
+    /** Dark mode with a pure black background, in every surface style. */
     val pureBlack: Boolean = false,
     /** Take the seed color from the wallpaper (Android 12 and newer). */
     val dynamicColor: Boolean = true,
@@ -48,20 +86,29 @@ data class Appearance(
     val corners: CornerStyle = CornerStyle.ROUND,
     val font: FontStyle = FontStyle.DEFAULT,
     val glass: GlassStyle = GlassStyle.OFF,
-    /** The user's own glass opacity, or null for the style's default. */
-    val glassOpacity: Float? = null,
-    val glassBehind: GlassBehind = GlassBehind.THEME,
-    val backdropColor1: Int = 0xFF3D5AFE.toInt(),
-    val backdropColor2: Int = 0xFFEC407A.toInt(),
+    /** Each surface style's own background (see [look]). */
+    val looks: Map<GlassStyle, StyleLook> = emptyMap(),
 ) {
-    val effectiveGlassOpacity: Float get() = glassOpacity ?: glass.defaultOpacity
+    /** The background of the surface style in use. */
+    val look: StyleLook get() = looks[glass] ?: StyleLook()
 
-    /** The user picked the color(s) behind the glass (pure black, which overrides them, is off). */
+    fun withLook(change: (StyleLook) -> StyleLook): Appearance = copy(looks = looks + (glass to change(look)))
+
+    /** What's behind; the wallpaper only shows through glass. */
+    val glassBehind: GlassBehind
+        get() = if (glass == GlassStyle.OFF && look.behind == GlassBehind.WALLPAPER) GlassBehind.THEME else look.behind
+
+    val glassOpacity: Float? get() = look.opacity
+    val effectiveGlassOpacity: Float get() = look.opacity ?: glass.defaultOpacity
+    val backdropColor1: Int get() = look.colors.first()
+    val backdropColor2: Int get() = look.colors.getOrElse(1) { look.colors.first() }
+
+    /** The user picked the background color(s) (pure black, which overrides them, is off). */
     val customBackdrop: Boolean
-        get() = glass != GlassStyle.OFF && !pureBlack && glassBehind in setOf(GlassBehind.ONE_COLOR, GlassBehind.TWO_COLORS)
+        get() = !pureBlack && glassBehind in setOf(GlassBehind.ONE_COLOR, GlassBehind.TWO_COLORS)
 
     /**
-     * The settings the color scheme is built from. With their own glass colors, the accent follows the
+     * The settings the color scheme is built from. With their own background colors, the accent follows the
      * first of them, so buttons match the background instead of clashing with it.
      */
     val colorSource: Appearance
@@ -77,10 +124,7 @@ data class Appearance(
         .put("corners", corners.name)
         .put("font", font.name)
         .put("glass", glass.name)
-        .put("glassOpacity", glassOpacity?.toDouble() ?: -1.0)
-        .put("glassBehind", glassBehind.name)
-        .put("backdropColor1", backdropColor1)
-        .put("backdropColor2", backdropColor2)
+        .put("looks", StyleLook.mapToJson(looks))
 
     companion object {
         fun fromJson(json: JSONObject): Appearance {
@@ -95,11 +139,19 @@ data class Appearance(
                 corners = enumOf(json.optString("corners"), default.corners),
                 font = enumOf(json.optString("font"), default.font),
                 glass = enumOf(json.optString("glass"), default.glass),
-                glassOpacity = json.optDouble("glassOpacity", -1.0).toFloat().takeIf { it in 0f..1f },
-                glassBehind = enumOf(json.optString("glassBehind"), default.glassBehind),
-                backdropColor1 = json.optInt("backdropColor1", default.backdropColor1),
-                backdropColor2 = json.optInt("backdropColor2", default.backdropColor2),
+                looks = json.optJSONObject("looks")?.let(StyleLook::mapFromJson) ?: legacyLooks(
+                    behind = enumOf(json.optString("glassBehind"), GlassBehind.THEME),
+                    color1 = json.optInt("backdropColor1", DEFAULT_LOOK_COLORS[0]),
+                    color2 = json.optInt("backdropColor2", DEFAULT_LOOK_COLORS[1]),
+                    opacity = json.optDouble("glassOpacity", -1.0).toFloat().takeIf { it in 0f..1f },
+                ),
             )
+        }
+
+        /** Before each style had its own background there was one, shared by both glass styles. */
+        fun legacyLooks(behind: GlassBehind, color1: Int, color2: Int, opacity: Float?): Map<GlassStyle, StyleLook> {
+            val look = StyleLook(behind, listOf(color1, color2), opacity)
+            return mapOf(GlassStyle.CLEAR to look, GlassStyle.FROSTED to look)
         }
     }
 }

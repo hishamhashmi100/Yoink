@@ -4,15 +4,19 @@ import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
 import io.github.hishamhashmi100.yoink.yoink
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +24,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 data class NowPlaying(
     val downloadId: Long?,
@@ -70,12 +73,14 @@ object AudioController {
             val appearance = app.settings.settings.first().appearance
             // Videos share the player and have their own loop setting, so put the MP3 one back.
             val repeat = app.settings.audioRepeat.first()
+            val shuffle = app.settings.audioShuffle.first()
             val items = withContext(Dispatchers.IO) {
                 queue.map { item(it, ThemedArtwork.uri(app, it.thumbnailPath, appearance)) }
             }
             withContext(Dispatchers.Main) {
                 withController(app) { c ->
                     c.repeatMode = repeat
+                    c.shuffleModeEnabled = shuffle
                     c.setMediaItems(items, start.coerceIn(0, queue.lastIndex.coerceAtLeast(0)), 0L)
                     c.prepare()
                     c.play()
@@ -101,7 +106,14 @@ object AudioController {
         app.appScope.launch { app.settings.setAudioRepeat(next) }
     }
 
-    fun toggleShuffle(context: Context) = withController(context) { it.shuffleModeEnabled = !it.shuffleModeEnabled }
+    /** Turns shuffle on or off, says so (it's otherwise easy to miss), and remembers it. */
+    fun toggleShuffle(context: Context) = withController(context) { c ->
+        val on = !c.shuffleModeEnabled
+        c.shuffleModeEnabled = on
+        val app = context.yoink
+        Toast.makeText(app, if (on) R.string.player_shuffle_on_toast else R.string.player_shuffle_off_toast, Toast.LENGTH_SHORT).show()
+        app.appScope.launch { app.settings.setAudioShuffle(on) }
+    }
 
     fun seekTo(context: Context, positionMs: Long) = withController(context) { it.seekTo(positionMs) }
 
@@ -201,10 +213,22 @@ object AudioController {
             shuffle = player.shuffleModeEnabled,
             index = player.currentMediaItemIndex,
         )
-        _queue.value = (0 until player.mediaItemCount).map { i ->
+        // In playing order, so with shuffle on the list shows the shuffled order.
+        _queue.value = playOrder(player).map { i ->
             val entry = player.getMediaItemAt(i)
             QueueEntry(i, entry.mediaMetadata.title?.toString().orEmpty(), entry.mediaMetadata.artist?.toString(), thumbnail(entry))
         }
+    }
+
+    private fun playOrder(player: Player): List<Int> {
+        val count = player.mediaItemCount
+        val timeline = player.currentTimeline
+        if (timeline.windowCount != count || count == 0) return (0 until count).toList()
+        val shuffle = player.shuffleModeEnabled
+        val order = generateSequence(timeline.getFirstWindowIndex(shuffle)) { index ->
+            timeline.getNextWindowIndex(index, Player.REPEAT_MODE_OFF, shuffle).takeIf { it != C.INDEX_UNSET }
+        }.take(count).toList()
+        return if (order.size == count) order else (0 until count).toList()
     }
 
     /** The real thumbnail; the artwork the system sees is the themed copy. */

@@ -113,7 +113,7 @@ fun MiniPlayerBar(
     Surface(
         tonalElevation = if (glass.enabled) 0.dp else 3.dp,
         shadowElevation = if (glass.enabled) 0.dp else 8.dp,
-        color = if (glass.enabled) Color.Transparent else MaterialTheme.colorScheme.surface,
+        color = if (glass.enabled) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier.glassPanel(glass, RectangleShape, hazeState),
     ) {
         // The whole bar (arrow included) can be pulled up.

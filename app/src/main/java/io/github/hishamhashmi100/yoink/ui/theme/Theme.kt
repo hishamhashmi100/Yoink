@@ -155,8 +155,9 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
     val behind = when {
         // Pure black overrides whatever was chosen behind the glass.
         appearance.pureBlack && appearance.glass != GlassStyle.OFF -> Backdrop(GlassBehind.ONE_COLOR, Color.Black, Color.Black)
+        // Each surface style has its own background; Solid can have one or two colors too.
         else -> Backdrop(
-            behind = if (appearance.glass == GlassStyle.OFF) GlassBehind.THEME else appearance.glassBehind,
+            behind = appearance.glassBehind,
             color1 = Color(appearance.backdropColor1),
             color2 = Color(if (appearance.glassBehind == GlassBehind.TWO_COLORS) appearance.backdropColor2 else appearance.backdropColor1),
         )
@@ -180,7 +181,16 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
         opacity = appearance.effectiveGlassOpacity,
         wallpaper = wallpaper && !appearance.pureBlack,
     )
-    val colors = remember(solid, glass) { solid.oneAccent().let { if (glass.enabled) it.glassy(glass) else it } }
+    val colors = remember(solid, glass, customBackdrop) {
+        solid.oneAccent().let {
+            when {
+                glass.enabled -> it.glassy(glass)
+                // Solid on the user's own colors: screens are clear over them, cards and bars stay solid.
+                customBackdrop -> it.copy(background = Color.Transparent, surface = Color.Transparent)
+                else -> it
+            }
+        }
+    }
     val overlay = remember(appearance, glass) {
         if (!glass.enabled) return@remember null
         val darkSolid = colorScheme(context, appearance.colorSource, dark = true)
@@ -231,7 +241,7 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
                 when {
                     // A light wash of the theme over the wallpaper, so text on it stays readable.
                     showWallpaper -> Box(Modifier.fillMaxSize().background(solid.background.copy(alpha = 0.30f)))
-                    glass.enabled && backdrop -> GlassBackdrop(solid)
+                    (glass.enabled || customBackdrop) && backdrop -> GlassBackdrop(solid)
                 }
                 content()
             }

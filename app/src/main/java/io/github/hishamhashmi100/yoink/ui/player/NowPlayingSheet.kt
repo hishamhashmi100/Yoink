@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -63,13 +64,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
@@ -79,14 +80,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
+import dev.chrisbanes.haze.hazeEffect
 import io.github.hishamhashmi100.yoink.R
+import io.github.hishamhashmi100.yoink.data.GlassBehind
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 import io.github.hishamhashmi100.yoink.ui.theme.GlassBackdrop
+import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdrop
 import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdropColors
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
+import io.github.hishamhashmi100.yoink.ui.theme.LocalHazeState
 import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
 /**
@@ -105,9 +109,11 @@ fun NowPlayingOverlay(
     val nowPlaying by AudioController.nowPlaying.collectAsStateWithLifecycle()
     val playing = nowPlaying ?: return
     val glass = LocalGlass.current
-    // The color backdrop is drawn here, so the controls' glass can blur it; the wallpaper shows through instead.
-    val blurBackdrop = glass.enabled && !glass.wallpaper
-    val hazeState = rememberHazeState()
+    // Glass: the whole player is a pane of glass over Home, blurring it like the mini player does (Home's
+    // blur state, from the screen below). Solid: an opaque background, the user's colors if they picked some.
+    val homeHaze = LocalHazeState.current
+    val backdrop = LocalBackdrop.current
+    val customColors = backdrop.behind == GlassBehind.ONE_COLOR || backdrop.behind == GlassBehind.TWO_COLORS
     if (progress >= 1f) HideSystemBars()
 
     val drag = Modifier.draggable(
@@ -116,17 +122,27 @@ fun NowPlayingOverlay(
         onDragStopped = { velocity -> onDragStopped(velocity) },
     )
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val height = constraints.maxHeight.toFloat()
+        val height = constraints.maxHeight
+        val pane = when {
+            glass.enabled && homeHaze != null -> Modifier.hazeEffect(
+                homeHaze,
+                // At least a little blur, so the screen behind doesn't fight with the player's text.
+                glass.hazeStyle.copy(blurRadius = maxOf(glass.blur, 16.dp)),
+            )
+            glass.enabled -> Modifier.background(glass.tint)
+            else -> Modifier
+        }
         Box(
             Modifier
+                .offset { IntOffset(0, ((1f - progress) * height).roundToInt()) }
                 .fillMaxSize()
-                .graphicsLayer { translationY = (1f - progress) * height }
-                .background(if (glass.enabled) Color.Transparent else MaterialTheme.colorScheme.surface)
+                .then(pane)
                 // Taps on empty space shouldn't reach the screen underneath.
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
         ) {
-            if (blurBackdrop) {
-                GlassBackdrop(LocalBackdropColors.current ?: MaterialTheme.colorScheme, Modifier.hazeSource(hazeState))
+            if (!glass.enabled) {
+                if (customColors) GlassBackdrop(LocalBackdropColors.current ?: MaterialTheme.colorScheme)
+                else Box(Modifier.fillMaxSize().background(LocalBackdropColors.current?.surface ?: MaterialTheme.colorScheme.surface))
             }
             var showQueue by rememberSaveable { mutableStateOf(false) }
             Column(
@@ -171,7 +187,7 @@ fun NowPlayingOverlay(
                     if (queue) QueueList(playing.index) else Cover(playing)
                 }
 
-                Controls(playing, hazeState.takeIf { blurBackdrop })
+                Controls(playing, null)
             }
         }
     }

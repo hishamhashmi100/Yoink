@@ -62,6 +62,8 @@
     <string name="player_repeat_off">Repeat off</string>
     <string name="player_shuffle_on">Shuffle on</string>
     <string name="player_shuffle_off">Shuffle off</string>
+    <string name="player_shuffle_on_toast">Shuffle on: tracks play in random order</string>
+    <string name="player_shuffle_off_toast">Shuffle off: tracks play in order</string>
     <string name="now_playing">Now playing</string>
     <string name="now_playing_queue">Up next</string>
     <string name="player_repeat_all">Repeat all</string>
@@ -132,7 +134,7 @@
     <string name="appearance_themes">Themes</string>
     <string name="appearance_mode">Light and dark</string>
     <string name="appearance_pure_black">Pure black</string>
-    <string name="appearance_mode_follows_glass">System picks light or dark to suit your glass colors, so text stays readable.</string>
+    <string name="appearance_mode_follows_glass">System picks light or dark to suit your background colors, so text stays readable.</string>
     <string name="appearance_pure_black_summary">Dark mode with a pure black background, in every surface style. Easier on OLED screens.</string>
     <string name="appearance_glass">Surface style</string>
     <string name="appearance_glass_hint">Glass lets the colors behind cards and bars shine through. Frosted blurs them too.</string>
@@ -142,6 +144,9 @@
     <string name="appearance_glass_opacity_hint">Lower lets more of what\'s behind show through.</string>
     <string name="appearance_glass_opacity_reset">Back to default</string>
     <string name="appearance_glass_behind">Behind the glass</string>
+    <string name="appearance_background">Background</string>
+    <string name="appearance_tick_one">Tap a color to use it.</string>
+    <string name="appearance_tick_two">Tick two colors to blend them (1 to 2). Tap a ticked color to untick it.</string>
     <string name="glass_behind_theme">Theme colors</string>
     <string name="glass_behind_one">One color</string>
     <string name="glass_behind_two">Two colors</string>
@@ -152,7 +157,7 @@
     <string name="glass_clear">Glass</string>
     <string name="glass_frosted">Frosted glass</string>
     <string name="appearance_color">Color</string>
-    <string name="appearance_color_follows_glass">The app\'s colors now follow your glass colors. Pick a color here to go back to theme colors behind the glass.</string>
+    <string name="appearance_color_follows_glass">The app\'s colors now follow your background colors. Pick a color here to go back to theme colors.</string>
     <string name="appearance_custom_color">Custom color</string>
     <string name="appearance_palette">Palette style</string>
     <string name="appearance_palette_hint">How the rest of the colors are picked from your color</string>

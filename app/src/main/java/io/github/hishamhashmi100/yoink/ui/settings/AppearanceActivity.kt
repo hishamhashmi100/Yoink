@@ -101,6 +101,7 @@ import io.github.hishamhashmi100.yoink.data.GlassBehind
 import io.github.hishamhashmi100.yoink.data.GlassStyle
 import io.github.hishamhashmi100.yoink.data.PaletteStyle
 import io.github.hishamhashmi100.yoink.data.SavedTheme
+import io.github.hishamhashmi100.yoink.data.StyleLook
 import io.github.hishamhashmi100.yoink.data.ThemeMode
 import io.github.hishamhashmi100.yoink.data.ThemePreset
 import io.github.hishamhashmi100.yoink.data.YOINK_RED
@@ -378,13 +379,11 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                         )
                     }
                 }
-                if (appearance.glass != GlassStyle.OFF) {
-                    GlassControls(
-                        appearance = appearance,
-                        onChange = viewModel::update,
-                        onPickColor = { pickingBackdrop = it },
-                    )
-                }
+                StyleControls(
+                    appearance = appearance,
+                    onChange = viewModel::update,
+                    onCustomColor = { pickingBackdrop = 1 },
+                )
 
                 Header(R.string.appearance_color)
                 if (Build.VERSION.SDK_INT >= 31) {
@@ -404,8 +403,7 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                     it.copy(
                         dynamicColor = false,
                         seedColor = color,
-                        glassBehind = if (it.customBackdrop) GlassBehind.THEME else it.glassBehind,
-                    )
+                    ).let { picked -> if (it.customBackdrop) picked.withLook { look -> look.copy(behind = GlassBehind.THEME) } else picked }
                 }
                 FlowRow(
                     Modifier
@@ -553,11 +551,11 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
             dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
-    pickingBackdrop?.let { which ->
+    pickingBackdrop?.let {
         ColorPickerDialog(
-            initial = if (which == 1) appearance.backdropColor1 else appearance.backdropColor2,
+            initial = appearance.look.colors.last(),
             onPick = { color ->
-                viewModel.update { if (which == 1) it.copy(backdropColor1 = color) else it.copy(backdropColor2 = color) }
+                viewModel.update { it.tickColor(color) }
                 pickingBackdrop = null
             },
             onDismiss = { pickingBackdrop = null },
@@ -575,87 +573,127 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
     }
 }
 
-/** Opacity slider and what's behind the glass, shown when glass is on. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun GlassControls(
-    appearance: Appearance,
-    onChange: ((Appearance) -> Appearance) -> Unit,
-    onPickColor: (Int) -> Unit,
-) {
-    // Local while dragging so the slider is smooth; saved as it moves so the screen updates live.
-    var opacity by remember(appearance.effectiveGlassOpacity) { mutableFloatStateOf(appearance.effectiveGlassOpacity) }
-    Column(Modifier.padding(horizontal = 16.dp)) {
-        Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.appearance_glass_opacity), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-            Text(
-                stringResource(R.string.appearance_percent, (opacity * 100).roundToInt()),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
+/**
+ * Tick a background color for the surface style in use. With One color, a tap picks it. With Two colors,
+ * up to two are ticked (in order): tapping a third replaces the older one, and tapping a ticked one unticks
+ * it, leaving the other.
+ */
+private fun Appearance.tickColor(color: Int): Appearance = withLook { look ->
+    when (look.behind) {
+        GlassBehind.TWO_COLORS -> {
+            val ticked = look.colors.take(2)
+            look.copy(
+                colors = when {
+                    color in ticked -> if (ticked.size == 2) ticked - color else ticked
+                    ticked.size < 2 -> ticked + color
+                    else -> listOf(ticked[1], color)
+                },
             )
         }
-        Slider(
-            value = opacity,
-            onValueChange = { value ->
-                opacity = value
-                onChange { it.copy(glassOpacity = value) }
-            },
-            valueRange = 0.05f..0.95f,
-        )
-        Text(
-            stringResource(R.string.appearance_glass_opacity_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (appearance.glassOpacity != null) {
-            TextButton(onClick = { onChange { it.copy(glassOpacity = null) } }, shape = ButtonShape) {
-                Text(stringResource(R.string.appearance_glass_opacity_reset))
+        // One color: remember the previous one as the second, for switching to Two colors.
+        else -> look.copy(colors = listOf(color) + look.colors.filter { it != color }.take(1))
+    }
+}
+
+/**
+ * The background of the surface style in use (each has its own): theme colors, one or two colors ticked
+ * from a palette, or (glass only) the wallpaper; plus, for glass, its opacity.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StyleControls(
+    appearance: Appearance,
+    onChange: ((Appearance) -> Appearance) -> Unit,
+    onCustomColor: () -> Unit,
+) {
+    val glassOn = appearance.glass != GlassStyle.OFF
+    // Local while dragging so the slider is smooth; saved as it moves so the screen updates live.
+    var opacity by remember(appearance.glass, appearance.effectiveGlassOpacity) { mutableFloatStateOf(appearance.effectiveGlassOpacity) }
+    Column(Modifier.padding(horizontal = 16.dp)) {
+        if (glassOn) {
+            Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.appearance_glass_opacity), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Text(
+                    stringResource(R.string.appearance_percent, (opacity * 100).roundToInt()),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Slider(
+                value = opacity,
+                onValueChange = { value ->
+                    opacity = value
+                    onChange { a -> a.withLook { it.copy(opacity = value) } }
+                },
+                valueRange = 0.05f..0.95f,
+            )
+            Text(
+                stringResource(R.string.appearance_glass_opacity_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (appearance.glassOpacity != null) {
+                TextButton(onClick = { onChange { a -> a.withLook { it.copy(opacity = null) } } }, shape = ButtonShape) {
+                    Text(stringResource(R.string.appearance_glass_opacity_reset))
+                }
             }
         }
 
         Text(
-            stringResource(R.string.appearance_glass_behind),
+            stringResource(if (glassOn) R.string.appearance_glass_behind else R.string.appearance_background),
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
         )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(
+            listOfNotNull(
                 GlassBehind.THEME to R.string.glass_behind_theme,
                 GlassBehind.ONE_COLOR to R.string.glass_behind_one,
                 GlassBehind.TWO_COLORS to R.string.glass_behind_two,
-                GlassBehind.WALLPAPER to R.string.glass_behind_wallpaper,
+                (GlassBehind.WALLPAPER to R.string.glass_behind_wallpaper).takeIf { glassOn },
             ).forEach { (behind, label) ->
                 FilterChip(
                     selected = appearance.glassBehind == behind,
-                    onClick = { onChange { it.copy(glassBehind = behind) } },
+                    onClick = { onChange { a -> a.withLook { it.copy(behind = behind) } } },
                     label = { Text(stringResource(label)) },
                 )
             }
         }
-        val colors = when (appearance.glassBehind) {
-            GlassBehind.ONE_COLOR -> listOf(1 to appearance.backdropColor1)
-            GlassBehind.TWO_COLORS -> listOf(1 to appearance.backdropColor1, 2 to appearance.backdropColor2)
-            else -> emptyList()
-        }
-        if (colors.isNotEmpty()) {
-            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                colors.forEach { (which, color) ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Swatch(
-                            brush = Brush.linearGradient(listOf(Color(color), Color(color))),
-                            selected = false,
-                            onClick = { onPickColor(which) },
-                        )
-                        Text(
-                            stringResource(if (which == 1) R.string.glass_color_first else R.string.glass_color_second),
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                    }
+
+        val behind = appearance.glassBehind
+        if (behind == GlassBehind.ONE_COLOR || behind == GlassBehind.TWO_COLORS) {
+            val two = behind == GlassBehind.TWO_COLORS
+            val ticked = if (two) appearance.look.colors.take(2) else appearance.look.colors.take(1)
+            Text(
+                stringResource(if (two) R.string.appearance_tick_two else R.string.appearance_tick_one),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                // With two colors, the ticks are numbered: the blend runs from 1 to 2.
+                fun badge(color: Int) = ticked.indexOf(color).takeIf { it >= 0 }?.let { if (two) "${it + 1}" else "" }
+                SWATCHES.forEach { color ->
+                    Swatch(
+                        brush = Brush.linearGradient(listOf(Color(color), Color(color))),
+                        selected = color in ticked,
+                        badge = badge(color),
+                        onClick = { onChange { it.tickColor(color) } },
+                    )
                 }
+                val custom = ticked.firstOrNull { it !in SWATCHES }
+                Swatch(
+                    brush = custom?.let { Brush.linearGradient(listOf(Color(it), Color(it))) } ?: Brush.sweepGradient(HUES),
+                    selected = custom != null,
+                    badge = custom?.let(::badge),
+                    icon = custom == null,
+                    onClick = onCustomColor,
+                )
             }
         }
-        if (appearance.glassBehind == GlassBehind.WALLPAPER) {
+        if (behind == GlassBehind.WALLPAPER) {
             Text(
                 stringResource(R.string.glass_behind_wallpaper_hint),
                 style = MaterialTheme.typography.bodySmall,
@@ -992,15 +1030,21 @@ private fun GlassTile(
     val dark = isDarkTheme(appearance)
     // The theme's own palette (the Color section's), whatever is behind the glass.
     val palette = remember(appearance, dark) { colorScheme(context, appearance, dark) }
-    val tile = Glass(style, dark, Color.Unspecified, palette.primary, appearance.glassOpacity ?: style.defaultOpacity)
+    // Each style's own background, as set when that style is chosen.
+    val look = appearance.looks[style] ?: StyleLook()
+    val tile = Glass(style, dark, Color.Unspecified, palette.primary, look.opacity ?: style.defaultOpacity)
     val black = appearance.pureBlack && style != GlassStyle.OFF
     val behind = when {
         black -> GlassBehind.ONE_COLOR
-        style == GlassStyle.OFF -> GlassBehind.THEME
-        else -> appearance.glassBehind
+        style == GlassStyle.OFF && look.behind == GlassBehind.WALLPAPER -> GlassBehind.THEME
+        else -> look.behind
     }
-    val color1 = if (black) Color.Black else Color(appearance.backdropColor1)
-    val color2 = if (black) Color.Black else Color(appearance.backdropColor2)
+    val color1 = if (black) Color.Black else Color(look.colors.first())
+    val color2 = when {
+        black -> Color.Black
+        behind == GlassBehind.TWO_COLORS -> Color(look.colors.getOrElse(1) { look.colors.first() })
+        else -> color1
+    }
     val shape = MaterialTheme.shapes.medium
     val drawBackdrop: DrawScope.() -> Unit = {
         when (behind) {
@@ -1063,7 +1107,7 @@ private fun GlassTile(
 }
 
 @Composable
-private fun Swatch(brush: Brush, selected: Boolean, onClick: () -> Unit, icon: Boolean = false) {
+private fun Swatch(brush: Brush, selected: Boolean, onClick: () -> Unit, icon: Boolean = false, badge: String? = null) {
     Box(
         Modifier
             .size(44.dp)
@@ -1079,7 +1123,19 @@ private fun Swatch(brush: Brush, selected: Boolean, onClick: () -> Unit, icon: B
         contentAlignment = Alignment.Center,
     ) {
         when {
-            selected -> Icon(Icons.Rounded.Check, contentDescription = null, tint = Color.White)
+            // On a dark disc, so the mark shows on light colors too.
+            selected -> Box(
+                Modifier
+                    .size(26.dp)
+                    .background(Color.Black.copy(alpha = 0.35f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (badge.isNullOrEmpty()) {
+                    Icon(Icons.Rounded.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                } else {
+                    Text(badge, color = Color.White, style = MaterialTheme.typography.labelLarge)
+                }
+            }
             icon -> Icon(
                 Icons.Rounded.Colorize,
                 contentDescription = stringResource(R.string.appearance_custom_color),

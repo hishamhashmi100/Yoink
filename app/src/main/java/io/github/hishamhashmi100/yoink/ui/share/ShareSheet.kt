@@ -1,6 +1,7 @@
 package io.github.hishamhashmi100.yoink.ui.share
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -82,6 +83,12 @@ private fun SheetContent(
         onDismissRequest = onMinimize,
         sheetState = sheetState,
         containerColor = if (glass.enabled && !blur) glass.menuTint else BottomSheetDefaults.ContainerColor,
+        // At low opacity the glass sheet can all but vanish over the app behind; a white edge keeps it clear.
+        modifier = if (glass.enabled) {
+            Modifier.border(1.5.dp, Color.White.copy(alpha = 0.8f), BottomSheetDefaults.ExpandedShape)
+        } else {
+            Modifier
+        },
     ) {
         Column(
             Modifier
