@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
@@ -20,7 +21,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
-import androidx.media3.common.VideoSize
 import androidx.media3.common.util.RepeatModeUtil
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
@@ -48,13 +48,6 @@ class PlayerActivity : ComponentActivity() {
     private var artwork: Uri? = null
 
     private val playerListener = object : Player.Listener {
-        override fun onVideoSizeChanged(videoSize: VideoSize) {
-            // Landscape videos go landscape; vertical ones (Shorts) stay as they are.
-            if (videoSize.width > videoSize.height) {
-                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-            }
-        }
-
         // The loop button in the controls: remember it for the next video.
         override fun onRepeatModeChanged(repeatMode: Int) {
             if (download == null) return
@@ -88,21 +81,43 @@ class PlayerActivity : ComponentActivity() {
             setPadding(pad, pad, pad, pad)
             setOnClickListener { finish() }
         }
+        // Turns the video the other way (and keeps it there), for when the phone's auto-rotate is off.
+        val rotate = ImageButton(this).apply {
+            setImageResource(R.drawable.ic_rotate)
+            setBackgroundResource(R.drawable.bg_player_button)
+            contentDescription = getString(R.string.rotate_video)
+            val pad = (10 * density).toInt()
+            setPadding(pad, pad, pad, pad)
+            setOnClickListener {
+                val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                requestedOrientation = if (landscape) {
+                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                } else {
+                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                }
+            }
+        }
         val size = (44 * density).toInt()
         val margin = (16 * density).toInt()
         val root = FrameLayout(this).apply {
             addView(playerView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
             addView(close, FrameLayout.LayoutParams(size, size, Gravity.TOP or Gravity.START))
+            addView(rotate, FrameLayout.LayoutParams(size, size, Gravity.TOP or Gravity.END))
         }
-        ViewCompat.setOnApplyWindowInsetsListener(close) { view, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            (view.layoutParams as FrameLayout.LayoutParams).setMargins(bars.left + margin, bars.top + margin, 0, 0)
-            view.requestLayout()
+            (close.layoutParams as FrameLayout.LayoutParams).setMargins(bars.left + margin, bars.top + margin, 0, 0)
+            (rotate.layoutParams as FrameLayout.LayoutParams).setMargins(0, bars.top + margin, bars.right + margin, 0)
+            close.requestLayout()
+            rotate.requestLayout()
             insets
         }
         playerView.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
             close.visibility = visibility
+            rotate.visibility = visibility
         })
+        // Starts the way the phone is held, and turns with it (if auto-rotate is on).
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_USER
         setContentView(root)
         loadDownload(intent)
     }

@@ -64,6 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -80,16 +81,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.GlassBehind
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 import io.github.hishamhashmi100.yoink.ui.theme.GlassBackdrop
+import io.github.hishamhashmi100.yoink.ui.theme.GlassTheme
 import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdrop
 import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdropColors
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
+import io.github.hishamhashmi100.yoink.ui.theme.LocalGlassOverlay
 import io.github.hishamhashmi100.yoink.ui.theme.LocalHazeState
-import io.github.hishamhashmi100.yoink.ui.theme.OverlayGlass
 import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -107,8 +110,20 @@ fun NowPlayingOverlay(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // With glass: smoky glass with white text, like the pop-ups, so it reads well over Home at any opacity.
-    OverlayGlass { PlayerPane(progress, onDrag, onDragStopped, onClose, modifier) }
+    val overlay = LocalGlassOverlay.current
+    if (overlay == null || !LocalGlass.current.enabled) {
+        PlayerPane(progress, onDrag, onDragStopped, onClose, modifier, shade = null)
+        return
+    }
+    // The glass's shade is the user's (Appearance → Player shade). Text is white on darker or clearer glass,
+    // and black once the glass is light and solid enough for black text to read better.
+    val whiteText = overlay.playerShade >= 0.5f || overlay.glass.opacity < 0.45f
+    GlassTheme(
+        colors = if (whiteText) overlay.colors else overlay.lightColors,
+        glass = if (whiteText) overlay.glass else overlay.lightGlass,
+    ) {
+        PlayerPane(progress, onDrag, onDragStopped, onClose, modifier, shade = overlay.playerShade)
+    }
 }
 
 @Composable
@@ -118,6 +133,8 @@ private fun PlayerPane(
     onDragStopped: (Float) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier,
+    /** The player's glass shade (0 = white, 1 = black), with glass on. */
+    shade: Float?,
 ) {
     val nowPlaying by AudioController.nowPlaying.collectAsStateWithLifecycle()
     val playing = nowPlaying ?: return
@@ -136,15 +153,15 @@ private fun PlayerPane(
     )
     BoxWithConstraints(modifier.fillMaxSize()) {
         val height = constraints.maxHeight
+        // The player's own glass: from white to black by the user's shade, tinted with their colors.
+        val tint = glass.tintBrushOn(lerp(Color.White, Color(0xFF0E0E12), shade ?: 0f))
         val pane = when {
-            glass.enabled && homeHaze != null -> Modifier
-                .hazeEffect(
-                    homeHaze,
-                    // At least a little blur, so the screen behind doesn't fight with the player's text.
-                    glass.hazeStyle.copy(blurRadius = maxOf(glass.blur, 16.dp)),
-                )
-                .background(SMOKE)
-            glass.enabled -> Modifier.background(glass.tintBrush).background(SMOKE)
+            glass.enabled && homeHaze != null -> Modifier.hazeEffect(
+                homeHaze,
+                // At least a little blur, so the screen behind doesn't fight with the player's text.
+                glass.hazeStyle.copy(tints = listOf(HazeTint(tint)), blurRadius = maxOf(glass.blur, 16.dp)),
+            )
+            glass.enabled -> Modifier.background(tint)
             else -> Modifier
         }
         Box(
@@ -438,9 +455,6 @@ private fun Controls(playing: NowPlaying, hazeState: HazeState?) {
     }
 }
 
-/** A light shade under the white text, so it stays readable even when the glass is nearly clear. */
-private val SMOKE = Color.Black.copy(alpha = 0.22f)
-
 /** 3:07, or 1:02:45 for long ones. */
 private fun time(ms: Long): String {
     val total = ms / 1000
@@ -473,7 +487,8 @@ private fun HideSystemBars() {
         }
         onDispose {
             windows.forEach { window ->
-                WindowCompat.getInsetsController(window, window.decorView).show(WindowInsetsCompat.Type.systemBars())
+                // Only the status bar comes back: the navigation buttons stay hidden all over Yoink.
+                WindowCompat.getInsetsController(window, window.decorView).show(WindowInsetsCompat.Type.statusBars())
             }
         }
     }

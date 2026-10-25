@@ -46,6 +46,8 @@ import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.color.utilities.DynamicColor
 import com.google.android.material.color.utilities.DynamicScheme
 import com.google.android.material.color.utilities.Hct
@@ -197,7 +199,15 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
         if (!glass.enabled) return@remember null
         val darkSolid = colorScheme(context, appearance.colorSource, dark = true)
         val darkGlass = glass.copy(dark = true, backdrop = darkSolid.background, accent = darkSolid.primary)
-        GlassOverlay(darkSolid.oneAccent().glassy(darkGlass), darkGlass)
+        val lightSolid = colorScheme(context, appearance.colorSource, dark = false)
+        val lightGlass = glass.copy(dark = false, backdrop = lightSolid.background, accent = lightSolid.primary)
+        GlassOverlay(
+            colors = darkSolid.oneAccent().glassy(darkGlass),
+            glass = darkGlass,
+            lightColors = lightSolid.oneAccent().glassy(lightGlass),
+            lightGlass = lightGlass,
+            playerShade = appearance.playerShade,
+        )
     }
     val typography = remember(appearance.font) { typography(appearance.font) }
     val showWallpaper = glass.enabled && glass.wallpaper && backdrop
@@ -212,7 +222,14 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
                 WindowCompat.getInsetsController(window, view).apply {
                     isAppearanceLightStatusBars = !dark
                     isAppearanceLightNavigationBars = !dark
+                    // The navigation buttons (back, home, recents) stay out of the way: a swipe up from the
+                    // bottom edge shows them for a moment. Not for the share sheet over another app.
+                    if (backdrop) {
+                        systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                        hide(WindowInsetsCompat.Type.navigationBars())
+                    }
                 }
+                if (backdrop && Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
                 // "Your wallpaper" behind the glass: let the phone's wallpaper show through the window, and
                 // with frosted glass, blur it (Android 12+).
                 if (showWallpaper) {

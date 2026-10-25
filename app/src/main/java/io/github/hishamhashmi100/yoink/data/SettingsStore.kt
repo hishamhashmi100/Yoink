@@ -66,6 +66,7 @@ class SettingsStore(context: Context) {
                 corners = enumOf(p[CORNERS], CornerStyle.ROUND),
                 font = enumOf(p[FONT], FontStyle.DEFAULT),
                 glass = enumOf(p[GLASS], GlassStyle.OFF),
+                playerShade = p[PLAYER_SHADE]?.coerceIn(0f, 1f) ?: Appearance().playerShade,
                 looks = p[LOOKS]?.let { runCatching { StyleLook.mapFromJson(JSONObject(it)) }.getOrNull() }
                     ?: Appearance.legacyLooks(
                         behind = enumOf(p[GLASS_BEHIND], GlassBehind.THEME),
@@ -114,6 +115,7 @@ class SettingsStore(context: Context) {
         it[FONT] = appearance.font.name
         it[GLASS] = appearance.glass.name
         it[LOOKS] = StyleLook.mapToJson(appearance.looks).toString()
+        it[PLAYER_SHADE] = appearance.playerShade
     }
 
     /** Saves [appearance] under [name], replacing a saved theme with the same name. */
@@ -145,6 +147,7 @@ class SettingsStore(context: Context) {
         val FONT = stringPreferencesKey("font")
         val GLASS = stringPreferencesKey("glass")
         val LOOKS = stringPreferencesKey("looks")
+        val PLAYER_SHADE = floatPreferencesKey("player_shade")
 
         // Only read, to carry over the single glass background from before each style had its own.
         val GLASS_OPACITY = floatPreferencesKey("glass_opacity")
