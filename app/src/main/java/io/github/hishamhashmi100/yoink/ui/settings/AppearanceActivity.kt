@@ -637,6 +637,33 @@ private fun StyleControls(
                     Text(stringResource(R.string.appearance_glass_opacity_reset))
                 }
             }
+
+            // How light or dark the full-screen player's glass is.
+            var shade by remember(appearance.playerShade) { mutableFloatStateOf(appearance.playerShade) }
+            Text(
+                stringResource(R.string.appearance_player_shade),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(top = 16.dp),
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.appearance_shade_light), style = MaterialTheme.typography.labelMedium)
+                Slider(
+                    value = shade,
+                    onValueChange = { value ->
+                        shade = value
+                        onChange { it.copy(playerShade = value) }
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 12.dp),
+                )
+                Text(stringResource(R.string.appearance_shade_dark), style = MaterialTheme.typography.labelMedium)
+            }
+            Text(
+                stringResource(R.string.appearance_player_shade_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         Text(

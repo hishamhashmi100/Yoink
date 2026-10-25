@@ -88,6 +88,8 @@ data class Appearance(
     val glass: GlassStyle = GlassStyle.OFF,
     /** Each surface style's own background (see [look]). */
     val looks: Map<GlassStyle, StyleLook> = emptyMap(),
+    /** How light or dark the full-screen player's glass is (0 = white, 1 = black). */
+    val playerShade: Float = 0.3f,
 ) {
     /** The background of the surface style in use. */
     val look: StyleLook get() = looks[glass] ?: StyleLook()
@@ -125,6 +127,7 @@ data class Appearance(
         .put("font", font.name)
         .put("glass", glass.name)
         .put("looks", StyleLook.mapToJson(looks))
+        .put("playerShade", playerShade.toDouble())
 
     companion object {
         fun fromJson(json: JSONObject): Appearance {
@@ -139,6 +142,7 @@ data class Appearance(
                 corners = enumOf(json.optString("corners"), default.corners),
                 font = enumOf(json.optString("font"), default.font),
                 glass = enumOf(json.optString("glass"), default.glass),
+                playerShade = json.optDouble("playerShade", default.playerShade.toDouble()).toFloat().coerceIn(0f, 1f),
                 looks = json.optJSONObject("looks")?.let(StyleLook::mapFromJson) ?: legacyLooks(
                     behind = enumOf(json.optString("glassBehind"), GlassBehind.THEME),
                     color1 = json.optInt("backdropColor1", DEFAULT_LOOK_COLORS[0]),

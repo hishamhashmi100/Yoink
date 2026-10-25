@@ -54,6 +54,7 @@
     <string name="note_best_available">Saved in %1$s, the best this video offers.</string>
     <string name="more_options">More options</string>
     <string name="close_player">Close</string>
+    <string name="rotate_video">Rotate</string>
     <string name="player_previous">Previous</string>
     <string name="player_play">Play</string>
     <string name="player_pause">Pause</string>
@@ -144,6 +145,10 @@
     <string name="appearance_glass_opacity_hint">Lower lets more of what\'s behind show through.</string>
     <string name="appearance_glass_opacity_reset">Back to default</string>
     <string name="appearance_glass_behind">Behind the glass</string>
+    <string name="appearance_player_shade">Player shade</string>
+    <string name="appearance_shade_light">Light</string>
+    <string name="appearance_shade_dark">Dark</string>
+    <string name="appearance_player_shade_hint">How light or dark the full-screen player\'s glass is. Its text turns white on darker or clearer glass, and black on light, more solid glass.</string>
     <string name="appearance_background">Background</string>
     <string name="appearance_tick_one">Tap a color to use it.</string>
     <string name="appearance_tick_two">Tick two colors to blend them (1 to 2). Tap a ticked color to untick it.</string>

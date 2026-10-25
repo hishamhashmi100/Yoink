@@ -14,6 +14,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -104,12 +105,18 @@ data class Glass(
      * or black in dark mode) like colored glass; otherwise the plain [tint].
      */
     val tintBrush: Brush
-        get() {
-            if (!enabled || colors.isEmpty()) return SolidColor(tint)
-            val neutral = if (dark) Color(0xFF17171C) else Color.White
-            val stops = colors.map { lerp(neutral, it, 0.5f).copy(alpha = opacity) }
-            return Brush.linearGradient(if (stops.size == 1) stops + stops else stops)
+        get() = tintBrushOn(if (dark) Color(0xFF17171C) else Color.White)
+
+    /** The same colored glass, but starting from [neutral] (the full-screen player's own shade). */
+    fun tintBrushOn(neutral: Color): Brush {
+        if (!enabled) return SolidColor(Color.Transparent)
+        if (colors.isEmpty()) {
+            val base = if (accent.isSpecified) lerp(neutral, accent, 0.16f) else neutral
+            return SolidColor(base.copy(alpha = opacity))
         }
+        val stops = colors.map { lerp(neutral, it, 0.5f).copy(alpha = opacity) }
+        return Brush.linearGradient(if (stops.size == 1) stops + stops else stops)
+    }
 
     val hazeStyle: HazeStyle
         get() = HazeStyle(
@@ -129,7 +136,15 @@ val LocalBackdropColors = staticCompositionLocalOf<ColorScheme?> { null }
  * Dark glass with white text, for things that pop up over the app (dialogs, menus, the share sheet).
  * Behind them the app is dimmed or busy, where dark text on light glass can't be read.
  */
-class GlassOverlay(val colors: ColorScheme, val glass: Glass)
+class GlassOverlay(
+    val colors: ColorScheme,
+    val glass: Glass,
+    /** The light version (dark text), for the full-screen player when its glass is light and solid enough. */
+    val lightColors: ColorScheme,
+    val lightGlass: Glass,
+    /** The full-screen player's shade, from the Appearance slider (0 = white, 1 = black). */
+    val playerShade: Float,
+)
 
 val LocalGlassOverlay = staticCompositionLocalOf<GlassOverlay?> { null }
 
@@ -141,8 +156,18 @@ fun OverlayGlass(content: @Composable () -> Unit) {
         content()
         return
     }
-    MaterialTheme(colorScheme = overlay.colors, shapes = MaterialTheme.shapes, typography = MaterialTheme.typography) {
-        CompositionLocalProvider(LocalGlass provides overlay.glass, content = content)
+    GlassTheme(overlay.colors, overlay.glass, content)
+}
+
+/** [colors] and [glass] for [content], text color included (MaterialTheme alone leaves text the old color). */
+@Composable
+fun GlassTheme(colors: ColorScheme, glass: Glass, content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = colors, shapes = MaterialTheme.shapes, typography = MaterialTheme.typography) {
+        CompositionLocalProvider(
+            LocalGlass provides glass,
+            LocalContentColor provides colors.onSurface,
+            content = content,
+        )
     }
 }
 
