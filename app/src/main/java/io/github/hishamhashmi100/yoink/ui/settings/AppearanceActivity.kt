@@ -1,7 +1,14 @@
 package io.github.hishamhashmi100.yoink.ui.settings
 
 import android.app.Application
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas as AndroidCanvas
 import android.graphics.Color as AndroidColor
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -98,7 +105,6 @@ import io.github.hishamhashmi100.yoink.data.ThemeMode
 import io.github.hishamhashmi100.yoink.data.ThemePreset
 import io.github.hishamhashmi100.yoink.data.YOINK_RED
 import io.github.hishamhashmi100.yoink.download.Quality
-import io.github.hishamhashmi100.yoink.download.YouTubeUrl
 import io.github.hishamhashmi100.yoink.ui.home.LibraryFilter
 import io.github.hishamhashmi100.yoink.ui.home.LibraryItem
 import io.github.hishamhashmi100.yoink.ui.home.MiniPlayerBar
@@ -115,13 +121,16 @@ import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
 import io.github.hishamhashmi100.yoink.ui.theme.isDarkTheme
 import io.github.hishamhashmi100.yoink.ui.theme.shapes
 import io.github.hishamhashmi100.yoink.yoink
+import java.io.File
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AppearanceActivity : ComponentActivity() {
 
@@ -655,50 +664,113 @@ private fun Hint(@StringRes text: Int) {
     )
 }
 
-private val PREVIEW_VIDEO = Download(
-    id = -1,
-    videoId = "J---aiyznGQ",
-    title = "Keyboard Cat",
-    channel = "Keyboard Cat",
-    durationSec = 54,
-    mimeType = "video/mp4",
-    quality = Quality.P1080,
-    sizeBytes = 12_400_000,
-    status = DownloadStatus.COMPLETED,
-    createdAt = System.currentTimeMillis() - 3 * 3_600_000L,
-    resolution = 1080,
+/** Sample items for the preview. Their thumbnails are drawn on the phone (see [PreviewArt]), no internet needed. */
+private class PreviewSample(
+    val download: Download,
+    val heading: String,
+    val caption: String,
+    val from: Int,
+    val to: Int,
+)
+
+private val PREVIEW_VIDEO = PreviewSample(
+    Download(
+        id = -1,
+        videoId = "",
+        title = "A walk through Madinah at sunset",
+        channel = "Travel Diaries",
+        durationSec = 760,
+        mimeType = "video/mp4",
+        quality = Quality.P1080,
+        sizeBytes = 182_000_000,
+        status = DownloadStatus.COMPLETED,
+        createdAt = System.currentTimeMillis() - 3 * 3_600_000L,
+        resolution = 1080,
+    ),
+    heading = "Madinah",
+    caption = "A walk at sunset",
+    from = 0xFF6D4C41.toInt(),
+    to = 0xFFE0A96D.toInt(),
 )
 
 private val PREVIEW_AUDIO = listOf(
-    Download(
-        id = -2,
-        videoId = "jfKfPfyJRdk",
-        title = "lofi hip hop radio – beats to relax/study to",
-        channel = "Lofi Girl",
-        durationSec = 3_600,
-        mimeType = "audio/mpeg",
-        quality = Quality.AUDIO,
-        sizeBytes = 82_000_000,
-        status = DownloadStatus.COMPLETED,
-        createdAt = System.currentTimeMillis() - 26 * 3_600_000L,
+    PreviewSample(
+        Download(
+            id = -2,
+            videoId = "",
+            title = "Surah Ar-Rahman | سورة الرحمن",
+            channel = "Abdul Basit Abdus Samad",
+            durationSec = 1_371,
+            mimeType = "audio/mpeg",
+            quality = Quality.AUDIO,
+            sizeBytes = 21_000_000,
+            status = DownloadStatus.COMPLETED,
+            createdAt = System.currentTimeMillis() - 26 * 3_600_000L,
+        ),
+        heading = "سورة الرحمن",
+        caption = "Surah Ar-Rahman",
+        from = 0xFF0F4C5C.toInt(),
+        to = 0xFF1B998B.toInt(),
     ),
-    Download(
-        id = -3,
-        videoId = "dQw4w9WgXcQ",
-        title = "Never Gonna Give You Up",
-        channel = "Rick Astley",
-        durationSec = 213,
-        mimeType = "audio/mpeg",
-        quality = Quality.AUDIO,
-        sizeBytes = 3_400_000,
-        status = DownloadStatus.COMPLETED,
-        createdAt = System.currentTimeMillis() - 50 * 3_600_000L,
+    PreviewSample(
+        Download(
+            id = -3,
+            videoId = "",
+            title = "Surah Al-Kahf | سورة الكهف",
+            channel = "Mishary Rashid Alafasy",
+            durationSec = 2_536,
+            mimeType = "audio/mpeg",
+            quality = Quality.AUDIO,
+            sizeBytes = 39_000_000,
+            status = DownloadStatus.COMPLETED,
+            createdAt = System.currentTimeMillis() - 50 * 3_600_000L,
+        ),
+        heading = "سورة الكهف",
+        caption = "Surah Al-Kahf",
+        from = 0xFF1D3557.toInt(),
+        to = 0xFF457B9D.toInt(),
     ),
 )
 
+/** Draws the preview's thumbnails once (a gradient with the title in big letters) and caches them. */
+private object PreviewArt {
+    fun path(context: Context, sample: PreviewSample): String? = runCatching {
+        val file = File(context.cacheDir, "preview/thumb${-sample.download.id}.png")
+        if (!file.exists()) {
+            file.parentFile?.mkdirs()
+            val width = 640
+            val height = 360
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = AndroidCanvas(bitmap)
+            canvas.drawRect(
+                0f, 0f, width.toFloat(), height.toFloat(),
+                Paint().apply {
+                    shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), sample.from, sample.to, Shader.TileMode.CLAMP)
+                },
+            )
+            val heading = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.WHITE
+                textSize = 84f
+                textAlign = Paint.Align.CENTER
+                typeface = Typeface.DEFAULT_BOLD
+            }
+            val caption = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.argb(220, 255, 255, 255)
+                textSize = 34f
+                textAlign = Paint.Align.CENTER
+            }
+            canvas.drawText(sample.heading, width / 2f, height / 2f + 10f, heading)
+            canvas.drawText(sample.caption, width / 2f, height / 2f + 70f, caption)
+            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            bitmap.recycle()
+        }
+        file.absolutePath
+    }.getOrNull()
+}
+
 /**
  * A working slice of the real Home screen, drawn with the very same components: the Library filters, Library
- * items (a video and MP3s) and the mini player. Everything can be tapped to try it, with sample content
+ * items (a video and two Quran recitations) and the mini player. Everything can be tapped to try it, with sample content
  * that never touches real downloads or playback.
  */
 @Composable
@@ -709,6 +781,17 @@ private fun LookPreview() {
     var playing by rememberSaveable { mutableStateOf(true) }
     var repeat by rememberSaveable { mutableIntStateOf(Player.REPEAT_MODE_ALL) }
     var progress by remember { mutableFloatStateOf(0.35f) }
+    val context = LocalContext.current
+    // Thumbnails drawn in the background; until then the items show their placeholder.
+    var thumbs by remember { mutableStateOf<Map<Long, String>>(emptyMap()) }
+    LaunchedEffect(Unit) {
+        thumbs = withContext(Dispatchers.IO) {
+            (PREVIEW_AUDIO + PREVIEW_VIDEO).mapNotNull { sample ->
+                PreviewArt.path(context, sample)?.let { sample.download.id to it }
+            }.toMap()
+        }
+    }
+    fun withThumb(sample: PreviewSample) = sample.download.copy(thumbnailPath = thumbs[sample.download.id])
     LaunchedEffect(track, playing) {
         while (playing && track != null) {
             delay(200)
@@ -758,11 +841,11 @@ private fun LookPreview() {
             Modifier.padding(start = 12.dp, end = 4.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items.forEach { download ->
+            items.forEach { sample ->
                 LibraryItem(
-                    download,
+                    withThumb(sample),
                     grid = false,
-                    onPlay = { PREVIEW_AUDIO.indexOf(download).takeIf { it >= 0 }?.let(::play) },
+                    onPlay = { PREVIEW_AUDIO.indexOf(sample).takeIf { it >= 0 }?.let(::play) },
                     onShare = {},
                     onOpenWith = {},
                     onDelete = {},
@@ -771,13 +854,13 @@ private fun LookPreview() {
             }
         }
         track?.let { index ->
-            val audio = PREVIEW_AUDIO[index]
+            val audio = withThumb(PREVIEW_AUDIO[index])
             MiniPlayerBar(
                 playing = NowPlaying(
                     downloadId = audio.id,
                     title = audio.title,
                     artist = audio.channel,
-                    artworkUri = Uri.parse(YouTubeUrl.thumbnailUrl(audio.videoId)),
+                    artworkUri = audio.thumbnailPath?.let { Uri.fromFile(File(it)) },
                     isPlaying = playing,
                     hasNext = true,
                     repeatMode = repeat,
