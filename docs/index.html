@@ -213,7 +213,8 @@
     }
     .status { display: flex; justify-content: space-between; align-items: center; height: 34px; padding: 4px 22px 0; font-size: 12px; font-weight: 700; }
     .status .cam { position: absolute; left: 50%; top: 10px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #0b0909; }
-    .status i { display: inline-block; width: 22px; height: 10px; border-radius: 3px; border: 1.5px solid currentColor; opacity: .8; }
+    .status .icons { display: flex; align-items: center; gap: 5px; }
+    .status svg { display: block; height: 11px; width: auto; }
     .yt-video { position: relative; aspect-ratio: 16 / 9; background: linear-gradient(160deg, #ffb35c, #ff5e62 50%, #4a1d5a); }
     .yt-video::after {
       content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
@@ -737,7 +738,11 @@
         <div class="device-wrap" aria-hidden="true">
           <div class="device" id="demo">
             <div class="screen">
-              <div class="status"><span>9:41</span><b class="cam"></b><i></i></div>
+              <div class="status"><span>9:41</span><b class="cam"></b><span class="icons">
+                <svg viewBox="0 0 17 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="4.6" y="5.5" width="3" height="6.5" rx=".8"/><rect x="9.2" y="3" width="3" height="9" rx=".8"/><rect x="13.8" y="0" width="3" height="12" rx=".8"/></svg>
+                <svg viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.4c2.3 0 4.4.9 6 2.4l1.3-1.4A10.5 10.5 0 0 0 8 .5C5.2.5 2.6 1.6.7 3.4L2 4.8a8.6 8.6 0 0 1 6-2.4Z"/><path d="M8 6c1.3 0 2.5.5 3.4 1.3l1.3-1.4A6.9 6.9 0 0 0 8 4.1c-1.8 0-3.4.7-4.7 1.8l1.3 1.4C5.5 6.5 6.7 6 8 6Z"/><path d="M8 11.6 10.2 9.3A3.2 3.2 0 0 0 8 8.4c-.8 0-1.6.3-2.2.9L8 11.6Z"/></svg>
+                <svg viewBox="0 0 27 12"><rect x=".75" y=".75" width="22.5" height="10.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".45"/><rect x="2.5" y="2.5" width="15" height="7" rx="1.8" fill="currentColor"/><path d="M24.8 4v4c.9-.3 1.5-1.1 1.5-2s-.6-1.7-1.5-2Z" fill="currentColor" opacity=".5"/></svg>
+              </span></div>
               <div class="yt-video"><b class="sun"></b><b class="hills"></b></div>
               <div class="yt-meta"><div class="line" style="width:88%"></div><div class="line" style="width:62%"></div><div class="line" style="width:40%;height:8px"></div></div>
               <div class="yt-actions"><span></span><span></span><span class="share">Share</span><span></span></div>
