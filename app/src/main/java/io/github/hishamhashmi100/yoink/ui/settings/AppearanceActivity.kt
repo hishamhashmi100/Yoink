@@ -1,6 +1,8 @@
 package io.github.hishamhashmi100.yoink.ui.settings
 
 import android.app.Application
+import android.graphics.Color as AndroidColor
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -52,8 +54,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -78,41 +82,46 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.Player
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Appearance
 import io.github.hishamhashmi100.yoink.data.Contrast
 import io.github.hishamhashmi100.yoink.data.CornerStyle
+import io.github.hishamhashmi100.yoink.data.Download
+import io.github.hishamhashmi100.yoink.data.DownloadStatus
 import io.github.hishamhashmi100.yoink.data.FontStyle
+import io.github.hishamhashmi100.yoink.data.GlassBehind
 import io.github.hishamhashmi100.yoink.data.GlassStyle
 import io.github.hishamhashmi100.yoink.data.PaletteStyle
 import io.github.hishamhashmi100.yoink.data.SavedTheme
 import io.github.hishamhashmi100.yoink.data.ThemeMode
 import io.github.hishamhashmi100.yoink.data.ThemePreset
 import io.github.hishamhashmi100.yoink.data.YOINK_RED
+import io.github.hishamhashmi100.yoink.download.Quality
+import io.github.hishamhashmi100.yoink.download.YouTubeUrl
+import io.github.hishamhashmi100.yoink.ui.home.LibraryFilter
+import io.github.hishamhashmi100.yoink.ui.home.LibraryItem
+import io.github.hishamhashmi100.yoink.ui.home.MiniPlayerBar
+import io.github.hishamhashmi100.yoink.ui.player.NowPlaying
+import io.github.hishamhashmi100.yoink.ui.player.PlaybackService
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 import io.github.hishamhashmi100.yoink.ui.theme.Glass
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
-import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
+import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
 import io.github.hishamhashmi100.yoink.ui.theme.colorScheme
 import io.github.hishamhashmi100.yoink.ui.theme.fontFamily
+import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
 import io.github.hishamhashmi100.yoink.ui.theme.isDarkTheme
 import io.github.hishamhashmi100.yoink.ui.theme.shapes
 import io.github.hishamhashmi100.yoink.yoink
-import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
+import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import io.github.hishamhashmi100.yoink.data.Download
-import io.github.hishamhashmi100.yoink.data.DownloadStatus
-import io.github.hishamhashmi100.yoink.download.Quality
-import io.github.hishamhashmi100.yoink.ui.home.LibraryItem
-import io.github.hishamhashmi100.yoink.ui.home.MiniPlayerBar
-import io.github.hishamhashmi100.yoink.ui.player.NowPlaying
-import androidx.media3.common.Player
-import android.graphics.Color as AndroidColor
 
 class AppearanceActivity : ComponentActivity() {
 
@@ -231,6 +240,8 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
     var saving by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     var pickingColor by rememberSaveable { mutableStateOf(false) }
+    // 1 or 2 while picking one of the backdrop colors.
+    var pickingBackdrop by rememberSaveable { mutableStateOf<Int?>(null) }
 
     Scaffold(
         topBar = {
@@ -344,6 +355,13 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                             modifier = Modifier.weight(1f),
                         )
                     }
+                }
+                if (appearance.glass != GlassStyle.OFF) {
+                    GlassControls(
+                        appearance = appearance,
+                        onChange = viewModel::update,
+                        onPickColor = { pickingBackdrop = it },
+                    )
                 }
 
                 Header(R.string.appearance_color)
@@ -502,6 +520,16 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
             dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
+    pickingBackdrop?.let { which ->
+        ColorPickerDialog(
+            initial = if (which == 1) appearance.backdropColor1 else appearance.backdropColor2,
+            onPick = { color ->
+                viewModel.update { if (which == 1) it.copy(backdropColor1 = color) else it.copy(backdropColor2 = color) }
+                pickingBackdrop = null
+            },
+            onDismiss = { pickingBackdrop = null },
+        )
+    }
     if (pickingColor) {
         ColorPickerDialog(
             initial = appearance.seedColor,
@@ -511,6 +539,97 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
             },
             onDismiss = { pickingColor = false },
         )
+    }
+}
+
+/** Opacity slider and what's behind the glass, shown when glass is on. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GlassControls(
+    appearance: Appearance,
+    onChange: ((Appearance) -> Appearance) -> Unit,
+    onPickColor: (Int) -> Unit,
+) {
+    // Local while dragging so the slider is smooth; saved as it moves so the screen updates live.
+    var opacity by remember(appearance.effectiveGlassOpacity) { mutableFloatStateOf(appearance.effectiveGlassOpacity) }
+    Column(Modifier.padding(horizontal = 16.dp)) {
+        Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.appearance_glass_opacity), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            Text(
+                stringResource(R.string.appearance_percent, (opacity * 100).roundToInt()),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Slider(
+            value = opacity,
+            onValueChange = { value ->
+                opacity = value
+                onChange { it.copy(glassOpacity = value) }
+            },
+            valueRange = 0.05f..0.95f,
+        )
+        Text(
+            stringResource(R.string.appearance_glass_opacity_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (appearance.glassOpacity != null) {
+            TextButton(onClick = { onChange { it.copy(glassOpacity = null) } }, shape = ButtonShape) {
+                Text(stringResource(R.string.appearance_glass_opacity_reset))
+            }
+        }
+
+        Text(
+            stringResource(R.string.appearance_glass_behind),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(
+                GlassBehind.THEME to R.string.glass_behind_theme,
+                GlassBehind.ONE_COLOR to R.string.glass_behind_one,
+                GlassBehind.TWO_COLORS to R.string.glass_behind_two,
+                GlassBehind.WALLPAPER to R.string.glass_behind_wallpaper,
+            ).forEach { (behind, label) ->
+                FilterChip(
+                    selected = appearance.glassBehind == behind,
+                    onClick = { onChange { it.copy(glassBehind = behind) } },
+                    label = { Text(stringResource(label)) },
+                )
+            }
+        }
+        val colors = when (appearance.glassBehind) {
+            GlassBehind.ONE_COLOR -> listOf(1 to appearance.backdropColor1)
+            GlassBehind.TWO_COLORS -> listOf(1 to appearance.backdropColor1, 2 to appearance.backdropColor2)
+            else -> emptyList()
+        }
+        if (colors.isNotEmpty()) {
+            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                colors.forEach { (which, color) ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Swatch(
+                            brush = Brush.linearGradient(listOf(Color(color), Color(color))),
+                            selected = false,
+                            onClick = { onPickColor(which) },
+                        )
+                        Text(
+                            stringResource(if (which == 1) R.string.glass_color_first else R.string.glass_color_second),
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                }
+            }
+        }
+        if (appearance.glassBehind == GlassBehind.WALLPAPER) {
+            Text(
+                stringResource(R.string.glass_behind_wallpaper_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
     }
 }
 
@@ -536,38 +655,77 @@ private fun Hint(@StringRes text: Int) {
     )
 }
 
+private val PREVIEW_VIDEO = Download(
+    id = -1,
+    videoId = "J---aiyznGQ",
+    title = "Keyboard Cat",
+    channel = "Keyboard Cat",
+    durationSec = 54,
+    mimeType = "video/mp4",
+    quality = Quality.P1080,
+    sizeBytes = 12_400_000,
+    status = DownloadStatus.COMPLETED,
+    createdAt = System.currentTimeMillis() - 3 * 3_600_000L,
+    resolution = 1080,
+)
+
+private val PREVIEW_AUDIO = listOf(
+    Download(
+        id = -2,
+        videoId = "jfKfPfyJRdk",
+        title = "lofi hip hop radio – beats to relax/study to",
+        channel = "Lofi Girl",
+        durationSec = 3_600,
+        mimeType = "audio/mpeg",
+        quality = Quality.AUDIO,
+        sizeBytes = 82_000_000,
+        status = DownloadStatus.COMPLETED,
+        createdAt = System.currentTimeMillis() - 26 * 3_600_000L,
+    ),
+    Download(
+        id = -3,
+        videoId = "dQw4w9WgXcQ",
+        title = "Never Gonna Give You Up",
+        channel = "Rick Astley",
+        durationSec = 213,
+        mimeType = "audio/mpeg",
+        quality = Quality.AUDIO,
+        sizeBytes = 3_400_000,
+        status = DownloadStatus.COMPLETED,
+        createdAt = System.currentTimeMillis() - 50 * 3_600_000L,
+    ),
+)
+
 /**
- * A slice of the real Home screen (the Library filters, a Library item and the mini player), drawn with
- * the very same components, so the preview looks exactly like the app.
+ * A working slice of the real Home screen, drawn with the very same components: the Library filters, Library
+ * items (a video and MP3s) and the mini player. Everything can be tapped to try it, with sample content
+ * that never touches real downloads or playback.
  */
 @Composable
 private fun LookPreview() {
     val glass = LocalGlass.current
-    val title = stringResource(R.string.preview_title)
-    val channel = stringResource(R.string.preview_channel)
-    val sample = remember(title, channel) {
-        Download(
-            videoId = "",
-            title = title,
-            channel = channel,
-            durationSec = 36_000,
-            mimeType = "video/mp4",
-            quality = Quality.P1080,
-            sizeBytes = 452_000_000,
-            status = DownloadStatus.COMPLETED,
-            createdAt = System.currentTimeMillis() - 3 * 3_600_000L,
-            resolution = 1080,
-        )
+    var filter by rememberSaveable { mutableStateOf(LibraryFilter.ALL) }
+    var track by rememberSaveable { mutableStateOf<Int?>(0) } // Index into PREVIEW_AUDIO, null when closed.
+    var playing by rememberSaveable { mutableStateOf(true) }
+    var repeat by rememberSaveable { mutableIntStateOf(Player.REPEAT_MODE_ALL) }
+    var progress by remember { mutableFloatStateOf(0.35f) }
+    LaunchedEffect(track, playing) {
+        while (playing && track != null) {
+            delay(200)
+            progress = (progress + 0.004f).let { if (it > 1f) 0f else it }
+        }
     }
-    val playing = NowPlaying(
-        downloadId = null,
-        title = title,
-        artist = channel,
-        artworkUri = null,
-        isPlaying = true,
-        hasNext = true,
-        repeatMode = Player.REPEAT_MODE_ALL,
-    )
+    val items = when (filter) {
+        LibraryFilter.ALL -> listOf(PREVIEW_VIDEO, PREVIEW_AUDIO[0])
+        LibraryFilter.VIDEO -> listOf(PREVIEW_VIDEO)
+        LibraryFilter.AUDIO -> PREVIEW_AUDIO
+    }
+    fun play(index: Int) {
+        track = index
+        playing = true
+        progress = 0f
+    }
+
     val shape = MaterialTheme.shapes.large
     Column(
         Modifier
@@ -588,14 +746,53 @@ private fun LookPreview() {
             Modifier.padding(horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            FilterChip(selected = true, onClick = {}, label = { Text(stringResource(R.string.filter_all)) })
-            FilterChip(selected = false, onClick = {}, label = { Text(stringResource(R.string.filter_video)) })
-            FilterChip(selected = false, onClick = {}, label = { Text(stringResource(R.string.filter_audio)) })
+            listOf(
+                LibraryFilter.ALL to R.string.filter_all,
+                LibraryFilter.VIDEO to R.string.filter_video,
+                LibraryFilter.AUDIO to R.string.filter_audio,
+            ).forEach { (option, label) ->
+                FilterChip(selected = filter == option, onClick = { filter = option }, label = { Text(stringResource(label)) })
+            }
         }
-        Box(Modifier.padding(start = 12.dp, end = 4.dp, bottom = 8.dp)) {
-            LibraryItem(sample, grid = false, onPlay = {}, onShare = {}, onOpenWith = {}, onDelete = {})
+        Column(
+            Modifier.padding(start = 12.dp, end = 4.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items.forEach { download ->
+                LibraryItem(
+                    download,
+                    grid = false,
+                    onPlay = { PREVIEW_AUDIO.indexOf(download).takeIf { it >= 0 }?.let(::play) },
+                    onShare = {},
+                    onOpenWith = {},
+                    onDelete = {},
+                    onCopyDetails = {},
+                )
+            }
         }
-        MiniPlayerBar(playing, progress = 0.62f, onOpen = {}, hazeState = null, interactive = false)
+        track?.let { index ->
+            val audio = PREVIEW_AUDIO[index]
+            MiniPlayerBar(
+                playing = NowPlaying(
+                    downloadId = audio.id,
+                    title = audio.title,
+                    artist = audio.channel,
+                    artworkUri = Uri.parse(YouTubeUrl.thumbnailUrl(audio.videoId)),
+                    isPlaying = playing,
+                    hasNext = true,
+                    repeatMode = repeat,
+                ),
+                progress = progress,
+                onOpen = {},
+                hazeState = null,
+                insets = false,
+                onRepeat = { repeat = PlaybackService.nextRepeatMode(repeat) },
+                onPrevious = { play((index + PREVIEW_AUDIO.size - 1) % PREVIEW_AUDIO.size) },
+                onPlayPause = { playing = !playing },
+                onNext = { play((index + 1) % PREVIEW_AUDIO.size) },
+                onClose = { track = null },
+            )
+        }
     }
 }
 

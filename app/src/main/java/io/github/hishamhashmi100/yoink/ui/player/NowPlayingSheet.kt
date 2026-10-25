@@ -79,9 +79,11 @@ import coil3.compose.AsyncImage
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 import io.github.hishamhashmi100.yoink.ui.theme.GlassBackdrop
+import io.github.hishamhashmi100.yoink.ui.theme.GlassWindowBlur
 import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdropColors
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
 import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
+import io.github.hishamhashmi100.yoink.ui.theme.windowBlurAvailable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -96,6 +98,8 @@ fun NowPlayingSheet(onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val glass = LocalGlass.current
+    val context = LocalContext.current
+    val blur = remember { windowBlurAvailable(context) }
 
     // Playback stopped (✕ in the mini player, or the queue ran out): nothing left to show. The short wait
     // covers opening from the notification, before the player has reported what's playing.
@@ -115,12 +119,19 @@ fun NowPlayingSheet(onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         // Glass draws its own backdrop below, the same one the rest of the app sits on.
-        containerColor = if (glass.enabled) Color.Transparent else MaterialTheme.colorScheme.surface,
+        containerColor = when {
+            !glass.enabled -> MaterialTheme.colorScheme.surface
+            // Over the wallpaper: the app behind is blurred (below) under a wash of the theme.
+            glass.wallpaper -> (LocalBackdropColors.current ?: MaterialTheme.colorScheme).background
+                .copy(alpha = if (blur) 0.40f else 0.88f)
+            else -> Color.Transparent
+        },
         dragHandle = null,
     ) {
         Box(Modifier.fillMaxSize()) {
             HideSystemBars()
-            if (glass.enabled) GlassBackdrop(LocalBackdropColors.current ?: MaterialTheme.colorScheme)
+            if (glass.enabled && glass.wallpaper) GlassWindowBlur(strength = 40.dp)
+            if (glass.enabled && !glass.wallpaper) GlassBackdrop(LocalBackdropColors.current ?: MaterialTheme.colorScheme)
             var showQueue by rememberSaveable { mutableStateOf(false) }
             Column(
                 Modifier

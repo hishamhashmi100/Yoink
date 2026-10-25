@@ -16,6 +16,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
@@ -38,6 +39,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
+import io.github.hishamhashmi100.yoink.data.GlassBehind
 import io.github.hishamhashmi100.yoink.data.GlassStyle
 import kotlin.math.max
 
@@ -49,6 +51,10 @@ data class Glass(
     val backdrop: Color,
     /** The theme's color, which tints the glass the way colored glass would. */
     val accent: Color = Color.Unspecified,
+    /** How solid the glass is, from the Appearance slider (0 = invisible, 1 = solid). */
+    val opacity: Float = style.defaultOpacity,
+    /** The phone's wallpaper shows through instead of the theme's color blobs. */
+    val wallpaper: Boolean = false,
 ) {
 
     val enabled: Boolean get() = style != GlassStyle.OFF
@@ -62,25 +68,17 @@ data class Glass(
 
     /**
      * The one tint every glass surface uses (cards, bars, dialogs, sheets), so glass looks the same
-     * everywhere. Glass is about 70% see-through, like iPhone glass; frosted is milkier and blurred.
+     * everywhere. Its strength is the user's opacity setting.
      */
     val tint: Color
-        get() = when (style) {
-            GlassStyle.OFF -> Color.Transparent
-            GlassStyle.CLEAR -> base.copy(alpha = if (dark) 0.34f else 0.30f)
-            GlassStyle.FROSTED -> base.copy(alpha = if (dark) 0.58f else 0.55f)
-        }
+        get() = if (enabled) base.copy(alpha = opacity) else Color.Transparent
 
     /**
      * For menus, which pop up over busy thumbnails and can't blur what's behind them: the same glass, a
      * little thicker so their text stays readable.
      */
     val menuTint: Color
-        get() = when (style) {
-            GlassStyle.OFF -> Color.Transparent
-            GlassStyle.CLEAR -> base.copy(alpha = 0.72f)
-            GlassStyle.FROSTED -> base.copy(alpha = 0.82f)
-        }
+        get() = if (enabled) base.copy(alpha = (opacity + 0.35f).coerceAtMost(0.92f)) else Color.Transparent
 
     val blur: Dp get() = if (style == GlassStyle.FROSTED) 30.dp else 8.dp
 
@@ -106,6 +104,27 @@ val LocalGlass = staticCompositionLocalOf { Glass(GlassStyle.OFF, dark = false, 
 
 /** The theme's full palette (before [oneAccent]), for the backdrop's colored blobs. */
 val LocalBackdropColors = staticCompositionLocalOf<ColorScheme?> { null }
+
+/**
+ * Dark glass with white text, for things that pop up over the app (dialogs, menus, the share sheet).
+ * Behind them the app is dimmed or busy, where dark text on light glass can't be read.
+ */
+class GlassOverlay(val colors: ColorScheme, val glass: Glass)
+
+val LocalGlassOverlay = staticCompositionLocalOf<GlassOverlay?> { null }
+
+/** Shows [content] in the dark overlay glass when glass is on; unchanged otherwise. */
+@Composable
+fun OverlayGlass(content: @Composable () -> Unit) {
+    val overlay = LocalGlassOverlay.current
+    if (overlay == null || !LocalGlass.current.enabled) {
+        content()
+        return
+    }
+    MaterialTheme(colorScheme = overlay.colors, shapes = MaterialTheme.shapes, typography = MaterialTheme.typography) {
+        CompositionLocalProvider(LocalGlass provides overlay.glass, content = content)
+    }
+}
 
 /** Set by screens whose content can be blurred behind glass panels (see Modifier.hazeSource). */
 val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
@@ -138,20 +157,41 @@ fun YoinkCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.()
     }
 }
 
-/** Glass needs something colorful behind it: soft blobs of the theme's colors, like a phone wallpaper. */
+/** What's drawn behind the glass when it isn't the wallpaper (see [GlassBehind]). */
+@Immutable
+data class Backdrop(
+    val behind: GlassBehind = GlassBehind.THEME,
+    val color1: Color = Color.Unspecified,
+    val color2: Color = Color.Unspecified,
+)
+
+val LocalBackdrop = staticCompositionLocalOf { Backdrop() }
+
+/**
+ * Glass needs something colorful behind it: the user's color, or blend of two colors, or else soft blobs
+ * of the theme's colors, like a phone wallpaper.
+ */
 @Composable
-fun GlassBackdrop(colors: ColorScheme, modifier: Modifier = Modifier) {
+fun GlassBackdrop(colors: ColorScheme, modifier: Modifier = Modifier, backdrop: Backdrop = LocalBackdrop.current) {
     Canvas(modifier.fillMaxSize()) {
-        drawRect(colors.background)
-        val radius = max(size.width, size.height) * 0.62f
-        fun blob(color: Color, alpha: Float, center: Offset) = drawCircle(
-            Brush.radialGradient(listOf(color.copy(alpha = alpha), color.copy(alpha = 0f)), center, radius),
-            radius,
-            center,
-        )
-        blob(colors.primary, 0.55f, Offset(size.width * 0.05f, size.height * 0.08f))
-        blob(colors.tertiary, 0.45f, Offset(size.width * 1.0f, size.height * 0.45f))
-        blob(colors.secondary, 0.40f, Offset(size.width * 0.15f, size.height * 0.95f))
+        when (backdrop.behind) {
+            GlassBehind.ONE_COLOR -> drawRect(backdrop.color1)
+            GlassBehind.TWO_COLORS -> drawRect(
+                Brush.linearGradient(listOf(backdrop.color1, backdrop.color2), Offset.Zero, Offset(size.width, size.height)),
+            )
+            else -> {
+                drawRect(colors.background)
+                val radius = max(size.width, size.height) * 0.62f
+                fun blob(color: Color, alpha: Float, center: Offset) = drawCircle(
+                    Brush.radialGradient(listOf(color.copy(alpha = alpha), color.copy(alpha = 0f)), center, radius),
+                    radius,
+                    center,
+                )
+                blob(colors.primary, 0.55f, Offset(size.width * 0.05f, size.height * 0.08f))
+                blob(colors.tertiary, 0.45f, Offset(size.width * 1.0f, size.height * 0.45f))
+                blob(colors.secondary, 0.40f, Offset(size.width * 0.15f, size.height * 0.95f))
+            }
+        }
     }
 }
 
@@ -198,11 +238,11 @@ fun ColorScheme.oneAccent(): ColorScheme = copy(
  * see-through pane stays readable, the same frosted feel as the panels.
  */
 @Composable
-fun GlassWindowBlur() {
+fun GlassWindowBlur(strength: Dp? = null) {
     val glass = LocalGlass.current
     if (!glass.enabled || Build.VERSION.SDK_INT < 31) return
     val view = LocalView.current
-    val radius = with(LocalDensity.current) { glass.blur.roundToPx() }
+    val radius = with(LocalDensity.current) { (strength ?: glass.blur).roundToPx() }
     DisposableEffect(view, radius) {
         runCatching {
             var parent = view.parent
@@ -225,6 +265,18 @@ fun YoinkAlertDialog(
     dismissButton: @Composable (() -> Unit)? = null,
     title: @Composable (() -> Unit)? = null,
     text: @Composable (() -> Unit)? = null,
+) {
+    OverlayGlass { GlassAlertDialog(onDismissRequest, confirmButton, modifier, dismissButton, title, text) }
+}
+
+@Composable
+private fun GlassAlertDialog(
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    modifier: Modifier,
+    dismissButton: @Composable (() -> Unit)?,
+    title: @Composable (() -> Unit)?,
+    text: @Composable (() -> Unit)?,
 ) {
     val glass = LocalGlass.current
     val shape = MaterialTheme.shapes.extraLarge

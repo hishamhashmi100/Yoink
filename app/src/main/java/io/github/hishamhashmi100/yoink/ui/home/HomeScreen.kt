@@ -66,6 +66,8 @@ fun HomeScreen(
     var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
     val glass = LocalGlass.current
     val hazeState = rememberHazeState()
+    // The theme's color backdrop can be blurred; the phone's wallpaper can't (it's not part of the app).
+    val blurBackdrop = glass.enabled && !glass.wallpaper
 
     // Open on Downloading when something is in progress, otherwise on the Library.
     LaunchedEffect(active == null) {
@@ -86,11 +88,11 @@ fun HomeScreen(
         }
     }
 
-    CompositionLocalProvider(LocalHazeState provides hazeState.takeIf { glass.enabled }) {
+    CompositionLocalProvider(LocalHazeState provides hazeState.takeIf { blurBackdrop }) {
     Box(Modifier.fillMaxSize()) {
     // With glass, the backdrop is part of what the mini player and + button blur, under the lists. Without
     // it they'd show a solid color wherever no list item is behind them.
-    if (glass.enabled) {
+    if (blurBackdrop) {
         GlassBackdrop(
             LocalBackdropColors.current ?: MaterialTheme.colorScheme,
             Modifier.hazeSource(hazeState, zIndex = 0f),
@@ -115,7 +117,7 @@ fun HomeScreen(
                 } else {
                     FloatingActionButtonDefaults.elevation()
                 },
-                modifier = Modifier.glassPanel(glass, fabShape, hazeState),
+                modifier = Modifier.glassPanel(glass, fabShape, hazeState.takeIf { blurBackdrop }),
             ) {
                 Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.add_link))
             }
@@ -133,7 +135,7 @@ fun HomeScreen(
                     bottom = padding.calculateBottomPadding() - bottomInset,
                 )
                 .fillMaxSize()
-                .then(if (glass.enabled) Modifier.hazeSource(hazeState, zIndex = 1f) else Modifier),
+                .then(if (blurBackdrop) Modifier.hazeSource(hazeState, zIndex = 1f) else Modifier),
         ) {
             UpdateCard()
             val selected = tab ?: HomeTab.LIBRARY

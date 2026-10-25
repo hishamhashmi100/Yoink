@@ -2,6 +2,9 @@ package io.github.hishamhashmi100.yoink.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -71,8 +75,8 @@ fun MiniPlayer(onOpen: () -> Unit) {
 }
 
 /**
- * The bar itself, also shown with sample content in the Appearance preview ([interactive] off there, so
- * its buttons don't touch real playback).
+ * The bar itself. The Appearance preview shows it too, with sample content and its own button actions;
+ * left out, the buttons drive real playback.
  */
 @Composable
 fun MiniPlayerBar(
@@ -81,13 +85,16 @@ fun MiniPlayerBar(
     onOpen: () -> Unit,
     hazeState: HazeState?,
     modifier: Modifier = Modifier,
-    interactive: Boolean = true,
+    insets: Boolean = true,
+    onRepeat: (() -> Unit)? = null,
+    onPrevious: (() -> Unit)? = null,
+    onPlayPause: (() -> Unit)? = null,
+    onNext: (() -> Unit)? = null,
+    onClose: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    fun act(block: () -> Unit) {
-        if (interactive) block()
-    }
-
+    val swipeOpenPx = with(LocalDensity.current) { 32.dp.toPx() }
+    var dragged by remember { mutableFloatStateOf(0f) }
     val glass = LocalGlass.current
     Surface(
         tonalElevation = if (glass.enabled) 0.dp else 3.dp,
@@ -95,12 +102,18 @@ fun MiniPlayerBar(
         color = if (glass.enabled) Color.Transparent else MaterialTheme.colorScheme.surface,
         modifier = modifier.glassPanel(glass, RectangleShape, hazeState),
     ) {
-        Column(if (interactive) Modifier.navigationBarsPadding() else Modifier) {
+        Column(if (insets) Modifier.navigationBarsPadding() else Modifier) {
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(2.dp))
-            // Tap the cover or title to open the full-screen player.
+            // Tap the cover or title, or swipe the bar up, to open the full-screen player.
             Row(
                 Modifier
                     .clickable(onClick = onOpen)
+                    .draggable(
+                        orientation = Orientation.Vertical,
+                        state = rememberDraggableState { delta -> dragged += delta },
+                        onDragStarted = { dragged = 0f },
+                        onDragStopped = { if (dragged < -swipeOpenPx) onOpen() },
+                    )
                     .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -126,7 +139,7 @@ fun MiniPlayerBar(
                         )
                     }
                 }
-                IconButton(onClick = { act { AudioController.cycleRepeat(context) } }, modifier = Modifier.size(40.dp)) {
+                IconButton(onClick = { onRepeat?.invoke() ?: AudioController.cycleRepeat(context) }, modifier = Modifier.size(40.dp)) {
                     Icon(
                         if (playing.repeatMode == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
                         contentDescription = stringResource(
@@ -143,23 +156,23 @@ fun MiniPlayerBar(
                         },
                     )
                 }
-                IconButton(onClick = { act { AudioController.previous(context) } }, modifier = Modifier.size(40.dp)) {
+                IconButton(onClick = { onPrevious?.invoke() ?: AudioController.previous(context) }, modifier = Modifier.size(40.dp)) {
                     Icon(Icons.Rounded.SkipPrevious, contentDescription = stringResource(R.string.player_previous))
                 }
-                IconButton(onClick = { act { AudioController.togglePlayPause(context) } }, modifier = Modifier.size(40.dp)) {
+                IconButton(onClick = { onPlayPause?.invoke() ?: AudioController.togglePlayPause(context) }, modifier = Modifier.size(40.dp)) {
                     Icon(
                         if (playing.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         contentDescription = stringResource(if (playing.isPlaying) R.string.player_pause else R.string.player_play),
                     )
                 }
                 IconButton(
-                    onClick = { act { AudioController.next(context) } },
+                    onClick = { onNext?.invoke() ?: AudioController.next(context) },
                     enabled = playing.hasNext,
                     modifier = Modifier.size(40.dp),
                 ) {
                     Icon(Icons.Rounded.SkipNext, contentDescription = stringResource(R.string.player_next))
                 }
-                IconButton(onClick = { act { AudioController.stop(context) } }, modifier = Modifier.size(40.dp)) {
+                IconButton(onClick = { onClose?.invoke() ?: AudioController.stop(context) }, modifier = Modifier.size(40.dp)) {
                     Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.player_stop))
                 }
             }
