@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Page not found — Yoink</title>
+  <!-- With this file, Cloudflare Pages answers unknown addresses with a real "not found" instead of the home
+       page, so search engines don't see the same page under endless addresses. -->
+  <meta name="robots" content="noindex">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <style>
+    :root { --paper: #fbf6ec; --card: #fffdf8; --line: #1d1411; --text: #1d1411; --muted: #5f534b; --red: #e0141e; --shadow: #1d1411; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper: #16110e; --card: #211a16; --line: #e9dcc6; --text: #f7efe3; --muted: #c2b4a3; --shadow: #000; }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
+      background: var(--paper); color: var(--text); text-align: center;
+      font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    main { max-width: 440px; padding: 36px 28px; background: var(--card); border: 2.5px solid var(--line); border-radius: 18px; box-shadow: 5px 5px 0 var(--shadow); }
+    svg { width: 64px; height: 64px; display: block; margin: 0 auto; }
+    h1 { font-size: 34px; line-height: 1.1; letter-spacing: -.03em; margin: 16px 0 8px; }
+    p { margin: 0 0 24px; color: var(--muted); }
+    a.btn {
+      display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 24px; border-radius: 14px;
+      background: var(--red); color: #fff; border: 2.5px solid #1d1411; box-shadow: 4px 4px 0 var(--shadow);
+      font-weight: 800; text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4d4d"/><stop offset="1" stop-color="#d90f1a"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#g)"/><path d="M32 15v32M19 34l13 13 13-13" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <h1>Nothing here</h1>
+    <p>That page doesn't exist. Yoink lives on the home page.</p>
+    <a class="btn" href="/">Go to yoink.download</a>
+  </main>
+</body>
+</html>
