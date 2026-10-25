@@ -126,6 +126,8 @@ import java.io.File
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -152,14 +154,39 @@ class AppearanceViewModel(application: Application) : AndroidViewModel(applicati
 
     private val store = application.yoink.settings
 
-    val appearance: StateFlow<Appearance> = store.settings.map { it.appearance }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, store.current().appearance)
+    private val _appearance = MutableStateFlow(store.current().appearance)
+
+    /** What the screen shows: changes appear right away, and are saved in the background. */
+    val appearance: StateFlow<Appearance> = _appearance
+
+    // Only the newest change waits to be saved, so dragging a slider doesn't queue up a write per frame.
+    private val toSave = Channel<Appearance>(Channel.CONFLATED)
+
+    // The last change asked for, until it's saved. Older saved values arriving meanwhile are ignored,
+    // so the screen never jumps back to them.
+    private var pending: Appearance? = null
+
+    init {
+        viewModelScope.launch {
+            store.settings.map { it.appearance }.collect { saved ->
+                if (pending == null || saved == pending) {
+                    pending = null
+                    _appearance.value = saved
+                }
+            }
+        }
+        viewModelScope.launch { for (next in toSave) store.setAppearance(next) }
+    }
 
     val savedThemes: StateFlow<List<SavedTheme>> =
         store.savedThemes.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun update(change: (Appearance) -> Appearance) {
-        viewModelScope.launch { store.setAppearance(change(appearance.value)) }
+        val next = change(_appearance.value)
+        if (next == _appearance.value) return
+        pending = next
+        _appearance.value = next
+        toSave.trySend(next)
     }
 
     fun save(name: String) = viewModelScope.launch { store.saveTheme(name, appearance.value) }
@@ -607,24 +634,19 @@ private fun StyleControls(
     onCustomColor: () -> Unit,
 ) {
     val glassOn = appearance.glass != GlassStyle.OFF
-    // Local while dragging so the slider is smooth; saved as it moves so the screen updates live.
-    var opacity by remember(appearance.glass, appearance.effectiveGlassOpacity) { mutableFloatStateOf(appearance.effectiveGlassOpacity) }
     Column(Modifier.padding(horizontal = 16.dp)) {
         if (glassOn) {
             Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.appearance_glass_opacity), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                 Text(
-                    stringResource(R.string.appearance_percent, (opacity * 100).roundToInt()),
+                    stringResource(R.string.appearance_percent, (appearance.effectiveGlassOpacity * 100).roundToInt()),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
-            Slider(
-                value = opacity,
-                onValueChange = { value ->
-                    opacity = value
-                    onChange { a -> a.withLook { it.copy(opacity = value) } }
-                },
+            SmoothSlider(
+                value = appearance.effectiveGlassOpacity,
+                onValueChange = { value -> onChange { a -> a.withLook { it.copy(opacity = value) } } },
                 valueRange = 0.05f..0.95f,
             )
             Text(
@@ -639,7 +661,6 @@ private fun StyleControls(
             }
 
             // How light or dark the full-screen player's glass is.
-            var shade by remember(appearance.playerShade) { mutableFloatStateOf(appearance.playerShade) }
             Text(
                 stringResource(R.string.appearance_player_shade),
                 style = MaterialTheme.typography.titleSmall,
@@ -647,12 +668,9 @@ private fun StyleControls(
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.appearance_shade_light), style = MaterialTheme.typography.labelMedium)
-                Slider(
-                    value = shade,
-                    onValueChange = { value ->
-                        shade = value
-                        onChange { it.copy(playerShade = value) }
-                    },
+                SmoothSlider(
+                    value = appearance.playerShade,
+                    onValueChange = { value -> onChange { it.copy(playerShade = value) } },
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 12.dp),
@@ -1272,6 +1290,30 @@ private fun ColorPickerDialog(initial: Int, onPick: (Int) -> Unit, onDismiss: ()
             TextButton(onClick = { onPick(color.toArgb()) }) { Text(stringResource(R.string.appearance_use_color)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+/**
+ * A slider that follows the finger exactly. While it's held, it shows the finger's position rather than
+ * the value coming back from the settings, which can trail behind and made the thumb jump around.
+ */
+@Composable
+private fun SmoothSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+) {
+    var held by remember { mutableStateOf<Float?>(null) }
+    Slider(
+        value = held ?: value,
+        onValueChange = {
+            held = it
+            onValueChange(it)
+        },
+        onValueChangeFinished = { held = null },
+        valueRange = valueRange,
+        modifier = modifier,
     )
 }
 

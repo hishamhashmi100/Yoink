@@ -173,7 +173,9 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
         else -> isDarkTheme(appearance)
     }
     val context = LocalContext.current
-    val solid = remember(appearance, dark) { colorScheme(context, appearance.colorSource, dark) }
+    // Only what the colors are built from, so dragging the opacity or shade sliders doesn't rebuild them.
+    val source = appearance.colorSource.copy(looks = emptyMap(), glass = GlassStyle.OFF, playerShade = 0f)
+    val solid = remember(source, dark) { colorScheme(context, source, dark) }
     val wallpaper = appearance.glassBehind == GlassBehind.WALLPAPER
     val glass = Glass(
         style = appearance.glass,
@@ -195,11 +197,12 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
             }
         }
     }
-    val overlay = remember(appearance, glass) {
-        if (!glass.enabled) return@remember null
-        val darkSolid = colorScheme(context, appearance.colorSource, dark = true)
+    val overlaySchemes = remember(source, glass.enabled) {
+        if (glass.enabled) colorScheme(context, source, dark = true) to colorScheme(context, source, dark = false) else null
+    }
+    val overlay = remember(overlaySchemes, glass, appearance.playerShade) {
+        val (darkSolid, lightSolid) = overlaySchemes ?: return@remember null
         val darkGlass = glass.copy(dark = true, backdrop = darkSolid.background, accent = darkSolid.primary)
-        val lightSolid = colorScheme(context, appearance.colorSource, dark = false)
         val lightGlass = glass.copy(dark = false, backdrop = lightSolid.background, accent = lightSolid.primary)
         GlassOverlay(
             colors = darkSolid.oneAccent().glassy(darkGlass),
