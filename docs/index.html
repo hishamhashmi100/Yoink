@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Yoink — Download YouTube videos on your phone</title>
-  <meta name="description" content="Download YouTube videos on your phone with Yoink, a free, open-source Android app. Tap Share → Yoink in YouTube, pick a quality, done.">
+  <title>Yoink — Download YouTube videos &amp; MP3 on your Android phone</title>
+  <meta name="description" content="Free, open-source Android app to download YouTube videos, Shorts, MP3s and whole playlists. Tap Share → Yoink, pick 1080p or MP3. No ads, no account.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="author" content="Hisham Hashmi">
   <meta name="theme-color" content="#fbf6ec" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#16110e" media="(prefers-color-scheme: dark)">
@@ -16,14 +17,15 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Yoink">
   <meta property="og:url" content="https://yoink.download/">
-  <meta property="og:title" content="Yoink — Download YouTube videos on your phone">
+  <meta property="og:title" content="Yoink — Download YouTube videos &amp; MP3 on your Android phone">
+  <meta property="og:locale" content="en_US">
   <meta property="og:description" content="Free, open-source Android app. Tap Share → Yoink, pick a quality, and the video downloads to your phone. No ads, no account.">
   <meta property="og:image" content="https://yoink.download/og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Yoink: download YouTube videos on your phone">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Yoink — Download YouTube videos on your phone">
+  <meta name="twitter:title" content="Yoink — Download YouTube videos &amp; MP3 on your Android phone">
   <meta name="twitter:description" content="Free, open-source Android app. Tap Share → Yoink, pick a quality, done.">
   <meta name="twitter:image" content="https://yoink.download/og.png">
 
@@ -33,10 +35,23 @@
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "Yoink",
-    "operatingSystem": "Android 10+",
+    "operatingSystem": "Android 10 or newer",
     "applicationCategory": "MultimediaApplication",
+    "applicationSubCategory": "YouTube video and MP3 downloader",
     "image": "https://yoink.download/og.png",
-    "description": "Free, open-source Android app that downloads YouTube videos and audio from the Share menu. Everything runs on your phone.",
+    "screenshot": "https://yoink.download/og.png",
+    "inLanguage": "en",
+    "isAccessibleForFree": true,
+    "description": "Free, open-source Android app that downloads YouTube videos, Shorts, MP3s and whole playlists from the Share menu. Everything runs on your phone.",
+    "featureList": [
+      "Download YouTube videos in Best, 1080p, 720p or 480p",
+      "Save YouTube videos as MP3",
+      "Download whole YouTube playlists in one go",
+      "Download YouTube Shorts",
+      "Downloads keep going in the background",
+      "Built-in video and music player",
+      "No ads, no account, no tracking"
+    ],
     "author": { "@type": "Person", "name": "Hisham Hashmi", "sameAs": "https://www.linkedin.com/in/syed-hisham-ali-hashmi" },
     "url": "https://yoink.download/",
     "downloadUrl": "https://github.com/hishamhashmi100/Yoink/releases/latest/download/yoink-arm64-v8a.apk",
@@ -81,6 +96,38 @@
         "acceptedAnswer": {
           "@type": "Answer",
           "text": "No. Everything happens on your phone. There's no sign-in, no tracking and no ads."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is Yoink free?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, completely. There are no ads, no subscription and nothing to buy. It's open source under the GPL-3.0 license."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What quality can I download in?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Best saves the highest quality the video has (often 1080p, sometimes 4K). You can also pick 1080p, 720p or 480p to save space. Yoink shows which qualities each video actually has."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I save YouTube videos as MP3?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. Pick Audio (MP3) and Yoink saves just the sound as an MP3. It plays in Yoink's own player, even with the screen off, and with Show in gallery turned on in Settings it shows up in your music apps too."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I download YouTube Shorts?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. Share a Short to Yoink the same way as any other video, or copy its link and paste it with the + button in Yoink."
         }
       },
       {
@@ -1070,6 +1117,22 @@
           <details>
             <summary>Does it need a server or an account?</summary>
             <p>No. Everything happens on your phone. There's no sign-in, no tracking and no ads.</p>
+          </details>
+          <details>
+            <summary>Is Yoink free?</summary>
+            <p>Yes, completely. There are no ads, no subscription and nothing to buy. It's open source under the GPL-3.0 license.</p>
+          </details>
+          <details>
+            <summary>What quality can I download in?</summary>
+            <p><b>Best</b> saves the highest quality the video has (often 1080p, sometimes 4K). You can also pick 1080p, 720p or 480p to save space. Yoink shows which qualities each video actually has.</p>
+          </details>
+          <details>
+            <summary>Can I save YouTube videos as MP3?</summary>
+            <p>Yes. Pick <b>Audio (MP3)</b> and Yoink saves just the sound as an MP3. It plays in Yoink's own player, even with the screen off, and with <b>Show in gallery</b> turned on in Settings it shows up in your music apps too.</p>
+          </details>
+          <details>
+            <summary>Can I download YouTube Shorts?</summary>
+            <p>Yes. Share a Short to Yoink the same way as any other video, or copy its link and paste it with the <b>+</b> button in Yoink.</p>
           </details>
           <details>
             <summary>Downloads stopped working. What do I do?</summary>
