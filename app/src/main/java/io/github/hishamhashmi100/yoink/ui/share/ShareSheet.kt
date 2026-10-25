@@ -47,11 +47,25 @@ import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
+import io.github.hishamhashmi100.yoink.ui.theme.OverlayGlass
 import io.github.hishamhashmi100.yoink.ui.theme.windowBlurAvailable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShareSheet(
+    state: ShareUiState,
+    videoQuality: Quality,
+    onPick: (Quality) -> Unit,
+    onMinimize: () -> Unit,
+    onClose: () -> Unit,
+) {
+    // Over another app: dark glass with white text, readable whatever is behind.
+    OverlayGlass { SheetContent(state, videoQuality, onPick, onMinimize, onClose) }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SheetContent(
     state: ShareUiState,
     videoQuality: Quality,
     onPick: (Quality) -> Unit,

@@ -63,6 +63,7 @@ import io.github.hishamhashmi100.yoink.download.MediaInfo
 import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import io.github.hishamhashmi100.yoink.ui.player.PlayerActivity
+import io.github.hishamhashmi100.yoink.ui.theme.OverlayGlass
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 
 @Composable
@@ -192,6 +193,8 @@ internal fun LibraryItem(
     onShare: () -> Unit,
     onOpenWith: () -> Unit,
     onDelete: () -> Unit,
+    /** Replaces "Copy details" (the Appearance preview has no real download to copy). */
+    onCopyDetails: (() -> Unit)? = null,
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
@@ -204,27 +207,33 @@ internal fun LibraryItem(
             IconButton(onClick = { menuOpen = true }) {
                 Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more_options))
             }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_share)) },
-                    leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
-                    onClick = { menuOpen = false; onShare() },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_open_with)) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
-                    onClick = { menuOpen = false; onOpenWith() },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.copy_details)) },
-                    leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) },
-                    onClick = { menuOpen = false; FileActions.copyDetails(context, download.id) },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_delete)) },
-                    leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
-                    onClick = { menuOpen = false; onDelete() },
-                )
+            // Dark glass with white text when glass is on: the menu pops up over busy thumbnails.
+            OverlayGlass {
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_share)) },
+                        leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
+                        onClick = { menuOpen = false; onShare() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_open_with)) },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
+                        onClick = { menuOpen = false; onOpenWith() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.copy_details)) },
+                        leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null) },
+                        onClick = {
+                            menuOpen = false
+                            onCopyDetails?.invoke() ?: FileActions.copyDetails(context, download.id)
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_delete)) },
+                        leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
+                        onClick = { menuOpen = false; onDelete() },
+                    )
+                }
             }
         }
     }

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -64,6 +65,10 @@ class SettingsStore(context: Context) {
                 corners = enumOf(p[CORNERS], CornerStyle.ROUND),
                 font = enumOf(p[FONT], FontStyle.DEFAULT),
                 glass = enumOf(p[GLASS], GlassStyle.OFF),
+                glassOpacity = p[GLASS_OPACITY]?.takeIf { it in 0f..1f },
+                glassBehind = enumOf(p[GLASS_BEHIND], GlassBehind.THEME),
+                backdropColor1 = p[BACKDROP_COLOR_1] ?: Appearance().backdropColor1,
+                backdropColor2 = p[BACKDROP_COLOR_2] ?: Appearance().backdropColor2,
             ),
         )
     }
@@ -100,6 +105,10 @@ class SettingsStore(context: Context) {
         it[CORNERS] = appearance.corners.name
         it[FONT] = appearance.font.name
         it[GLASS] = appearance.glass.name
+        appearance.glassOpacity?.let { value -> it[GLASS_OPACITY] = value } ?: it.remove(GLASS_OPACITY)
+        it[GLASS_BEHIND] = appearance.glassBehind.name
+        it[BACKDROP_COLOR_1] = appearance.backdropColor1
+        it[BACKDROP_COLOR_2] = appearance.backdropColor2
     }
 
     /** Saves [appearance] under [name], replacing a saved theme with the same name. */
@@ -130,6 +139,10 @@ class SettingsStore(context: Context) {
         val CORNERS = stringPreferencesKey("corners")
         val FONT = stringPreferencesKey("font")
         val GLASS = stringPreferencesKey("glass")
+        val GLASS_OPACITY = floatPreferencesKey("glass_opacity")
+        val GLASS_BEHIND = stringPreferencesKey("glass_behind")
+        val BACKDROP_COLOR_1 = intPreferencesKey("backdrop_color_1")
+        val BACKDROP_COLOR_2 = intPreferencesKey("backdrop_color_2")
         val SAVED_THEMES = stringPreferencesKey("saved_themes")
         val AUDIO_REPEAT = intPreferencesKey("audio_repeat")
         val VIDEO_REPEAT = intPreferencesKey("video_repeat")

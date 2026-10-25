@@ -5,11 +5,16 @@ import android.app.Activity
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.ContextWrapper
+import android.graphics.PixelFormat
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.os.Build
+import android.view.WindowManager
 import androidx.annotation.FontRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,9 +32,12 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
@@ -55,6 +63,8 @@ import io.github.hishamhashmi100.yoink.data.Appearance
 import io.github.hishamhashmi100.yoink.data.Contrast
 import io.github.hishamhashmi100.yoink.data.CornerStyle
 import io.github.hishamhashmi100.yoink.data.FontStyle
+import io.github.hishamhashmi100.yoink.data.GlassBehind
+import io.github.hishamhashmi100.yoink.data.GlassStyle
 import io.github.hishamhashmi100.yoink.data.PaletteStyle
 import io.github.hishamhashmi100.yoink.data.Settings
 import io.github.hishamhashmi100.yoink.data.ThemeMode
@@ -141,21 +151,59 @@ fun YoinkTheme(settings: Settings, backdrop: Boolean = true, content: @Composabl
  */
 @Composable
 fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Composable () -> Unit) {
-    val dark = isDarkTheme(appearance)
+    val customBackdrop = appearance.glass != GlassStyle.OFF &&
+        appearance.glassBehind in setOf(GlassBehind.ONE_COLOR, GlassBehind.TWO_COLORS)
+    val behind = Backdrop(
+        behind = if (appearance.glass == GlassStyle.OFF) GlassBehind.THEME else appearance.glassBehind,
+        color1 = Color(appearance.backdropColor1),
+        color2 = Color(if (appearance.glassBehind == GlassBehind.TWO_COLORS) appearance.backdropColor2 else appearance.backdropColor1),
+    )
+    // On the user's own backdrop colors, light or dark follows the colors, so text is always readable:
+    // dark colors get white text, light ones dark text.
+    val dark = if (customBackdrop) (behind.color1.luminance() + behind.color2.luminance()) / 2 < 0.45f else isDarkTheme(appearance)
     val context = LocalContext.current
     val solid = remember(appearance, dark) { colorScheme(context, appearance, dark) }
-    val glass = Glass(appearance.glass, dark, solid.background, solid.primary)
+    val wallpaper = appearance.glassBehind == GlassBehind.WALLPAPER
+    val glass = Glass(
+        style = appearance.glass,
+        dark = dark,
+        backdrop = if (customBackdrop) behind.color1 else solid.background,
+        accent = solid.primary,
+        opacity = appearance.effectiveGlassOpacity,
+        wallpaper = wallpaper,
+    )
     val colors = remember(solid, glass) { solid.oneAccent().let { if (glass.enabled) it.glassy(glass) else it } }
+    val overlay = remember(appearance, glass) {
+        if (!glass.enabled) return@remember null
+        val darkSolid = colorScheme(context, appearance, dark = true)
+        val darkGlass = glass.copy(dark = true, backdrop = darkSolid.background, accent = darkSolid.primary)
+        GlassOverlay(darkSolid.oneAccent().glassy(darkGlass), darkGlass)
+    }
     val typography = remember(appearance.font) { typography(appearance.font) }
+    val showWallpaper = glass.enabled && wallpaper && backdrop
 
-    // enableEdgeToEdge() follows the system's dark mode; keep the bar icons readable when the app overrides it.
     val view = LocalView.current
+    val blurPx = with(LocalDensity.current) { 40.dp.roundToPx() }
     if (!view.isInEditMode) {
         SideEffect {
             view.context.findActivity()?.window?.let { window ->
+                // enableEdgeToEdge() follows the system's dark mode; keep the bar icons readable when the app
+                // overrides it.
                 WindowCompat.getInsetsController(window, view).apply {
                     isAppearanceLightStatusBars = !dark
                     isAppearanceLightNavigationBars = !dark
+                }
+                // "Your wallpaper" behind the glass: let the phone's wallpaper show through the window, and
+                // with frosted glass, blur it (Android 12+).
+                if (showWallpaper) {
+                    window.setFormat(PixelFormat.TRANSLUCENT)
+                    window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+                    window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+                }
+                if (Build.VERSION.SDK_INT >= 31 && backdrop) {
+                    window.setBackgroundBlurRadius(if (showWallpaper && glass.style == GlassStyle.FROSTED) blurPx else 0)
                 }
             }
         }
@@ -166,14 +214,20 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
             LocalButtonShape provides buttonShape(appearance.corners),
             LocalGlass provides glass,
             LocalBackdropColors provides solid,
+            LocalGlassOverlay provides overlay,
+            LocalBackdrop provides behind,
         ) {
-            if (glass.enabled && backdrop) {
-                Box {
+            when {
+                // A light wash of the theme over the wallpaper, so text on it stays readable.
+                showWallpaper -> Box {
+                    Box(Modifier.fillMaxSize().background(solid.background.copy(alpha = 0.30f)))
+                    content()
+                }
+                glass.enabled && backdrop -> Box {
                     GlassBackdrop(solid)
                     content()
                 }
-            } else {
-                content()
+                else -> content()
             }
         }
     }

@@ -11,7 +11,18 @@ enum class PaletteStyle { TONAL, VIBRANT, EXPRESSIVE, FIDELITY, NEUTRAL, MONOCHR
 enum class Contrast(val level: Double) { STANDARD(0.0), MEDIUM(0.5), HIGH(1.0) }
 
 /** Solid surfaces, or see-through glass panels over a soft color backdrop (clear or frosted). */
-enum class GlassStyle { OFF, CLEAR, FROSTED }
+enum class GlassStyle {
+    OFF, CLEAR, FROSTED;
+
+    /** How solid the glass is unless the user picks their own (0 = invisible, 1 = solid). */
+    val defaultOpacity: Float get() = if (this == FROSTED) 0.55f else 0.30f
+}
+
+/**
+ * What shows through the glass: soft blobs of the theme's colors, one color or a blend of two colors the
+ * user picks, or the phone's own wallpaper.
+ */
+enum class GlassBehind { THEME, ONE_COLOR, TWO_COLORS, WALLPAPER }
 
 enum class CornerStyle { BUBBLY, ROUND, SOFT, SQUARE }
 
@@ -37,7 +48,14 @@ data class Appearance(
     val corners: CornerStyle = CornerStyle.ROUND,
     val font: FontStyle = FontStyle.DEFAULT,
     val glass: GlassStyle = GlassStyle.OFF,
+    /** The user's own glass opacity, or null for the style's default. */
+    val glassOpacity: Float? = null,
+    val glassBehind: GlassBehind = GlassBehind.THEME,
+    val backdropColor1: Int = 0xFF3D5AFE.toInt(),
+    val backdropColor2: Int = 0xFFEC407A.toInt(),
 ) {
+    val effectiveGlassOpacity: Float get() = glassOpacity ?: glass.defaultOpacity
+
     fun toJson(): JSONObject = JSONObject()
         .put("theme", theme.name)
         .put("pureBlack", pureBlack)
@@ -48,6 +66,10 @@ data class Appearance(
         .put("corners", corners.name)
         .put("font", font.name)
         .put("glass", glass.name)
+        .put("glassOpacity", glassOpacity?.toDouble() ?: -1.0)
+        .put("glassBehind", glassBehind.name)
+        .put("backdropColor1", backdropColor1)
+        .put("backdropColor2", backdropColor2)
 
     companion object {
         fun fromJson(json: JSONObject): Appearance {
@@ -62,6 +84,10 @@ data class Appearance(
                 corners = enumOf(json.optString("corners"), default.corners),
                 font = enumOf(json.optString("font"), default.font),
                 glass = enumOf(json.optString("glass"), default.glass),
+                glassOpacity = json.optDouble("glassOpacity", -1.0).toFloat().takeIf { it in 0f..1f },
+                glassBehind = enumOf(json.optString("glassBehind"), default.glassBehind),
+                backdropColor1 = json.optInt("backdropColor1", default.backdropColor1),
+                backdropColor2 = json.optInt("backdropColor2", default.backdropColor2),
             )
         }
     }
