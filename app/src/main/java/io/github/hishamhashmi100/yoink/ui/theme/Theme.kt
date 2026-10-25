@@ -135,10 +135,10 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun isDarkTheme(appearance: Appearance): Boolean = when (appearance.theme) {
-    ThemeMode.SYSTEM -> isSystemInDarkTheme()
-    ThemeMode.LIGHT -> false
-    ThemeMode.DARK -> true
+fun isDarkTheme(appearance: Appearance): Boolean = when {
+    appearance.pureBlack -> true
+    appearance.theme == ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    else -> appearance.theme == ThemeMode.DARK
 }
 
 @Composable
@@ -152,24 +152,33 @@ fun YoinkTheme(settings: Settings, backdrop: Boolean = true, content: @Composabl
 @Composable
 fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Composable () -> Unit) {
     val customBackdrop = appearance.customBackdrop
-    val behind = Backdrop(
-        behind = if (appearance.glass == GlassStyle.OFF) GlassBehind.THEME else appearance.glassBehind,
-        color1 = Color(appearance.backdropColor1),
-        color2 = Color(if (appearance.glassBehind == GlassBehind.TWO_COLORS) appearance.backdropColor2 else appearance.backdropColor1),
-    )
-    // On the user's own backdrop colors, light or dark follows the colors, so text is always readable:
-    // dark colors get white text, light ones dark text.
-    val dark = if (customBackdrop) (behind.color1.luminance() + behind.color2.luminance()) / 2 < 0.45f else isDarkTheme(appearance)
+    val behind = when {
+        // Pure black overrides whatever was chosen behind the glass.
+        appearance.pureBlack && appearance.glass != GlassStyle.OFF -> Backdrop(GlassBehind.ONE_COLOR, Color.Black, Color.Black)
+        else -> Backdrop(
+            behind = if (appearance.glass == GlassStyle.OFF) GlassBehind.THEME else appearance.glassBehind,
+            color1 = Color(appearance.backdropColor1),
+            color2 = Color(if (appearance.glassBehind == GlassBehind.TWO_COLORS) appearance.backdropColor2 else appearance.backdropColor1),
+        )
+    }
+    val dark = when {
+        // Pure black is always dark.
+        appearance.pureBlack -> true
+        // On the user's own glass colors, "System" picks what suits them so text stays readable (white on
+        // dark colors, dark on light ones); Light and Dark are followed as chosen.
+        customBackdrop && appearance.theme == ThemeMode.SYSTEM -> (behind.color1.luminance() + behind.color2.luminance()) / 2 < 0.45f
+        else -> isDarkTheme(appearance)
+    }
     val context = LocalContext.current
     val solid = remember(appearance, dark) { colorScheme(context, appearance.colorSource, dark) }
     val wallpaper = appearance.glassBehind == GlassBehind.WALLPAPER
     val glass = Glass(
         style = appearance.glass,
         dark = dark,
-        backdrop = if (customBackdrop) behind.color1 else solid.background,
+        backdrop = if (behind.behind == GlassBehind.ONE_COLOR || behind.behind == GlassBehind.TWO_COLORS) behind.color1 else solid.background,
         accent = solid.primary,
         opacity = appearance.effectiveGlassOpacity,
-        wallpaper = wallpaper,
+        wallpaper = wallpaper && !appearance.pureBlack,
     )
     val colors = remember(solid, glass) { solid.oneAccent().let { if (glass.enabled) it.glassy(glass) else it } }
     val overlay = remember(appearance, glass) {
@@ -179,7 +188,7 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
         GlassOverlay(darkSolid.oneAccent().glassy(darkGlass), darkGlass)
     }
     val typography = remember(appearance.font) { typography(appearance.font) }
-    val showWallpaper = glass.enabled && wallpaper && backdrop
+    val showWallpaper = glass.enabled && glass.wallpaper && backdrop
 
     val view = LocalView.current
     val blurPx = with(LocalDensity.current) { 40.dp.roundToPx() }

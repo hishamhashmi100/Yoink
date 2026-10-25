@@ -1,10 +1,14 @@
 package io.github.hishamhashmi100.yoink.ui.home
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,7 +29,6 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -33,13 +36,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -95,6 +102,8 @@ fun MiniPlayerBar(
     onPlayPause: (() -> Unit)? = null,
     onNext: (() -> Unit)? = null,
     onClose: (() -> Unit)? = null,
+    /** Dragging or tapping the progress line skips there (0–1 through the track). */
+    onSeek: ((Float) -> Unit)? = null,
     /** Pulling the bar up drags the full-screen player along with the finger. */
     onDrag: ((Float) -> Unit)? = null,
     onDragStopped: ((Float) -> Unit)? = null,
@@ -118,7 +127,12 @@ fun MiniPlayerBar(
                 )
                 .then(if (insets) Modifier.navigationBarsPadding() else Modifier),
         ) {
-            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(2.dp))
+            SeekLine(progress) { fraction ->
+                onSeek?.invoke(fraction) ?: run {
+                    val (_, duration) = AudioController.position()
+                    if (duration > 0) AudioController.seekTo(context, (fraction * duration).toLong())
+                }
+            }
             // A small arrow: the bar can be pulled up into the full-screen player.
             Icon(
                 Icons.Rounded.KeyboardArrowUp,
@@ -198,3 +212,44 @@ fun MiniPlayerBar(
         }
     }
 }
+
+/**
+ * The thin progress line along the top of the bar. Drag along it (it thickens and shows a knob) or tap it
+ * to skip forward or back.
+ */
+@Composable
+private fun SeekLine(progress: Float, onSeek: (Float) -> Unit) {
+    var dragging by remember { mutableStateOf<Float?>(null) }
+    val shown = dragging ?: progress
+    val primary = MaterialTheme.colorScheme.primary
+    val track = primary.copy(alpha = 0.24f)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(16.dp)
+            .pointerInput(Unit) {
+                detectTapGestures { offset -> onSeek((offset.x / size.width).coerceIn(0f, 1f)) }
+            }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = { offset -> dragging = (offset.x / size.width).coerceIn(0f, 1f) },
+                    onDragEnd = {
+                        dragging?.let(onSeek)
+                        dragging = null
+                    },
+                    onDragCancel = { dragging = null },
+                ) { change, _ ->
+                    change.consume()
+                    dragging = (change.position.x / size.width).coerceIn(0f, 1f)
+                }
+            },
+    ) {
+        Canvas(Modifier.matchParentSize()) {
+            val thickness = (if (dragging != null) 5.dp else 2.dp).toPx()
+            drawRect(track, size = Size(size.width, thickness))
+            drawRect(primary, size = Size(size.width * shown, thickness))
+            if (dragging != null) drawCircle(primary, 7.dp.toPx(), Offset(size.width * shown, thickness / 2))
+        }
+    }
+}
+

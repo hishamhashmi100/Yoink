@@ -335,17 +335,29 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                 ) {
                     modes.forEachIndexed { index, (mode, label) ->
                         SegmentedButton(
-                            selected = appearance.theme == mode,
-                            onClick = { viewModel.update { it.copy(theme = mode) } },
+                            // Pure black is dark, so it shows as Dark; Light or System turns it off.
+                            selected = if (appearance.pureBlack) mode == ThemeMode.DARK else appearance.theme == mode,
+                            onClick = {
+                                viewModel.update {
+                                    it.copy(theme = mode, pureBlack = it.pureBlack && mode == ThemeMode.DARK)
+                                }
+                            },
                             shape = SegmentedButtonDefaults.itemShape(index, modes.size, ButtonShape),
                         ) { Text(stringResource(label)) }
                     }
+                }
+                if (appearance.customBackdrop && appearance.theme == ThemeMode.SYSTEM) {
+                    Hint(R.string.appearance_mode_follows_glass)
                 }
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.appearance_pure_black)) },
                     supportingContent = { Text(stringResource(R.string.appearance_pure_black_summary)) },
                     trailingContent = { Switch(checked = appearance.pureBlack, onCheckedChange = null) },
-                    modifier = Modifier.clickable { viewModel.update { it.copy(pureBlack = !it.pureBlack) } },
+                    modifier = Modifier.clickable {
+                        viewModel.update {
+                            if (it.pureBlack) it.copy(pureBlack = false) else it.copy(pureBlack = true, theme = ThemeMode.DARK)
+                        }
+                    },
                 )
 
                 Header(R.string.appearance_glass)
@@ -886,6 +898,7 @@ private fun LookPreview() {
                 onPlayPause = { playing = !playing },
                 onNext = { play((index + 1) % PREVIEW_AUDIO.size) },
                 onClose = { track = null },
+                onSeek = { progress = it },
             )
         }
     }
@@ -980,9 +993,14 @@ private fun GlassTile(
     // The theme's own palette (the Color section's), whatever is behind the glass.
     val palette = remember(appearance, dark) { colorScheme(context, appearance, dark) }
     val tile = Glass(style, dark, Color.Unspecified, palette.primary, appearance.glassOpacity ?: style.defaultOpacity)
-    val behind = if (style == GlassStyle.OFF) GlassBehind.THEME else appearance.glassBehind
-    val color1 = Color(appearance.backdropColor1)
-    val color2 = Color(appearance.backdropColor2)
+    val black = appearance.pureBlack && style != GlassStyle.OFF
+    val behind = when {
+        black -> GlassBehind.ONE_COLOR
+        style == GlassStyle.OFF -> GlassBehind.THEME
+        else -> appearance.glassBehind
+    }
+    val color1 = if (black) Color.Black else Color(appearance.backdropColor1)
+    val color2 = if (black) Color.Black else Color(appearance.backdropColor2)
     val shape = MaterialTheme.shapes.medium
     val drawBackdrop: DrawScope.() -> Unit = {
         when (behind) {

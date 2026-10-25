@@ -56,9 +56,9 @@ data class Appearance(
 ) {
     val effectiveGlassOpacity: Float get() = glassOpacity ?: glass.defaultOpacity
 
-    /** The user picked the color(s) behind the glass. */
+    /** The user picked the color(s) behind the glass (pure black, which overrides them, is off). */
     val customBackdrop: Boolean
-        get() = glass != GlassStyle.OFF && glassBehind in setOf(GlassBehind.ONE_COLOR, GlassBehind.TWO_COLORS)
+        get() = glass != GlassStyle.OFF && !pureBlack && glassBehind in setOf(GlassBehind.ONE_COLOR, GlassBehind.TWO_COLORS)
 
     /**
      * The settings the color scheme is built from. With their own glass colors, the accent follows the

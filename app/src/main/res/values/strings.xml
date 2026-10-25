@@ -132,7 +132,8 @@
     <string name="appearance_themes">Themes</string>
     <string name="appearance_mode">Light and dark</string>
     <string name="appearance_pure_black">Pure black</string>
-    <string name="appearance_pure_black_summary">Black backgrounds in dark mode. Easier on OLED screens.</string>
+    <string name="appearance_mode_follows_glass">System picks light or dark to suit your glass colors, so text stays readable.</string>
+    <string name="appearance_pure_black_summary">Dark mode with a pure black background, in every surface style. Easier on OLED screens.</string>
     <string name="appearance_glass">Surface style</string>
     <string name="appearance_glass_hint">Glass lets the colors behind cards and bars shine through. Frosted blurs them too.</string>
     <string name="glass_off">Solid</string>
