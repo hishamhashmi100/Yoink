@@ -64,7 +64,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -117,7 +116,7 @@ fun NowPlayingOverlay(
     }
     // The glass's shade is the user's (Appearance → Player shade). Text is white on darker or clearer glass,
     // and black once the glass is light and solid enough for black text to read better.
-    val whiteText = overlay.playerShade >= 0.5f || overlay.glass.opacity < 0.45f
+    val whiteText = overlay.playerShade >= 0.5f || overlay.glass.playerOpacity(overlay.playerShade) < 0.45f
     GlassTheme(
         colors = if (whiteText) overlay.colors else overlay.lightColors,
         glass = if (whiteText) overlay.glass else overlay.lightGlass,
@@ -153,8 +152,8 @@ private fun PlayerPane(
     )
     BoxWithConstraints(modifier.fillMaxSize()) {
         val height = constraints.maxHeight
-        // The player's own glass: from white to black by the user's shade, tinted with their colors.
-        val tint = glass.tintBrushOn(lerp(Color.White, Color(0xFF0E0E12), shade ?: 0f))
+        // The player's own glass: from milky white to smoky black by the user's shade, tinted with their colors.
+        val tint = glass.playerTint(shade ?: 0f)
         val pane = when {
             glass.enabled && homeHaze != null -> Modifier.hazeEffect(
                 homeHaze,
