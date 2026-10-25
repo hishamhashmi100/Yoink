@@ -48,6 +48,7 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import io.github.hishamhashmi100.yoink.data.GlassBehind
 import io.github.hishamhashmi100.yoink.data.GlassStyle
+import kotlin.math.abs
 import kotlin.math.max
 
 /** The glass look in effect, for the few places that draw glass panels themselves. */
@@ -117,6 +118,33 @@ data class Glass(
         val stops = colors.map { lerp(neutral, it, 0.5f).copy(alpha = opacity) }
         return Brush.linearGradient(if (stops.size == 1) stops + stops else stops)
     }
+
+    /**
+     * How solid the full-screen player's glass is at [shade] (0 = white, 1 = black): thicker toward either
+     * end, so the shade slider makes a real difference. Clear glass stays fairly clear.
+     */
+    fun playerOpacity(shade: Float): Float = (opacity * (1f + 0.9f * edge(shade))).coerceAtMost(0.96f)
+
+    /**
+     * The full-screen player's glass at [shade]: milky white at one end, smoky black at the other. The
+     * user's colors tint it most in the middle and fade toward either end, so white looks white and black
+     * looks black.
+     */
+    fun playerTint(shade: Float): Brush {
+        if (!enabled) return SolidColor(Color.Transparent)
+        val neutral = lerp(Color.White, Color(0xFF0E0E12), shade)
+        val alpha = playerOpacity(shade)
+        val color = 1f - edge(shade)
+        if (colors.isEmpty()) {
+            val base = if (accent.isSpecified) lerp(neutral, accent, 0.16f * color) else neutral
+            return SolidColor(base.copy(alpha = alpha))
+        }
+        val stops = colors.map { lerp(neutral, it, 0.12f + 0.4f * color).copy(alpha = alpha) }
+        return Brush.linearGradient(if (stops.size == 1) stops + stops else stops)
+    }
+
+    /** 0 for a shade in the middle, 1 at either end. */
+    private fun edge(shade: Float) = abs(shade - 0.5f) * 2f
 
     val hazeStyle: HazeStyle
         get() = HazeStyle(

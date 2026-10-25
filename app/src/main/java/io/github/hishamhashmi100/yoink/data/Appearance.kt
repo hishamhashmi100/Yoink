@@ -1,7 +1,9 @@
 package io.github.hishamhashmi100.yoink.data
 
+import android.graphics.Color
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.random.Random
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
@@ -149,6 +151,41 @@ data class Appearance(
                     color2 = json.optInt("backdropColor2", DEFAULT_LOOK_COLORS[1]),
                     opacity = json.optDouble("glassOpacity", -1.0).toFloat().takeIf { it in 0f..1f },
                 ),
+            )
+        }
+
+        /**
+         * A look with every option picked at random: light or dark, colors, palette, contrast, corners, font,
+         * surface style, what's behind it, its opacity and the player's shade.
+         */
+        fun random(random: Random = Random): Appearance {
+            // Lively colors: any hue, never gray or muddy.
+            fun color() = Color.HSVToColor(
+                floatArrayOf(random.nextFloat() * 360f, 0.45f + random.nextFloat() * 0.55f, 0.55f + random.nextFloat() * 0.45f),
+            )
+            val glass = GlassStyle.entries.random(random)
+            val behind = GlassBehind.entries
+                .filter { glass != GlassStyle.OFF || it != GlassBehind.WALLPAPER }
+                .random(random)
+            val look = StyleLook(
+                behind = behind,
+                colors = listOf(color(), color()),
+                // Kept between "barely there" and "nearly solid", so the glass still reads as glass.
+                opacity = if (glass == GlassStyle.OFF) null else 0.2f + random.nextFloat() * 0.6f,
+            )
+            return Appearance(
+                theme = ThemeMode.entries.random(random),
+                pureBlack = random.nextInt(5) == 0,
+                // Now and then the wallpaper's colors.
+                dynamicColor = random.nextInt(6) == 0,
+                seedColor = color(),
+                palette = PaletteStyle.entries.random(random),
+                contrast = Contrast.entries.random(random),
+                corners = CornerStyle.entries.random(random),
+                font = FontStyle.entries.random(random),
+                glass = glass,
+                looks = mapOf(glass to look),
+                playerShade = random.nextFloat(),
             )
         }
 

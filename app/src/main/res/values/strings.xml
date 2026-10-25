@@ -90,6 +90,7 @@
     <string name="delete_title">Delete download?</string>
     <string name="delete_message">“%1$s” will be removed from this phone.</string>
     <string name="cancel">Cancel</string>
+    <string name="undo">Undo</string>
     <string name="no_app_to_open">No app can open this file</string>
     <string name="file_missing">This file is no longer on the phone</string>
 
@@ -171,6 +172,8 @@
     <string name="appearance_font">Font</string>
     <string name="appearance_reset">Reset to default</string>
     <string name="appearance_save">Save as theme</string>
+    <string name="appearance_random">Random</string>
+    <string name="appearance_random_applied">Here\'s a random look</string>
     <string name="appearance_save_hint">Saves everything on this screen so you can switch back to it any time.</string>
     <string name="appearance_theme_name">Theme name</string>
     <string name="appearance_theme_exists">Replaces your theme with the same name</string>
