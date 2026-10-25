@@ -1045,6 +1045,12 @@ private fun GlassTile(
         behind == GlassBehind.TWO_COLORS -> Color(look.colors.getOrElse(1) { look.colors.first() })
         else -> color1
     }
+    // Tinted with the style's own colors, like the real glass.
+    val pane = if (!black && (behind == GlassBehind.ONE_COLOR || behind == GlassBehind.TWO_COLORS)) {
+        tile.copy(colors = listOfNotNull(color1, color2.takeIf { it != color1 }))
+    } else {
+        tile
+    }
     val shape = MaterialTheme.shapes.medium
     val drawBackdrop: DrawScope.() -> Unit = {
         when (behind) {
@@ -1093,9 +1099,9 @@ private fun GlassTile(
                             .blur(10.dp),
                         onDraw = drawBackdrop,
                     )
-                    Box(Modifier.matchParentSize().glassPanel(tile, panelShape))
+                    Box(Modifier.matchParentSize().glassPanel(pane, panelShape))
                 }
-                GlassStyle.CLEAR -> Box(panel.glassPanel(tile, panelShape))
+                GlassStyle.CLEAR -> Box(panel.glassPanel(pane, panelShape))
             }
         }
         Text(

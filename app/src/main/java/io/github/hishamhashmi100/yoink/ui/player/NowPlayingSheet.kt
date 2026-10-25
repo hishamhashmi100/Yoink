@@ -89,6 +89,7 @@ import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdrop
 import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdropColors
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
 import io.github.hishamhashmi100.yoink.ui.theme.LocalHazeState
+import io.github.hishamhashmi100.yoink.ui.theme.OverlayGlass
 import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -105,6 +106,18 @@ fun NowPlayingOverlay(
     onDragStopped: (Float) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+) {
+    // With glass: smoky glass with white text, like the pop-ups, so it reads well over Home at any opacity.
+    OverlayGlass { PlayerPane(progress, onDrag, onDragStopped, onClose, modifier) }
+}
+
+@Composable
+private fun PlayerPane(
+    progress: Float,
+    onDrag: (Float) -> Unit,
+    onDragStopped: (Float) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier,
 ) {
     val nowPlaying by AudioController.nowPlaying.collectAsStateWithLifecycle()
     val playing = nowPlaying ?: return
@@ -124,12 +137,14 @@ fun NowPlayingOverlay(
     BoxWithConstraints(modifier.fillMaxSize()) {
         val height = constraints.maxHeight
         val pane = when {
-            glass.enabled && homeHaze != null -> Modifier.hazeEffect(
-                homeHaze,
-                // At least a little blur, so the screen behind doesn't fight with the player's text.
-                glass.hazeStyle.copy(blurRadius = maxOf(glass.blur, 16.dp)),
-            )
-            glass.enabled -> Modifier.background(glass.tint)
+            glass.enabled && homeHaze != null -> Modifier
+                .hazeEffect(
+                    homeHaze,
+                    // At least a little blur, so the screen behind doesn't fight with the player's text.
+                    glass.hazeStyle.copy(blurRadius = maxOf(glass.blur, 16.dp)),
+                )
+                .background(SMOKE)
+            glass.enabled -> Modifier.background(glass.tintBrush).background(SMOKE)
             else -> Modifier
         }
         Box(
@@ -422,6 +437,9 @@ private fun Controls(playing: NowPlaying, hazeState: HazeState?) {
         }
     }
 }
+
+/** A light shade under the white text, so it stays readable even when the glass is nearly clear. */
+private val SMOKE = Color.Black.copy(alpha = 0.22f)
 
 /** 3:07, or 1:02:45 for long ones. */
 private fun time(ms: Long): String {

@@ -64,6 +64,7 @@ import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import io.github.hishamhashmi100.yoink.ui.player.PlayerActivity
 import io.github.hishamhashmi100.yoink.ui.theme.OverlayGlass
+import io.github.hishamhashmi100.yoink.ui.theme.fadeOutBottom
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 
 @Composable
@@ -142,7 +143,10 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, botto
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp + bottomInset),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize(),
+                // Items melt away before they slide under the glass mini player.
+                modifier = Modifier
+                    .fillMaxSize()
+                    .fadeOutBottom(bottomInset),
             ) {
                 items(items, key = { it.id }) { download ->
                     LibraryItem(

@@ -49,6 +49,7 @@ import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.YouTubeUrl
 import java.io.File
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkCard
+import io.github.hishamhashmi100.yoink.ui.theme.fadeOutBottom
 
 @Composable
 fun DownloadingScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, bottomInset: Dp = 0.dp) {
@@ -65,7 +66,9 @@ fun DownloadingScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, b
         return
     }
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .fadeOutBottom(bottomInset),
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + bottomInset),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
