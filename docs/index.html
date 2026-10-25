@@ -270,7 +270,12 @@
     .features p { margin: 0; color: var(--muted); font-size: 16px; }
 
     /* How it works */
-    .how { display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; gap: 64px; }
+    /* The heading, the steps, and the phone acting them out: heading and steps on the left, phone on the right;
+       on phones, heading, then the phone, then the steps. */
+    .how { display: grid; grid-template-columns: 1.1fr 1fr; grid-template-areas: "head phone" "steps phone"; align-items: center; column-gap: 64px; }
+    .how-head { grid-area: head; align-self: end; }
+    .how-steps { grid-area: steps; align-self: start; }
+    .how .device-wrap { grid-area: phone; }
     .steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
     .steps > li { position: relative; counter-increment: step; padding: 0 0 26px 62px; }
     .steps > li:last-child { padding-bottom: 0; }
@@ -484,12 +489,25 @@
       .wrap.hero { grid-template-columns: 1fr; gap: 34px; padding-top: 16px; padding-bottom: 64px; }
       .hero-art { order: -1; max-width: 520px; }
       .features { grid-template-columns: 1fr 1fr; }
-      .how { grid-template-columns: 1fr; gap: 48px; }
+      .how { grid-template-columns: 1fr; grid-template-areas: "head" "phone" "steps"; }
+      .how-head .sub { margin-bottom: 16px; }
+      .how-steps { margin-top: 40px; }
       /* On phones the demo comes straight after the download button, then the steps explain it. */
       .wrap.hero { padding-bottom: 28px; }
       #how { border-top: 0; padding-top: 12px; }
-      .how .device-wrap { order: -1; }
       .install { grid-template-columns: 1fr; }
+    }
+    /* Shorter phones: a smaller cartoon and tighter spacing, so the top of the demo phone still peeks in
+       under the download button. */
+    @media (max-width: 600px) and (max-height: 820px) {
+      .wrap.hero { gap: 20px; padding-top: 4px; padding-bottom: 20px; }
+      .hero-art { max-width: 250px; margin: 0 auto; }
+      h1 { font-size: 34px; margin-bottom: 12px; }
+      .lead { font-size: 17px; margin-bottom: 20px; }
+      .meta { margin-top: 10px; }
+      #how { padding-top: 4px; }
+      #how h2 { font-size: 28px; margin-bottom: 4px; }
+      .how-head .sub { margin-bottom: 12px; }
     }
     @media (max-width: 600px) {
       body { font-size: 16px; }
@@ -856,9 +874,11 @@
 
     <section id="how">
       <div class="wrap how">
-        <div>
-          <h2>How to use it</h2>
+        <div class="how-head">
+          <h2>How it works</h2>
           <p class="sub">You never have to copy a link.</p>
+        </div>
+        <div class="how-steps">
           <ol class="steps">
             <li><b>Tap Share</b><span>Under any video in the YouTube app, or on youtube.com in your browser.</span></li>
             <li><b>Tap Yoink</b><span>If it isn't in the first row, tap <span class="pill">More</span> and find Yoink in the list. After the first time, Yoink usually shows up right away.</span></li>
