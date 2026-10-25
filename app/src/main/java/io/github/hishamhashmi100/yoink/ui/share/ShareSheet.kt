@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -167,25 +168,35 @@ private fun GlassSheet(onDismiss: () -> Unit, content: @Composable () -> Unit) {
     val context = LocalContext.current
     // Glass over another app needs the window blur to stay readable; without it, use the thicker glass.
     val blur = remember { windowBlurAvailable(context) }
+    val shape = BottomSheetDefaults.ExpandedShape
+    // The sheet draws its own surface, so the white edge goes round the sheet alone. (On the bottom sheet itself,
+    // it went round the whole screen above the sheet too.)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = if (glass.enabled && !blur) glass.menuTint else BottomSheetDefaults.ContainerColor,
-        // At low opacity the glass sheet can all but vanish over the app behind; a white edge keeps it clear.
-        modifier = if (glass.enabled) {
-            Modifier.border(1.5.dp, Color.White.copy(alpha = 0.8f), BottomSheetDefaults.ExpandedShape)
-        } else {
-            Modifier
-        },
+        shape = shape,
+        containerColor = Color.Transparent,
+        tonalElevation = 0.dp,
+        dragHandle = null,
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 16.dp)
+                .clip(shape)
+                .background(if (glass.enabled && !blur) glass.menuTint else BottomSheetDefaults.ContainerColor)
+                // At low opacity the glass sheet can all but vanish over the app behind; a white edge keeps it clear.
+                .then(if (glass.enabled) Modifier.border(1.5.dp, Color.White.copy(alpha = 0.8f), shape) else Modifier)
                 .navigationBarsPadding(),
         ) {
-            content()
+            BottomSheetDefaults.DragHandle(Modifier.align(Alignment.CenterHorizontally))
+            Column(
+                Modifier
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 16.dp),
+            ) {
+                content()
+            }
         }
     }
 }

@@ -102,6 +102,10 @@ data class Appearance(
     val glassBehind: GlassBehind
         get() = if (glass == GlassStyle.OFF && look.behind == GlassBehind.WALLPAPER) GlassBehind.THEME else look.behind
 
+    /** The phone's wallpaper shows through the app: glass over "Your wallpaper", and pure black is off. */
+    val showsWallpaper: Boolean
+        get() = glass != GlassStyle.OFF && glassBehind == GlassBehind.WALLPAPER && !pureBlack
+
     val glassOpacity: Float? get() = look.opacity
     val effectiveGlassOpacity: Float get() = look.opacity ?: glass.defaultOpacity
     val backdropColor1: Int get() = look.colors.first()

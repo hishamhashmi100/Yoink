@@ -128,6 +128,7 @@ import io.github.hishamhashmi100.yoink.ui.player.PlaybackService
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 import io.github.hishamhashmi100.yoink.ui.theme.Glass
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
+import io.github.hishamhashmi100.yoink.ui.theme.WallpaperTransitions
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
 import io.github.hishamhashmi100.yoink.ui.theme.colorScheme
@@ -151,8 +152,11 @@ import kotlinx.coroutines.withContext
 
 class AppearanceActivity : ComponentActivity() {
 
+    override fun finish() = WallpaperTransitions.finishing(this) { super.finish() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WallpaperTransitions.opening(this)
         enableEdgeToEdge()
         setContent {
             val viewModel: AppearanceViewModel = viewModel()

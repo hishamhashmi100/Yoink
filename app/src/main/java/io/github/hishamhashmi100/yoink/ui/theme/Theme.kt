@@ -234,13 +234,13 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
                 }
                 if (backdrop && Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
                 // "Your wallpaper" behind the glass: let the phone's wallpaper show through the window, and
-                // with frosted glass, blur it (Android 12+).
+                // with frosted glass, blur it (Android 12+). Once shown it stays behind this window, covered by
+                // the app's own background when another one is picked: taking the wallpaper away and bringing it
+                // back left some phones showing the old background instead of the wallpaper.
                 if (showWallpaper) {
                     window.setFormat(PixelFormat.TRANSLUCENT)
                     window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
                     window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-                } else {
-                    window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
                 }
                 if (Build.VERSION.SDK_INT >= 31 && backdrop) {
                     window.setBackgroundBlurRadius(if (showWallpaper && glass.style == GlassStyle.FROSTED) blurPx else 0)
