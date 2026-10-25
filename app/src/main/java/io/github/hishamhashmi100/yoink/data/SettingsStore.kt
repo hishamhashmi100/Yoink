@@ -59,7 +59,6 @@ class SettingsStore(context: Context) {
             appearance = Appearance(
                 theme = enumOf(p[THEME], ThemeMode.SYSTEM),
                 pureBlack = p[PURE_BLACK] ?: false,
-                dynamicColor = p[DYNAMIC_COLOR] ?: true,
                 seedColor = p[SEED_COLOR] ?: YOINK_RED,
                 palette = enumOf(p[PALETTE], PaletteStyle.TONAL),
                 contrast = enumOf(p[CONTRAST], Contrast.STANDARD),
@@ -67,6 +66,7 @@ class SettingsStore(context: Context) {
                 font = enumOf(p[FONT], FontStyle.DEFAULT),
                 glass = enumOf(p[GLASS], GlassStyle.OFF),
                 playerShade = p[PLAYER_SHADE]?.coerceIn(0f, 1f) ?: Appearance().playerShade,
+                textColor = p[TEXT_COLOR],
                 looks = p[LOOKS]?.let { runCatching { StyleLook.mapFromJson(JSONObject(it)) }.getOrNull() }
                     ?: Appearance.legacyLooks(
                         behind = enumOf(p[GLASS_BEHIND], GlassBehind.THEME),
@@ -107,7 +107,6 @@ class SettingsStore(context: Context) {
     suspend fun setAppearance(appearance: Appearance) = store.edit {
         it[THEME] = appearance.theme.name
         it[PURE_BLACK] = appearance.pureBlack
-        it[DYNAMIC_COLOR] = appearance.dynamicColor
         it[SEED_COLOR] = appearance.seedColor
         it[PALETTE] = appearance.palette.name
         it[CONTRAST] = appearance.contrast.name
@@ -116,6 +115,8 @@ class SettingsStore(context: Context) {
         it[GLASS] = appearance.glass.name
         it[LOOKS] = StyleLook.mapToJson(appearance.looks).toString()
         it[PLAYER_SHADE] = appearance.playerShade
+        val textColor = appearance.textColor
+        if (textColor != null) it[TEXT_COLOR] = textColor else it.remove(TEXT_COLOR)
     }
 
     /** Saves [appearance] under [name], replacing a saved theme with the same name. */
@@ -138,7 +139,6 @@ class SettingsStore(context: Context) {
         val VIDEO_QUALITY = stringPreferencesKey("video_quality")
         val SAVE_TO_GALLERY = booleanPreferencesKey("save_to_gallery")
         val THEME = stringPreferencesKey("theme")
-        val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val PURE_BLACK = booleanPreferencesKey("pure_black")
         val SEED_COLOR = intPreferencesKey("seed_color")
         val PALETTE = stringPreferencesKey("palette")
@@ -148,6 +148,7 @@ class SettingsStore(context: Context) {
         val GLASS = stringPreferencesKey("glass")
         val LOOKS = stringPreferencesKey("looks")
         val PLAYER_SHADE = floatPreferencesKey("player_shade")
+        val TEXT_COLOR = intPreferencesKey("text_color")
 
         // Only read, to carry over the single glass background from before each style had its own.
         val GLASS_OPACITY = floatPreferencesKey("glass_opacity")

@@ -161,8 +161,6 @@
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
-    <string name="settings_dynamic_color">Wallpaper colors</string>
-    <string name="settings_dynamic_color_summary">Use colors from your wallpaper instead of Yoink red</string>
     <string name="settings_customize">Customize look</string>
     <string name="settings_customize_summary">Colors, shapes, fonts and your own themes</string>
 
@@ -199,6 +197,9 @@
     <string name="glass_clear">Glass</string>
     <string name="glass_frosted">Frosted glass</string>
     <string name="appearance_color">Color</string>
+    <string name="appearance_text_color">Text color</string>
+    <string name="appearance_text_color_hint">The color of the text on Yoink\'s screens. Pop-ups and the full-screen player keep their own, so they stay readable.</string>
+    <string name="appearance_text_automatic">Automatic</string>
     <string name="appearance_color_follows_glass">The app\'s colors now follow your background colors or picture. Pick a color here to go back to theme colors.</string>
     <string name="appearance_custom_color">Custom color</string>
     <string name="appearance_palette">Palette style</string>

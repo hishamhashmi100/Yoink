@@ -10,7 +10,6 @@ import android.graphics.Paint
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -98,7 +97,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -252,6 +250,12 @@ class AppearanceViewModel(application: Application) : AndroidViewModel(applicati
     fun delete(name: String) = viewModelScope.launch { store.deleteTheme(name) }
 }
 
+/** Text colors offered as one-tap swatches: white and black first, then a few that read well. */
+private val TEXT_SWATCHES = listOf(
+    0xFFFFFFFF, 0xFF000000, 0xFFFFF8E1, 0xFF3E2723, 0xFFFFC83D, 0xFFE0141E,
+    0xFF1E88E5, 0xFF26A69A, 0xFFEC407A, 0xFF7C4DFF,
+).map { it.toInt() }
+
 /** Seed colors offered as one-tap swatches. */
 private val SWATCHES = listOf(
     YOINK_RED, 0xFF8B0000, 0xFFFF7043, 0xFFFF6D00, 0xFFFFAB00, 0xFFFFC83D,
@@ -336,6 +340,7 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
     var saving by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     var pickingColor by rememberSaveable { mutableStateOf(false) }
+    var pickingTextColor by rememberSaveable { mutableStateOf(false) }
     // 1 or 2 while picking one of the backdrop colors.
     var pickingBackdrop by rememberSaveable { mutableStateOf<Int?>(null) }
     val snackbar = remember { SnackbarHostState() }
@@ -508,40 +513,28 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                 )
 
                 Header(R.string.appearance_color)
-                if (Build.VERSION.SDK_INT >= 31) {
-                    ListItem(
-                        headlineContent = { Text(stringResource(R.string.settings_dynamic_color)) },
-                        supportingContent = { Text(stringResource(R.string.settings_dynamic_color_summary)) },
-                        trailingContent = { Switch(checked = appearance.dynamicColor, onCheckedChange = null) },
-                        modifier = Modifier.clickable { viewModel.update { it.copy(dynamicColor = !it.dynamicColor) } },
-                    )
-                }
-                val wallpaper = appearance.dynamicColor && Build.VERSION.SDK_INT >= 31
                 // With their own glass colors, the app's colors follow those, so nothing here is ticked;
                 // picking a color goes back to theme colors behind the glass.
                 val followsGlass = appearance.customBackdrop
                 if (followsGlass) Hint(R.string.appearance_color_follows_glass)
                 fun pick(color: Int) = viewModel.update {
-                    it.copy(
-                        dynamicColor = false,
-                        seedColor = color,
-                    ).let { picked -> if (it.customBackdrop) picked.withLook { look -> look.copy(behind = GlassBehind.THEME) } else picked }
+                    it.copy(seedColor = color).let { picked -> if (it.customBackdrop) picked.withLook { look -> look.copy(behind = GlassBehind.THEME) } else picked }
                 }
                 FlowRow(
                     Modifier
                         .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .alpha(if (wallpaper || followsGlass) 0.45f else 1f),
+                        .alpha(if (followsGlass) 0.45f else 1f),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     SWATCHES.forEach { color ->
                         Swatch(
                             brush = Brush.linearGradient(listOf(Color(color), Color(color))),
-                            selected = !wallpaper && !followsGlass && appearance.seedColor == color,
+                            selected = !followsGlass && appearance.seedColor == color,
                             onClick = { pick(color) },
                         )
                     }
-                    val custom = !wallpaper && !followsGlass && appearance.seedColor !in SWATCHES
+                    val custom = !followsGlass && appearance.seedColor !in SWATCHES
                     Swatch(
                         brush = if (custom) {
                             Brush.linearGradient(listOf(Color(appearance.seedColor), Color(appearance.seedColor)))
@@ -551,6 +544,35 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                         selected = custom,
                         icon = !custom,
                         onClick = { pickingColor = true },
+                    )
+                }
+
+                // The text on the app's screens: the theme's own (Automatic), or a color the user picks.
+                Header(R.string.appearance_text_color)
+                Hint(R.string.appearance_text_color_hint)
+                FlowRow(
+                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    FilterChip(
+                        selected = appearance.textColor == null,
+                        onClick = { viewModel.update { it.copy(textColor = null) } },
+                        label = { Text(stringResource(R.string.appearance_text_automatic)) },
+                    )
+                    TEXT_SWATCHES.forEach { color ->
+                        Swatch(
+                            brush = Brush.linearGradient(listOf(Color(color), Color(color))),
+                            selected = appearance.textColor == color,
+                            onClick = { viewModel.update { it.copy(textColor = color) } },
+                        )
+                    }
+                    val customText = appearance.textColor?.takeIf { it !in TEXT_SWATCHES }
+                    Swatch(
+                        brush = customText?.let { Brush.linearGradient(listOf(Color(it), Color(it))) } ?: Brush.sweepGradient(HUES),
+                        selected = customText != null,
+                        icon = customText == null,
+                        onClick = { pickingTextColor = true },
                     )
                 }
 
@@ -683,11 +705,21 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
             onDismiss = { pickingBackdrop = null },
         )
     }
+    if (pickingTextColor) {
+        ColorPickerDialog(
+            initial = appearance.textColor ?: MaterialTheme.colorScheme.onSurface.toArgb(),
+            onPick = { color ->
+                viewModel.update { it.copy(textColor = color) }
+                pickingTextColor = false
+            },
+            onDismiss = { pickingTextColor = false },
+        )
+    }
     if (pickingColor) {
         ColorPickerDialog(
             initial = appearance.seedColor,
             onPick = { color ->
-                viewModel.update { it.copy(dynamicColor = false, seedColor = color) }
+                viewModel.update { it.copy(seedColor = color) }
                 pickingColor = false
             },
             onDismiss = { pickingColor = false },

@@ -2,7 +2,6 @@ package io.github.hishamhashmi100.yoink.ui.theme
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.app.WallpaperManager
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Typeface
@@ -14,12 +13,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -29,7 +27,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.ExperimentalTextApi
@@ -39,8 +36,8 @@ import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.google.android.material.color.utilities.DynamicColor
 import com.google.android.material.color.utilities.DynamicScheme
 import com.google.android.material.color.utilities.Hct
@@ -130,6 +127,13 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
+/** Text in [text]: titles and body text, with secondary text (hints, details) a little softer. */
+private fun ColorScheme.withText(text: Color): ColorScheme = copy(
+    onBackground = text,
+    onSurface = text,
+    onSurfaceVariant = text.copy(alpha = 0.72f),
+)
+
 fun isDarkTheme(appearance: Appearance): Boolean = when {
     appearance.pureBlack -> true
     appearance.theme == ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -226,8 +230,13 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
         }
     }
 
-    MaterialTheme(colorScheme = colors, shapes = shapes(appearance.corners), typography = typography) {
+    // The user's own text color, if they picked one, for the app's screens. (Pop-ups and the full-screen player keep
+    // their automatic white or black text: they sit over busy backgrounds where a picked color might not read.)
+    val textColor = appearance.textColor?.let(::Color)
+    val screenColors = remember(colors, textColor) { if (textColor == null) colors else colors.withText(textColor) }
+    MaterialTheme(colorScheme = screenColors, shapes = shapes(appearance.corners), typography = typography) {
         CompositionLocalProvider(
+            LocalContentColor provides (textColor ?: LocalContentColor.current),
             LocalButtonShape provides buttonShape(appearance.corners),
             LocalGlass provides glass,
             LocalBackdropColors provides solid,
@@ -251,24 +260,12 @@ val ButtonShape: CornerBasedShape
     @Composable @ReadOnlyComposable get() = LocalButtonShape.current
 
 fun colorScheme(context: Context, appearance: Appearance, dark: Boolean): ColorScheme {
-    val wallpaper = appearance.dynamicColor && Build.VERSION.SDK_INT >= 31
     val standard = appearance.palette == PaletteStyle.TONAL && appearance.contrast == Contrast.STANDARD
     val scheme = when {
-        // The exact system palette, so Yoink matches the rest of the phone.
-        wallpaper && standard -> if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        wallpaper -> generate(wallpaperColor(context) ?: dynamicLightColorScheme(context).primary.toArgb(), appearance, dark)
         appearance.seedColor == YOINK_RED && standard -> if (dark) DarkColors else LightColors
         else -> generate(appearance.seedColor, appearance, dark)
     }
     return if (dark && appearance.pureBlack) scheme.black() else scheme
-}
-
-private fun wallpaperColor(context: Context): Int? = if (Build.VERSION.SDK_INT >= 27) {
-    runCatching {
-        WallpaperManager.getInstance(context).getWallpaperColors(WallpaperManager.FLAG_SYSTEM)?.primaryColor?.toArgb()
-    }.getOrNull()
-} else {
-    null
 }
 
 @SuppressLint("RestrictedApi")

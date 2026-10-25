@@ -91,8 +91,6 @@ data class Appearance(
     val theme: ThemeMode = ThemeMode.SYSTEM,
     /** Dark mode with a pure black background, in every surface style. */
     val pureBlack: Boolean = false,
-    /** Take the seed color from the wallpaper (Android 12 and newer). */
-    val dynamicColor: Boolean = true,
     val seedColor: Int = YOINK_RED,
     val palette: PaletteStyle = PaletteStyle.TONAL,
     val contrast: Contrast = Contrast.STANDARD,
@@ -103,6 +101,8 @@ data class Appearance(
     val looks: Map<GlassStyle, StyleLook> = emptyMap(),
     /** How light or dark the full-screen player's glass is (0 = white, 1 = black). */
     val playerShade: Float = 0.3f,
+    /** The text color on the app's screens, or null to follow the theme (Automatic). */
+    val textColor: Int? = null,
 ) {
     /** The background of the surface style in use. */
     val look: StyleLook get() = looks[glass] ?: StyleLook()
@@ -131,12 +131,11 @@ data class Appearance(
      * first of them, so buttons match the background instead of clashing with it.
      */
     val colorSource: Appearance
-        get() = if (customBackdrop) copy(seedColor = backdropColor1, dynamicColor = false) else this
+        get() = if (customBackdrop) copy(seedColor = backdropColor1) else this
 
     fun toJson(): JSONObject = JSONObject()
         .put("theme", theme.name)
         .put("pureBlack", pureBlack)
-        .put("dynamicColor", dynamicColor)
         .put("seedColor", seedColor)
         .put("palette", palette.name)
         .put("contrast", contrast.name)
@@ -145,6 +144,7 @@ data class Appearance(
         .put("glass", glass.name)
         .put("looks", StyleLook.mapToJson(looks))
         .put("playerShade", playerShade.toDouble())
+        .apply { textColor?.let { put("textColor", it) } }
 
     companion object {
         fun fromJson(json: JSONObject): Appearance {
@@ -152,7 +152,6 @@ data class Appearance(
             return Appearance(
                 theme = enumOf(json.optString("theme"), default.theme),
                 pureBlack = json.optBoolean("pureBlack", default.pureBlack),
-                dynamicColor = json.optBoolean("dynamicColor", default.dynamicColor),
                 seedColor = json.optInt("seedColor", default.seedColor),
                 palette = enumOf(json.optString("palette"), default.palette),
                 contrast = enumOf(json.optString("contrast"), default.contrast),
@@ -160,6 +159,7 @@ data class Appearance(
                 font = enumOf(json.optString("font"), default.font),
                 glass = enumOf(json.optString("glass"), default.glass),
                 playerShade = json.optDouble("playerShade", default.playerShade.toDouble()).toFloat().coerceIn(0f, 1f),
+                textColor = if (json.has("textColor")) json.optInt("textColor") else null,
                 looks = json.optJSONObject("looks")?.let(StyleLook::mapFromJson) ?: legacyLooks(
                     behind = enumOf(json.optString("glassBehind"), GlassBehind.THEME),
                     color1 = json.optInt("backdropColor1", DEFAULT_LOOK_COLORS[0]),
@@ -171,7 +171,8 @@ data class Appearance(
 
         /**
          * A look with every option picked at random: light or dark, colors, palette, contrast, corners, font,
-         * surface style, what's behind it, its opacity and the player's shade.
+         * surface style, what's behind it, its opacity and the player's shade. The text color goes back to
+         * Automatic, so the text stays readable on whatever comes up.
          */
         fun random(random: Random = Random): Appearance {
             // Lively colors: any hue, never gray or muddy.
@@ -192,8 +193,6 @@ data class Appearance(
             return Appearance(
                 theme = ThemeMode.entries.random(random),
                 pureBlack = random.nextInt(5) == 0,
-                // Now and then the wallpaper's colors.
-                dynamicColor = random.nextInt(6) == 0,
                 seedColor = color(),
                 palette = PaletteStyle.entries.random(random),
                 contrast = Contrast.entries.random(random),
@@ -256,7 +255,6 @@ enum class ThemePreset(
     SPACE(0xFF00ACC1.toInt(), PaletteStyle.EXPRESSIVE, CornerStyle.SOFT, FontStyle.FUTURE, pureBlack = true);
 
     fun applyTo(current: Appearance) = current.copy(
-        dynamicColor = false,
         seedColor = seedColor,
         palette = palette,
         corners = corners,
