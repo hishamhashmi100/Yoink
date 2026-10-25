@@ -102,8 +102,8 @@ fun HomeScreen(
     BackHandler(enabled = player.value > 0f) { settlePlayer(false) }
     val glass = LocalGlass.current
     val hazeState = rememberHazeState()
-    // The theme's color backdrop can be blurred; the phone's wallpaper can't (it's not part of the app).
-    val blurBackdrop = glass.enabled && !glass.wallpaper
+    // With glass, the backdrop (theme colors, the user's colors or picture) is blurred behind the glass panels.
+    val blurBackdrop = glass.enabled
 
     // Open on Downloading when something is in progress, otherwise on the Library.
     LaunchedEffect(active == null) {
@@ -139,8 +139,6 @@ fun HomeScreen(
         )
     }
     Scaffold(
-        // Over the wallpaper the player has no backdrop of its own, so the screen fades away under it.
-        modifier = if (glass.wallpaper && glass.enabled) Modifier.graphicsLayer { alpha = 1f - player.value } else Modifier,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },

@@ -6,6 +6,7 @@ import android.view.WindowManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.AlertDialog
@@ -36,18 +37,21 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
+import coil3.compose.AsyncImage
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import io.github.hishamhashmi100.yoink.data.GlassBehind
 import io.github.hishamhashmi100.yoink.data.GlassStyle
+import java.io.File
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -61,8 +65,6 @@ data class Glass(
     val accent: Color = Color.Unspecified,
     /** How solid the glass is, from the Appearance slider (0 = invisible, 1 = solid). */
     val opacity: Float = style.defaultOpacity,
-    /** The phone's wallpaper shows through instead of the theme's color blobs. */
-    val wallpaper: Boolean = false,
     /** The user's own background colors (one or two), which tint the glass; empty for theme colors. */
     val colors: List<Color> = emptyList(),
 ) {
@@ -230,22 +232,38 @@ fun YoinkCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.()
     }
 }
 
-/** What's drawn behind the glass when it isn't the wallpaper (see [GlassBehind]). */
+/** What's drawn behind the glass (see [GlassBehind]). */
 @Immutable
 data class Backdrop(
     val behind: GlassBehind = GlassBehind.THEME,
     val color1: Color = Color.Unspecified,
     val color2: Color = Color.Unspecified,
+    /** For [GlassBehind.PICTURE]: the user's picture (a file). */
+    val picture: String? = null,
 )
 
 val LocalBackdrop = staticCompositionLocalOf { Backdrop() }
 
 /**
- * Glass needs something colorful behind it: the user's color, or blend of two colors, or else soft blobs
- * of the theme's colors, like a phone wallpaper.
+ * Glass needs something colorful behind it: the user's picture, their color or blend of two colors, or else
+ * soft blobs of the theme's colors, like a phone wallpaper.
  */
 @Composable
 fun GlassBackdrop(colors: ColorScheme, modifier: Modifier = Modifier, backdrop: Backdrop = LocalBackdrop.current) {
+    if (backdrop.behind == GlassBehind.PICTURE && backdrop.picture != null) {
+        // Drawn by the app itself, so the glass can blur it, and every screen covers the one beneath it.
+        Box(modifier.fillMaxSize().background(backdrop.color1)) {
+            AsyncImage(
+                model = File(backdrop.picture),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+            // A light wash of the theme, so text on the picture stays readable.
+            Box(Modifier.matchParentSize().background(colors.background.copy(alpha = 0.30f)))
+        }
+        return
+    }
     Canvas(modifier.fillMaxSize()) {
         val radius = max(size.width, size.height) * 0.62f
         fun blob(color: Color, alpha: Float, center: Offset, scale: Float = 1f) = drawCircle(

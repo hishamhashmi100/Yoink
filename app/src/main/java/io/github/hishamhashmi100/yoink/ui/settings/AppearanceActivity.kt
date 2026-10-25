@@ -12,9 +12,13 @@ import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -56,6 +60,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -93,6 +98,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -104,6 +110,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.Player
+import coil3.compose.AsyncImage
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Appearance
 import io.github.hishamhashmi100.yoink.data.Contrast
@@ -114,6 +121,7 @@ import io.github.hishamhashmi100.yoink.data.FontStyle
 import io.github.hishamhashmi100.yoink.data.GlassBehind
 import io.github.hishamhashmi100.yoink.data.GlassStyle
 import io.github.hishamhashmi100.yoink.data.PaletteStyle
+import io.github.hishamhashmi100.yoink.data.Pictures
 import io.github.hishamhashmi100.yoink.data.SavedTheme
 import io.github.hishamhashmi100.yoink.data.StyleLook
 import io.github.hishamhashmi100.yoink.data.ThemeMode
@@ -128,7 +136,6 @@ import io.github.hishamhashmi100.yoink.ui.player.PlaybackService
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 import io.github.hishamhashmi100.yoink.ui.theme.Glass
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
-import io.github.hishamhashmi100.yoink.ui.theme.WallpaperTransitions
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
 import io.github.hishamhashmi100.yoink.ui.theme.colorScheme
@@ -145,6 +152,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -152,11 +160,8 @@ import kotlinx.coroutines.withContext
 
 class AppearanceActivity : ComponentActivity() {
 
-    override fun finish() = WallpaperTransitions.finishing(this) { super.finish() }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WallpaperTransitions.opening(this)
         enableEdgeToEdge()
         setContent {
             val viewModel: AppearanceViewModel = viewModel()
@@ -213,7 +218,32 @@ class AppearanceViewModel(application: Application) : AndroidViewModel(applicati
     /** Every option at random. The other surface styles keep their own backgrounds. */
     fun randomize() {
         beforeRandom = _appearance.value
-        update { current -> Appearance.random().let { it.copy(looks = current.looks + it.looks) } }
+        update { current ->
+            Appearance.random().let { random ->
+                // The user's picture is kept for each style (just not shown), so it's there to go back to.
+                val looks = random.looks.mapValues { (style, look) ->
+                    val old = current.looks[style]
+                    look.copy(picture = old?.picture, pictureColor = old?.pictureColor)
+                }
+                random.copy(looks = current.looks + looks)
+            }
+        }
+    }
+
+    /**
+     * "Your picture": Yoink copies the photo, shows it behind the app, and deletes older copies that neither the
+     * look nor a saved theme uses. [onFailed] runs if the photo can't be read.
+     */
+    fun setPicture(uri: Uri, onFailed: () -> Unit) {
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            val picture = Pictures.import(app, uri) ?: return@launch onFailed()
+            update { a ->
+                a.withLook { it.copy(behind = GlassBehind.PICTURE, picture = picture.path, pictureColor = picture.color) }
+            }
+            val looks = listOf(_appearance.value) + store.savedThemes.first().map { it.appearance }
+            Pictures.cleanup(app, looks.flatMap { it.looks.values }.mapNotNull { it.picture }.toSet())
+        }
     }
 
     fun undoRandom() {
@@ -315,6 +345,13 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val randomApplied = stringResource(R.string.appearance_random_applied)
+    val context = LocalContext.current
+    // Android's photo picker: no permission needed, and only the chosen photo is shared with Yoink.
+    val pickPicture = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            viewModel.setPicture(uri) { Toast.makeText(context, R.string.picture_failed, Toast.LENGTH_SHORT).show() }
+        }
+    }
     val undo = stringResource(R.string.undo)
 
     Scaffold(
@@ -467,6 +504,9 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                     appearance = appearance,
                     onChange = viewModel::update,
                     onCustomColor = { pickingBackdrop = 1 },
+                    onPickPicture = {
+                        pickPicture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
                 )
 
                 Header(R.string.appearance_color)
@@ -681,7 +721,7 @@ private fun Appearance.tickColor(color: Int): Appearance = withLook { look ->
 
 /**
  * The background of the surface style in use (each has its own): theme colors, one or two colors ticked
- * from a palette, or (glass only) the wallpaper; plus, for glass, its opacity.
+ * from a palette, or a picture of the user's own; plus, for glass, its opacity.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -689,6 +729,7 @@ private fun StyleControls(
     appearance: Appearance,
     onChange: ((Appearance) -> Appearance) -> Unit,
     onCustomColor: () -> Unit,
+    onPickPicture: () -> Unit,
 ) {
     val glassOn = appearance.glass != GlassStyle.OFF
     Column(Modifier.padding(horizontal = 16.dp)) {
@@ -747,15 +788,22 @@ private fun StyleControls(
             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
         )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOfNotNull(
+            listOf(
                 GlassBehind.THEME to R.string.glass_behind_theme,
                 GlassBehind.ONE_COLOR to R.string.glass_behind_one,
                 GlassBehind.TWO_COLORS to R.string.glass_behind_two,
-                (GlassBehind.WALLPAPER to R.string.glass_behind_wallpaper).takeIf { glassOn },
+                GlassBehind.PICTURE to R.string.glass_behind_picture,
             ).forEach { (behind, label) ->
                 FilterChip(
                     selected = appearance.glassBehind == behind,
-                    onClick = { onChange { a -> a.withLook { it.copy(behind = behind) } } },
+                    onClick = {
+                        // No picture yet: pick one first (it's shown once picked).
+                        if (behind == GlassBehind.PICTURE && appearance.look.picture == null) {
+                            onPickPicture()
+                        } else {
+                            onChange { a -> a.withLook { it.copy(behind = behind) } }
+                        }
+                    },
                     label = { Text(stringResource(label)) },
                 )
             }
@@ -795,13 +843,30 @@ private fun StyleControls(
                 )
             }
         }
-        if (behind == GlassBehind.WALLPAPER) {
-            Text(
-                stringResource(R.string.glass_behind_wallpaper_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+        val picture = appearance.picture
+        if (picture != null) {
+            Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                AsyncImage(
+                    model = File(picture),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(width = 54.dp, height = 96.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small),
+                )
+                Column(Modifier.padding(start = 16.dp)) {
+                    OutlinedButton(onClick = onPickPicture, shape = ButtonShape) {
+                        Text(stringResource(R.string.picture_change))
+                    }
+                    Text(
+                        stringResource(R.string.glass_behind_picture_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            }
         }
     }
 }
@@ -1130,7 +1195,7 @@ private fun ThemeCard(
 
 /**
  * A little picture of each surface style, in the user's own colors: the glass tiles show what's chosen
- * behind the glass (theme colors, one or two colors, or a wallpaper) with a pane at the chosen opacity;
+ * behind the glass (theme colors, one or two colors, or their picture) with a pane at the chosen opacity;
  * the solid tile shows the theme's colors with a solid pane.
  */
 @Composable
@@ -1152,17 +1217,21 @@ private fun GlassTile(
     val black = appearance.pureBlack && style != GlassStyle.OFF
     val behind = when {
         black -> GlassBehind.ONE_COLOR
-        style == GlassStyle.OFF && look.behind == GlassBehind.WALLPAPER -> GlassBehind.THEME
+        look.behind == GlassBehind.PICTURE && look.picture == null -> GlassBehind.THEME
         else -> look.behind
     }
-    val color1 = if (black) Color.Black else Color(look.colors.first())
+    val color1 = when {
+        black -> Color.Black
+        behind == GlassBehind.PICTURE -> Color(look.pictureColor ?: look.colors.first())
+        else -> Color(look.colors.first())
+    }
     val color2 = when {
         black -> Color.Black
         behind == GlassBehind.TWO_COLORS -> Color(look.colors.getOrElse(1) { look.colors.first() })
         else -> color1
     }
     // Tinted with the style's own colors, like the real glass.
-    val pane = if (!black && (behind == GlassBehind.ONE_COLOR || behind == GlassBehind.TWO_COLORS)) {
+    val pane = if (!black && behind != GlassBehind.THEME) {
         tile.copy(colors = listOfNotNull(color1, color2.takeIf { it != color1 }))
     } else {
         tile
@@ -1172,13 +1241,8 @@ private fun GlassTile(
         when (behind) {
             GlassBehind.ONE_COLOR -> drawRect(color1)
             GlassBehind.TWO_COLORS -> drawRect(Brush.linearGradient(listOf(color1, color2), Offset.Zero, Offset(size.width, size.height)))
-            // A little landscape stands for "your wallpaper".
-            GlassBehind.WALLPAPER -> {
-                drawRect(Brush.verticalGradient(listOf(palette.primaryContainer, palette.surface)))
-                drawCircle(palette.tertiary, size.height * 0.16f, Offset(size.width * 0.78f, size.height * 0.28f))
-                drawCircle(palette.primary, size.width * 0.45f, Offset(size.width * 0.22f, size.height * 1.25f))
-                drawCircle(palette.secondary, size.width * 0.5f, Offset(size.width * 0.85f, size.height * 1.4f))
-            }
+            // Under the picture itself (drawn on top), and what the frosted pane blurs.
+            GlassBehind.PICTURE -> drawRect(color1)
             GlassBehind.THEME -> {
                 drawRect(palette.background)
                 drawCircle(palette.primary, size.minDimension * 0.42f, Offset(size.width * 0.28f, size.height * 0.35f))
@@ -1201,6 +1265,14 @@ private fun GlassTile(
             contentAlignment = Alignment.Center,
         ) {
             Canvas(Modifier.matchParentSize(), onDraw = drawBackdrop)
+            if (behind == GlassBehind.PICTURE) {
+                AsyncImage(
+                    model = look.picture?.let { File(it) },
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
             val panel = Modifier
                 .fillMaxWidth(0.7f)
                 .height(36.dp)

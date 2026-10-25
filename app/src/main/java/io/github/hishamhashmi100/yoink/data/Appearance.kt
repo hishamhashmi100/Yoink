@@ -21,10 +21,11 @@ enum class GlassStyle {
 }
 
 /**
- * What shows through the glass: soft blobs of the theme's colors, one color or a blend of two colors the
- * user picks, or the phone's own wallpaper.
+ * What's behind the glass (or behind solid screens): soft blobs of the theme's colors, one color or a blend of
+ * two colors the user picks, or a picture of their own. (Looks saved with the old "Your wallpaper" option load
+ * as theme colors.)
  */
-enum class GlassBehind { THEME, ONE_COLOR, TWO_COLORS, WALLPAPER }
+enum class GlassBehind { THEME, ONE_COLOR, TWO_COLORS, PICTURE }
 
 enum class CornerStyle { BUBBLY, ROUND, SOFT, SQUARE }
 
@@ -47,11 +48,19 @@ data class StyleLook(
     val colors: List<Int> = DEFAULT_LOOK_COLORS,
     /** Glass opacity, or null for the style's default. */
     val opacity: Float? = null,
+    /** The picture behind the app: Yoink's own copy of a photo the user picked (see Pictures). */
+    val picture: String? = null,
+    /** The picture's average color, which the app's colors are built from. */
+    val pictureColor: Int? = null,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("behind", behind.name)
         .put("colors", JSONArray(colors))
         .put("opacity", opacity?.toDouble() ?: -1.0)
+        .apply {
+            picture?.let { put("picture", it) }
+            pictureColor?.let { put("pictureColor", it) }
+        }
 
     companion object {
         fun fromJson(json: JSONObject?): StyleLook {
@@ -61,6 +70,8 @@ data class StyleLook(
                 behind = enumOf(json.optString("behind"), GlassBehind.THEME),
                 colors = colors?.takeIf { it.isNotEmpty() }?.take(2) ?: DEFAULT_LOOK_COLORS,
                 opacity = json.optDouble("opacity", -1.0).toFloat().takeIf { it in 0f..1f },
+                picture = json.optString("picture").ifBlank { null },
+                pictureColor = if (json.has("pictureColor")) json.optInt("pictureColor") else null,
             )
         }
 
@@ -98,22 +109,22 @@ data class Appearance(
 
     fun withLook(change: (StyleLook) -> StyleLook): Appearance = copy(looks = looks + (glass to change(look)))
 
-    /** What's behind; the wallpaper only shows through glass. */
+    /** What's behind (theme colors until a picture has been picked for "Your picture"). */
     val glassBehind: GlassBehind
-        get() = if (glass == GlassStyle.OFF && look.behind == GlassBehind.WALLPAPER) GlassBehind.THEME else look.behind
+        get() = if (look.behind == GlassBehind.PICTURE && look.picture == null) GlassBehind.THEME else look.behind
 
-    /** The phone's wallpaper shows through the app: glass over "Your wallpaper", and pure black is off. */
-    val showsWallpaper: Boolean
-        get() = glass != GlassStyle.OFF && glassBehind == GlassBehind.WALLPAPER && !pureBlack
+    /** The picture behind the app, when that's what's chosen. */
+    val picture: String? get() = look.picture.takeIf { glassBehind == GlassBehind.PICTURE }
 
     val glassOpacity: Float? get() = look.opacity
     val effectiveGlassOpacity: Float get() = look.opacity ?: glass.defaultOpacity
-    val backdropColor1: Int get() = look.colors.first()
-    val backdropColor2: Int get() = look.colors.getOrElse(1) { look.colors.first() }
+    // With a picture, its average color stands in for the background colors.
+    val backdropColor1: Int get() = picture?.let { look.pictureColor } ?: look.colors.first()
+    val backdropColor2: Int get() = picture?.let { look.pictureColor } ?: look.colors.getOrElse(1) { look.colors.first() }
 
-    /** The user picked the background color(s) (pure black, which overrides them, is off). */
+    /** The user picked the background: color(s) or a picture (pure black, which overrides them, is off). */
     val customBackdrop: Boolean
-        get() = !pureBlack && glassBehind in setOf(GlassBehind.ONE_COLOR, GlassBehind.TWO_COLORS)
+        get() = !pureBlack && glassBehind in setOf(GlassBehind.ONE_COLOR, GlassBehind.TWO_COLORS, GlassBehind.PICTURE)
 
     /**
      * The settings the color scheme is built from. With their own background colors, the accent follows the
@@ -168,8 +179,9 @@ data class Appearance(
                 floatArrayOf(random.nextFloat() * 360f, 0.45f + random.nextFloat() * 0.55f, 0.55f + random.nextFloat() * 0.45f),
             )
             val glass = GlassStyle.entries.random(random)
+            // Not "Your picture": there may be none, and it's the user's to pick.
             val behind = GlassBehind.entries
-                .filter { glass != GlassStyle.OFF || it != GlassBehind.WALLPAPER }
+                .filter { it != GlassBehind.PICTURE }
                 .random(random)
             val look = StyleLook(
                 behind = behind,
