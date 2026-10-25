@@ -5,16 +5,11 @@ import android.app.Activity
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.ContextWrapper
-import android.graphics.PixelFormat
 import android.graphics.Typeface
-import android.graphics.drawable.ColorDrawable
 import android.os.Build
-import android.view.WindowManager
 import androidx.annotation.FontRes
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,12 +27,10 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
@@ -162,6 +155,7 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
             behind = appearance.glassBehind,
             color1 = Color(appearance.backdropColor1),
             color2 = Color(if (appearance.glassBehind == GlassBehind.TWO_COLORS) appearance.backdropColor2 else appearance.backdropColor1),
+            picture = appearance.picture,
         )
     }
     val dark = when {
@@ -176,15 +170,13 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
     // Only what the colors are built from, so dragging the opacity or shade sliders doesn't rebuild them.
     val source = appearance.colorSource.copy(looks = emptyMap(), glass = GlassStyle.OFF, playerShade = 0f)
     val solid = remember(source, dark) { colorScheme(context, source, dark) }
-    val wallpaper = appearance.glassBehind == GlassBehind.WALLPAPER
     val glass = Glass(
         style = appearance.glass,
         dark = dark,
-        backdrop = if (behind.behind == GlassBehind.ONE_COLOR || behind.behind == GlassBehind.TWO_COLORS) behind.color1 else solid.background,
+        backdrop = if (behind.behind != GlassBehind.THEME) behind.color1 else solid.background,
         accent = solid.primary,
         opacity = appearance.effectiveGlassOpacity,
-        wallpaper = wallpaper && !appearance.pureBlack,
-        // The glass is tinted with the user's own colors, as a gradient when there are two.
+        // The glass is tinted with the user's own colors, as a gradient when there are two (or the picture's color).
         colors = if (customBackdrop) listOfNotNull(behind.color1, behind.color2.takeIf { it != behind.color1 }) else emptyList(),
     )
     val colors = remember(solid, glass, customBackdrop) {
@@ -213,10 +205,7 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
         )
     }
     val typography = remember(appearance.font) { typography(appearance.font) }
-    val showWallpaper = glass.enabled && glass.wallpaper && backdrop
-
     val view = LocalView.current
-    val blurPx = with(LocalDensity.current) { 40.dp.roundToPx() }
     if (!view.isInEditMode) {
         SideEffect {
             view.context.findActivity()?.window?.let { window ->
@@ -233,18 +222,6 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
                     }
                 }
                 if (backdrop && Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
-                // "Your wallpaper" behind the glass: let the phone's wallpaper show through the window, and
-                // with frosted glass, blur it (Android 12+). Once shown it stays behind this window, covered by
-                // the app's own background when another one is picked: taking the wallpaper away and bringing it
-                // back left some phones showing the old background instead of the wallpaper.
-                if (showWallpaper) {
-                    window.setFormat(PixelFormat.TRANSLUCENT)
-                    window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
-                    window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-                }
-                if (Build.VERSION.SDK_INT >= 31 && backdrop) {
-                    window.setBackgroundBlurRadius(if (showWallpaper && glass.style == GlassStyle.FROSTED) blurPx else 0)
-                }
             }
         }
     }
@@ -260,11 +237,7 @@ fun YoinkTheme(appearance: Appearance, backdrop: Boolean = true, content: @Compo
             // Always the same structure, whatever is drawn behind: switching surface styles mustn't rebuild the
             // screen (which would, for one, scroll the Appearance screen back to the top).
             Box {
-                when {
-                    // A light wash of the theme over the wallpaper, so text on it stays readable.
-                    showWallpaper -> Box(Modifier.fillMaxSize().background(solid.background.copy(alpha = 0.30f)))
-                    (glass.enabled || customBackdrop) && backdrop -> GlassBackdrop(solid)
-                }
+                if ((glass.enabled || customBackdrop) && backdrop) GlassBackdrop(solid)
                 content()
             }
         }

@@ -142,7 +142,7 @@ private fun PlayerPane(
     // blur state, from the screen below). Solid: an opaque background, the user's colors if they picked some.
     val homeHaze = LocalHazeState.current
     val backdrop = LocalBackdrop.current
-    val customColors = backdrop.behind == GlassBehind.ONE_COLOR || backdrop.behind == GlassBehind.TWO_COLORS
+    val customColors = backdrop.behind != GlassBehind.THEME
     if (progress >= 1f) HideSystemBars()
 
     val drag = Modifier.draggable(
