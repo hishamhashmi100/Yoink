@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 
 /** What happens when a link is shared to Yoink. */
 enum class ShareMode {
@@ -65,10 +66,13 @@ class SettingsStore(context: Context) {
                 corners = enumOf(p[CORNERS], CornerStyle.ROUND),
                 font = enumOf(p[FONT], FontStyle.DEFAULT),
                 glass = enumOf(p[GLASS], GlassStyle.OFF),
-                glassOpacity = p[GLASS_OPACITY]?.takeIf { it in 0f..1f },
-                glassBehind = enumOf(p[GLASS_BEHIND], GlassBehind.THEME),
-                backdropColor1 = p[BACKDROP_COLOR_1] ?: Appearance().backdropColor1,
-                backdropColor2 = p[BACKDROP_COLOR_2] ?: Appearance().backdropColor2,
+                looks = p[LOOKS]?.let { runCatching { StyleLook.mapFromJson(JSONObject(it)) }.getOrNull() }
+                    ?: Appearance.legacyLooks(
+                        behind = enumOf(p[GLASS_BEHIND], GlassBehind.THEME),
+                        color1 = p[BACKDROP_COLOR_1] ?: DEFAULT_LOOK_COLORS[0],
+                        color2 = p[BACKDROP_COLOR_2] ?: DEFAULT_LOOK_COLORS[1],
+                        opacity = p[GLASS_OPACITY]?.takeIf { it in 0f..1f },
+                    ),
             ),
         )
     }
@@ -105,10 +109,7 @@ class SettingsStore(context: Context) {
         it[CORNERS] = appearance.corners.name
         it[FONT] = appearance.font.name
         it[GLASS] = appearance.glass.name
-        appearance.glassOpacity?.let { value -> it[GLASS_OPACITY] = value } ?: it.remove(GLASS_OPACITY)
-        it[GLASS_BEHIND] = appearance.glassBehind.name
-        it[BACKDROP_COLOR_1] = appearance.backdropColor1
-        it[BACKDROP_COLOR_2] = appearance.backdropColor2
+        it[LOOKS] = StyleLook.mapToJson(appearance.looks).toString()
     }
 
     /** Saves [appearance] under [name], replacing a saved theme with the same name. */
@@ -139,6 +140,9 @@ class SettingsStore(context: Context) {
         val CORNERS = stringPreferencesKey("corners")
         val FONT = stringPreferencesKey("font")
         val GLASS = stringPreferencesKey("glass")
+        val LOOKS = stringPreferencesKey("looks")
+
+        // Only read, to carry over the single glass background from before each style had its own.
         val GLASS_OPACITY = floatPreferencesKey("glass_opacity")
         val GLASS_BEHIND = stringPreferencesKey("glass_behind")
         val BACKDROP_COLOR_1 = intPreferencesKey("backdrop_color_1")

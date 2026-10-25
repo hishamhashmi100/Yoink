@@ -148,7 +148,10 @@ fun HomeScreen(
             )
         },
         bottomBar = {
-            MiniPlayer(onOpen = { settlePlayer(true) }, onDrag = dragPlayer, onDragStopped = releasePlayer)
+            // Fades as it's pulled up, so it turns into the full-screen player.
+            Box(Modifier.graphicsLayer { alpha = 1f - player.value }) {
+                MiniPlayer(onOpen = { settlePlayer(true) }, onDrag = dragPlayer, onDragStopped = releasePlayer)
+            }
         },
         floatingActionButton = {
             val fabShape = MaterialTheme.shapes.large
@@ -205,6 +208,8 @@ fun HomeScreen(
                 HomeTab.LIBRARY -> LibraryScreen(viewModel, bottomInset = bottomInset)
             }
         }
+    }
+    // On top of everything on Home (bars, the + button, the mini player), so the full-screen player covers it all.
     if (player.value > 0f) {
         NowPlayingOverlay(
             progress = player.value,
@@ -212,7 +217,6 @@ fun HomeScreen(
             onDragStopped = releasePlayer,
             onClose = { settlePlayer(false) },
         )
-    }
     }
     }
     }
