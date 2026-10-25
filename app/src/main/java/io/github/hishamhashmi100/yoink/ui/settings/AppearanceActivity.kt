@@ -36,19 +36,25 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Colorize
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -56,6 +62,10 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -67,6 +77,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -80,11 +91,14 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.takeOrElse
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -125,8 +139,8 @@ import io.github.hishamhashmi100.yoink.yoink
 import java.io.File
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -187,6 +201,21 @@ class AppearanceViewModel(application: Application) : AndroidViewModel(applicati
         pending = next
         _appearance.value = next
         toSave.trySend(next)
+    }
+
+    // The look before the last random one, for Undo.
+    private var beforeRandom: Appearance? = null
+
+    /** Every option at random. The other surface styles keep their own backgrounds. */
+    fun randomize() {
+        beforeRandom = _appearance.value
+        update { current -> Appearance.random().let { it.copy(looks = current.looks + it.looks) } }
+    }
+
+    fun undoRandom() {
+        val before = beforeRandom ?: return
+        beforeRandom = null
+        update { before }
     }
 
     fun save(name: String) = viewModelScope.launch { store.saveTheme(name, appearance.value) }
@@ -279,14 +308,38 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
     var pickingColor by rememberSaveable { mutableStateOf(false) }
     // 1 or 2 while picking one of the backdrop colors.
     var pickingBackdrop by rememberSaveable { mutableStateOf<Int?>(null) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val randomApplied = stringResource(R.string.appearance_random_applied)
+    val undo = stringResource(R.string.undo)
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_appearance)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
+                    }
+                },
+                actions = {
+                    // A whole new look at random; Undo goes back if it's not a keeper.
+                    FilledTonalButton(
+                        onClick = {
+                            viewModel.randomize()
+                            scope.launch {
+                                snackbar.currentSnackbarData?.dismiss()
+                                val result = snackbar.showSnackbar(randomApplied, undo, duration = SnackbarDuration.Short)
+                                if (result == SnackbarResult.ActionPerformed) viewModel.undoRandom()
+                            }
+                        },
+                        shape = ButtonShape,
+                        contentPadding = PaddingValues(start = 12.dp, end = 16.dp),
+                        modifier = Modifier.padding(end = 8.dp),
+                    ) {
+                        Icon(Icons.Rounded.Casino, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(stringResource(R.string.appearance_random), modifier = Modifier.padding(start = 8.dp))
                     }
                 },
             )
@@ -371,7 +424,7 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                                 }
                             },
                             shape = SegmentedButtonDefaults.itemShape(index, modes.size, ButtonShape),
-                        ) { Text(stringResource(label)) }
+                        ) { OneLineLabel(stringResource(label)) }
                     }
                 }
                 if (appearance.customBackdrop && appearance.theme == ThemeMode.SYSTEM) {
@@ -490,7 +543,7 @@ private fun AppearanceScreen(viewModel: AppearanceViewModel, onBack: () -> Unit)
                             selected = appearance.contrast == contrast,
                             onClick = { viewModel.update { it.copy(contrast = contrast) } },
                             shape = SegmentedButtonDefaults.itemShape(index, contrasts.size, ButtonShape),
-                        ) { Text(stringResource(label)) }
+                        ) { OneLineLabel(stringResource(label)) }
                     }
                 }
 
@@ -750,6 +803,20 @@ private fun StyleControls(
 }
 
 private val HUES = listOf(0f, 60f, 120f, 180f, 240f, 300f, 360f).map { Color.hsv(it % 360f, 1f, 1f) }
+
+/** A button label that stays on one line, shrinking a little when a wide font (like Pixel) doesn't fit. */
+@Composable
+private fun OneLineLabel(text: String) {
+    val style = LocalTextStyle.current
+    val size = style.fontSize.takeOrElse { 14.sp }
+    BasicText(
+        text,
+        style = style.copy(color = style.color.takeOrElse { LocalContentColor.current }),
+        maxLines = 1,
+        softWrap = false,
+        autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = size, stepSize = 0.5.sp),
+    )
+}
 
 @Composable
 private fun Header(@StringRes title: Int) {
