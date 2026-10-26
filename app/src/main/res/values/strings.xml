@@ -32,6 +32,8 @@
     <string name="playlist_failed_count">%d couldn\'t be saved</string>
     <string name="playlist_saving">Saving playlist</string>
     <string name="playlist_done">Playlist saved</string>
+    <string name="playlist_paused">Paused</string>
+    <string name="playlist_paused_reason">YouTube is limiting this connection, so the rest wait %1$d minutes before trying again. Switch between Wi-Fi and mobile data and tap Retry on a video to carry on sooner.</string>
     <plurals name="downloads_in_list">
         <item quantity="one">%d in the list</item>
         <item quantity="other">%d in the list</item>
@@ -71,7 +73,7 @@
     <string name="error_unavailable">This video is unavailable or has been removed.</string>
     <string name="error_members">This video is for channel members only.</string>
     <string name="error_live">Live streams can\'t be downloaded while they\'re live.</string>
-    <string name="error_bot">YouTube asked to confirm you\'re not a bot. Try again later, or update the downloader in Settings.</string>
+    <string name="error_bot">YouTube is limiting downloads on this connection. Switch between Wi-Fi and mobile data (or turn off your VPN) and tap Retry, or try again in a few hours.</string>
     <string name="error_forbidden">YouTube refused the download. Try updating the downloader in Settings.</string>
     <string name="error_network">Network error. Check your connection and try again.</string>
     <string name="error_format">That quality isn\'t available for this video.</string>
