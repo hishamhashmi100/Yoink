@@ -7,13 +7,15 @@ import java.io.IOException
 /** Turns yt-dlp's stderr into something a person can act on. */
 object DownloadErrors {
 
+    // YouTube limits a connection that has made a lot of requests (often a shared mobile-data address).
+    private val RATE_LIMITED = Regex("not a bot|HTTP Error 429|Too Many Requests", RegexOption.IGNORE_CASE)
+
     private val rules: List<Pair<Regex, Int>> = listOf(
         Regex(Regex.escape(Engine.ENGINE_FAILED)) to R.string.error_engine,
         Regex("private video", RegexOption.IGNORE_CASE) to R.string.error_private,
         Regex("confirm your age|age[- ]restricted|inappropriate for some users", RegexOption.IGNORE_CASE) to R.string.error_age,
         Regex("members[- ]only|join this channel", RegexOption.IGNORE_CASE) to R.string.error_members,
-        // YouTube limits a connection that has made a lot of requests (often a shared mobile-data address).
-        Regex("not a bot|HTTP Error 429|Too Many Requests", RegexOption.IGNORE_CASE) to R.string.error_bot,
+        RATE_LIMITED to R.string.error_bot,
         Regex("is live|live event will begin|premieres in", RegexOption.IGNORE_CASE) to R.string.error_live,
         Regex("video unavailable|has been removed|no longer available|account associated with this video has been terminated|not available in your country", RegexOption.IGNORE_CASE) to R.string.error_unavailable,
         Regex("requested format is not available", RegexOption.IGNORE_CASE) to R.string.error_format,
@@ -25,6 +27,11 @@ object DownloadErrors {
         ) to R.string.error_network,
     )
 
+    /** YouTube is limiting this connection, so asking again right away would only keep the limit going. */
+    fun isRateLimited(error: Throwable): Boolean = RATE_LIMITED.containsMatchIn(text(error))
+
+    private fun text(error: Throwable) = generateSequence(error) { it.cause }.mapNotNull { it.message }.joinToString("\n")
+
     fun readable(context: Context, error: Throwable): String {
         if (error is IncompleteDownloadException) {
             return context.getString(
@@ -33,7 +40,7 @@ object DownloadErrors {
                 Notifications.formatDuration(error.expectedSec),
             )
         }
-        val text = generateSequence(error) { it.cause }.mapNotNull { it.message }.joinToString("\n")
+        val text = text(error)
         rules.firstOrNull { (regex, _) -> regex.containsMatchIn(text) }?.let { return context.getString(it.second) }
         if (error is IOException && text.isBlank()) return context.getString(R.string.error_network)
 

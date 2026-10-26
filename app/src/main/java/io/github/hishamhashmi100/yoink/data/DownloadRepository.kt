@@ -9,6 +9,7 @@ import io.github.hishamhashmi100.yoink.download.LiveProgress
 import io.github.hishamhashmi100.yoink.download.MediaInfo
 import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.Quality
+import io.github.hishamhashmi100.yoink.download.QueueResumeWorker
 import io.github.hishamhashmi100.yoink.download.Storage
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import kotlinx.coroutines.Dispatchers
@@ -25,9 +26,17 @@ class DownloadRepository(private val context: Context, val dao: DownloadDao) {
     companion object {
         /** Playlist videos handed to the downloader at once; it runs two at a time. */
         private const val MAX_ACTIVE = 2
+
+        /** How long waiting videos hold off after YouTube limits the connection. */
+        const val PAUSE_MINUTES = 30L
+        private const val KEY_PAUSED_UNTIL = "paused_until"
     }
 
     private val workManager = WorkManager.getInstance(context)
+    private val prefs = context.getSharedPreferences("queue", Context.MODE_PRIVATE)
+
+    /** Waiting videos are holding off because YouTube is limiting the connection (see [pauseQueue]). */
+    val isPaused: Boolean get() = System.currentTimeMillis() < prefs.getLong(KEY_PAUSED_UNTIL, 0L)
 
     val downloads: Flow<List<Download>> = dao.observeAll()
 
@@ -86,6 +95,7 @@ class DownloadRepository(private val context: Context, val dao: DownloadDao) {
 
     /** Hands waiting playlist videos to the downloader whenever fewer than [MAX_ACTIVE] are on their way. */
     suspend fun pump() = queueLock.withLock {
+        if (isPaused) return@withLock
         val free = MAX_ACTIVE - dao.countWithStatus(listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING))
         if (free <= 0) return@withLock
         for (next in dao.oldestWithStatus(DownloadStatus.WAITING, free)) {
@@ -96,7 +106,31 @@ class DownloadRepository(private val context: Context, val dao: DownloadDao) {
 
     /** The playlist's one notification: how many are saved so far, or that it's done. */
     suspend fun updatePlaylistNotice(playlistId: String) {
-        Notifications.playlist(context, playlistId, dao.getByPlaylist(playlistId))
+        Notifications.playlist(context, playlistId, dao.getByPlaylist(playlistId), paused = isPaused)
+    }
+
+    /**
+     * YouTube is limiting this connection ("confirm you're not a bot", HTTP 429). Starting the next video right
+     * away would fail too and only keep the limit going, so the waiting videos hold off for [PAUSE_MINUTES], then
+     * carry on by themselves. A download that goes through in the meantime (a Retry) ends the pause early.
+     */
+    fun pauseQueue() {
+        prefs.edit().putLong(KEY_PAUSED_UNTIL, System.currentTimeMillis() + PAUSE_MINUTES * 60_000).apply()
+        QueueResumeWorker.schedule(context, PAUSE_MINUTES)
+    }
+
+    /** A download went through, so YouTube isn't limiting the connection (any more). */
+    fun connectionWorks() {
+        if (!prefs.contains(KEY_PAUSED_UNTIL)) return
+        prefs.edit().remove(KEY_PAUSED_UNTIL).apply()
+        QueueResumeWorker.cancel(context)
+    }
+
+    /** The pause is over: carry on with the waiting videos. */
+    suspend fun resumeQueue() {
+        prefs.edit().remove(KEY_PAUSED_UNTIL).apply()
+        pump()
+        dao.getByStatus(DownloadStatus.WAITING).mapNotNull { it.playlistId }.distinct().forEach { updatePlaylistNotice(it) }
     }
 
     suspend fun retry(id: Long) {

@@ -72,6 +72,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         return try {
             val finished = slots.withPermit { download(download, workDir) }
             runCatching { DownloadLog.write(applicationContext, finished, synchronized(log) { log.toList() }, null) }
+            app.repository.connectionWorks()
             afterwards(download)
             Result.success()
         } catch (e: Throwable) {
@@ -85,6 +86,8 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             dao.setStatus(downloadId, DownloadStatus.FAILED, message)
             // A playlist's videos share one notification instead (see afterwards).
             if (download.playlistId == null) Notifications.failed(applicationContext, download, message)
+            // YouTube is limiting this connection: the videos still waiting hold off instead of each failing in turn.
+            if (DownloadErrors.isRateLimited(e)) app.repository.pauseQueue()
             afterwards(download)
             Result.failure()
         }
@@ -131,6 +134,9 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             addOption("-o", "thumbnail:" + File(workDir, "thumb.%(ext)s").absolutePath)
             addOption("-o", "infojson:" + File(workDir, "info").absolutePath)
             download.quality.applyTo(this)
+            // Playlist videos come one after another: a short pause between YouTube requests keeps a long playlist
+            // from looking like a bot and getting the connection limited.
+            if (download.playlistId != null) addOption("--sleep-requests", "1")
         }
 
         coroutineScope {

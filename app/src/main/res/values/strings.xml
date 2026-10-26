@@ -32,6 +32,8 @@
     <string name="playlist_failed_count">%d couldn\'t be saved</string>
     <string name="playlist_saving">Saving playlist</string>
     <string name="playlist_done">Playlist saved</string>
+    <string name="playlist_paused">Paused</string>
+    <string name="playlist_paused_reason">YouTube is limiting this connection, so the rest wait %1$d minutes before trying again. Switch between Wi-Fi and mobile data and tap Retry on a video to carry on sooner.</string>
     <plurals name="downloads_in_list">
         <item quantity="one">%d in the list</item>
         <item quantity="other">%d in the list</item>

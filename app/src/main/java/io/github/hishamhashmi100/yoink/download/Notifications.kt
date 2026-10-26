@@ -15,6 +15,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
+import io.github.hishamhashmi100.yoink.data.DownloadRepository
 import io.github.hishamhashmi100.yoink.data.DownloadStatus
 import io.github.hishamhashmi100.yoink.ui.MainActivity
 import io.github.hishamhashmi100.yoink.ui.home.FileActions
@@ -141,9 +142,10 @@ object Notifications {
 
     /**
      * One notification for a whole playlist instead of one per video: "37 of 300 saved" while it runs, then
-     * "Playlist saved". [items] are the playlist's rows; none left means it was cancelled.
+     * "Playlist saved". [items] are the playlist's rows; none left means it was cancelled. [paused]: the rest are
+     * holding off because YouTube is limiting the connection.
      */
-    fun playlist(context: Context, playlistId: String, items: List<Download>) {
+    fun playlist(context: Context, playlistId: String, items: List<Download>, paused: Boolean = false) {
         if (items.isEmpty()) return cancelPlaylist(context, playlistId)
         val title = items.firstNotNullOfOrNull { it.playlistTitle } ?: context.getString(R.string.playlist)
         val saved = items.count { it.status == DownloadStatus.COMPLETED }
@@ -157,7 +159,13 @@ object Notifications {
             NotificationCompat.Builder(context, CHANNEL_PROGRESS)
                 .setContentTitle(title)
                 .setContentText(summary)
-                .setSubText(context.getString(R.string.playlist_saving))
+                .setSubText(context.getString(if (paused) R.string.playlist_paused else R.string.playlist_saving))
+                .apply {
+                    if (paused) {
+                        val reason = context.getString(R.string.playlist_paused_reason, DownloadRepository.PAUSE_MINUTES)
+                        setStyle(NotificationCompat.BigTextStyle().bigText("$summary\n$reason"))
+                    }
+                }
                 .setProgress(items.size, saved + failed, false)
                 .setSilent(true)
                 .setContentIntent(openTab(context, playlistId(playlistId), HomeTab.DOWNLOADING))
