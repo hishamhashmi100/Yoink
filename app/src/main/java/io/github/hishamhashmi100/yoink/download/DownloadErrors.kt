@@ -12,7 +12,8 @@ object DownloadErrors {
         Regex("private video", RegexOption.IGNORE_CASE) to R.string.error_private,
         Regex("confirm your age|age[- ]restricted|inappropriate for some users", RegexOption.IGNORE_CASE) to R.string.error_age,
         Regex("members[- ]only|join this channel", RegexOption.IGNORE_CASE) to R.string.error_members,
-        Regex("not a bot", RegexOption.IGNORE_CASE) to R.string.error_bot,
+        // YouTube limits a connection that has made a lot of requests (often a shared mobile-data address).
+        Regex("not a bot|HTTP Error 429|Too Many Requests", RegexOption.IGNORE_CASE) to R.string.error_bot,
         Regex("is live|live event will begin|premieres in", RegexOption.IGNORE_CASE) to R.string.error_live,
         Regex("video unavailable|has been removed|no longer available|account associated with this video has been terminated|not available in your country", RegexOption.IGNORE_CASE) to R.string.error_unavailable,
         Regex("requested format is not available", RegexOption.IGNORE_CASE) to R.string.error_format,

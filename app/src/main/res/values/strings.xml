@@ -71,7 +71,7 @@
     <string name="error_unavailable">This video is unavailable or has been removed.</string>
     <string name="error_members">This video is for channel members only.</string>
     <string name="error_live">Live streams can\'t be downloaded while they\'re live.</string>
-    <string name="error_bot">YouTube asked to confirm you\'re not a bot. Try again later, or update the downloader in Settings.</string>
+    <string name="error_bot">YouTube is limiting downloads on this connection. Switch between Wi-Fi and mobile data (or turn off your VPN) and tap Retry, or try again in a few hours.</string>
     <string name="error_forbidden">YouTube refused the download. Try updating the downloader in Settings.</string>
     <string name="error_network">Network error. Check your connection and try again.</string>
     <string name="error_format">That quality isn\'t available for this video.</string>
