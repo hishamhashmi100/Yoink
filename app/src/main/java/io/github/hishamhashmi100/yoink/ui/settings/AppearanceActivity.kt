@@ -1114,6 +1114,8 @@ private fun LookPreview() {
         LibraryFilter.ALL -> listOf(PREVIEW_VIDEO, PREVIEW_AUDIO[0])
         LibraryFilter.VIDEO -> listOf(PREVIEW_VIDEO)
         LibraryFilter.AUDIO -> PREVIEW_AUDIO
+        // The preview doesn't offer the Playlists chip.
+        LibraryFilter.PLAYLISTS -> emptyList()
     }
     fun play(index: Int) {
         track = index

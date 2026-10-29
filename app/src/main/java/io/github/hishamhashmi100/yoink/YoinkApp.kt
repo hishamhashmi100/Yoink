@@ -22,6 +22,7 @@ class YoinkApp : Application() {
     val database by lazy { AppDatabase.build(this) }
     val repository by lazy { DownloadRepository(this, database.downloadDao()) }
     val settings by lazy { SettingsStore(this) }
+    val playlists by lazy { database.playlistDao() }
 
     override fun onCreate() {
         super.onCreate()

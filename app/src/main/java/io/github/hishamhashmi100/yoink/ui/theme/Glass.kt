@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import coil3.compose.AsyncImage
+import dev.chrisbanes.haze.ExperimentalHazeApi
+import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -211,9 +213,17 @@ val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
 fun Modifier.glassPanel(glass: Glass, shape: Shape, hazeState: HazeState? = null): Modifier {
     if (!glass.enabled) return this
     return clip(shape)
-        .then(if (hazeState != null) Modifier.hazeEffect(hazeState, glass.hazeStyle) else Modifier.background(glass.tintBrush))
+        .then(if (hazeState != null) Modifier.lightHaze(hazeState, glass.hazeStyle) else Modifier.background(glass.tintBrush))
         .border(1.dp, glass.rim, shape)
 }
+
+/**
+ * The blur behind glass, worked out on a smaller copy of what's behind it. It looks the same once blurred,
+ * but costs far less on every frame of a scrolling list, which kept scrolling smooth on mid-range phones.
+ */
+@OptIn(ExperimentalHazeApi::class)
+fun Modifier.lightHaze(state: HazeState, style: HazeStyle): Modifier =
+    hazeEffect(state, style) { inputScale = HazeInputScale.Auto }
 
 /** An elevated card, or a glass one. */
 @Composable

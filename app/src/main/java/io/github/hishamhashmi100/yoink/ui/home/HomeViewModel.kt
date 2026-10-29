@@ -17,7 +17,8 @@ import kotlinx.coroutines.launch
 
 data class ActiveDownload(val download: Download, val progress: LiveProgress?)
 
-enum class LibraryFilter { ALL, VIDEO, AUDIO }
+/** PLAYLISTS shows the user's own playlists instead of downloads. */
+enum class LibraryFilter { ALL, VIDEO, AUDIO, PLAYLISTS }
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -26,6 +27,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val query = MutableStateFlow("")
     val filter = MutableStateFlow(LibraryFilter.ALL)
     val grid = MutableStateFlow(false)
+
+    /** The playlist open under Library → Playlists, or null for the list of them. */
+    val openPlaylist = MutableStateFlow<Long?>(null)
 
     /** Null until the database has answered once. */
     val active: StateFlow<List<ActiveDownload>?> =
@@ -49,6 +53,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         LibraryFilter.ALL -> true
                         LibraryFilter.VIDEO -> !d.quality.isAudio
                         LibraryFilter.AUDIO -> d.quality.isAudio
+                        LibraryFilter.PLAYLISTS -> false
                     } &&
                     (query.isBlank() || d.title.contains(query.trim(), ignoreCase = true) ||
                         d.channel?.contains(query.trim(), ignoreCase = true) == true)

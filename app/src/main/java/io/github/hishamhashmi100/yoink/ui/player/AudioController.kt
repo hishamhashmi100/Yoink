@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.os.Process
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.media3.common.C
@@ -17,7 +18,11 @@ import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
 import io.github.hishamhashmi100.yoink.yoink
 import java.io.File
+import java.util.concurrent.Executors
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +37,7 @@ data class NowPlaying(
     val artworkUri: Uri?,
     val isPlaying: Boolean,
     val hasNext: Boolean,
+    val hasPrevious: Boolean = false,
     /** One of Player.REPEAT_MODE_OFF, _ALL (the whole queue) or _ONE (this track). */
     val repeatMode: Int,
     val shuffle: Boolean = false,
@@ -54,6 +60,16 @@ object AudioController {
 
     private var future: ListenableFuture<MediaController>? = null
 
+    // Themed covers for the rest of the queue are made here, one at a time and at low priority, so they don't
+    // compete with the screen (scrolling, animations) while the first track is already playing.
+    private val coverMaker = Executors.newSingleThreadExecutor { task ->
+        Thread({
+            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+            task.run()
+        }, "themed-covers")
+    }.asCoroutineDispatcher()
+    private var coverJob: Job? = null
+
     private val _nowPlaying = MutableStateFlow<NowPlaying?>(null)
     val nowPlaying: StateFlow<NowPlaying?> = _nowPlaying.asStateFlow()
 
@@ -66,24 +82,48 @@ object AudioController {
 
     fun connect(context: Context) = withController(context) {}
 
-    /** Plays [queue] in order, starting at [start]. */
-    fun play(context: Context, queue: List<Download>, start: Int) {
+    /**
+     * Plays [queue] in order, starting at [start]. [shuffle] turns shuffle on or off for this queue (and is
+     * remembered); left out, the last shuffle setting carries on.
+     */
+    fun play(context: Context, queue: List<Download>, start: Int, shuffle: Boolean? = null) {
+        if (queue.isEmpty()) return
         val app = context.yoink
+        val first = start.coerceIn(0, queue.lastIndex)
+        coverJob?.cancel()
         app.appScope.launch {
             val appearance = app.settings.settings.first().appearance
             // Videos share the player and have their own loop setting, so put the MP3 one back.
             val repeat = app.settings.audioRepeat.first()
-            val shuffle = app.settings.audioShuffle.first()
-            val items = withContext(Dispatchers.IO) {
-                queue.map { item(it, ThemedArtwork.uri(app, it.thumbnailPath, appearance)) }
+            val shuffleOn = shuffle ?: app.settings.audioShuffle.first()
+            if (shuffle != null) app.settings.setAudioShuffle(shuffle)
+            // Only the first track's cover is made before playing. Making every cover first kept a long list
+            // waiting several seconds before the first sound.
+            val theme = withContext(Dispatchers.IO) {
+                ThemedArtwork.theme(app, appearance).also { theme ->
+                    ThemedArtwork.clearOthers(app, theme)
+                    ThemedArtwork.render(ThemedArtwork.file(app, theme, queue[first].thumbnailPath), theme, queue[first].thumbnailPath)
+                }
+            }
+            val items = queue.mapIndexed { i, download ->
+                val cover = ThemedArtwork.file(app, theme, download.thumbnailPath)
+                // The others are made below; if the first one couldn't be, the plain thumbnail stands in.
+                item(download, cover.takeIf { i != first || it.exists() }?.let(Uri::fromFile))
             }
             withContext(Dispatchers.Main) {
                 withController(app) { c ->
                     c.repeatMode = repeat
-                    c.shuffleModeEnabled = shuffle
-                    c.setMediaItems(items, start.coerceIn(0, queue.lastIndex.coerceAtLeast(0)), 0L)
+                    c.shuffleModeEnabled = shuffleOn
+                    c.setMediaItems(items, first, 0L)
                     c.prepare()
                     c.play()
+                }
+            }
+            // The rest, in the order they come up, while the first one plays.
+            coverJob = app.appScope.launch(coverMaker) {
+                for (i in (first + 1 until queue.size) + (0 until first)) {
+                    ensureActive()
+                    ThemedArtwork.render(ThemedArtwork.file(app, theme, queue[i].thumbnailPath), theme, queue[i].thumbnailPath)
                 }
             }
         }
@@ -129,6 +169,9 @@ object AudioController {
 
     /** Back to the start of the track, or the previous track if it just started. */
     fun previous(context: Context) = withController(context) { it.seekToPrevious() }
+
+    /** Straight to the previous track (a swipe on the cover), wherever this one is. */
+    fun previousTrack(context: Context) = withController(context) { it.seekToPreviousMediaItem() }
 
     /**
      * Takes a deleted download out of the player. If it was playing, the next track starts (or playback stops
@@ -209,6 +252,7 @@ object AudioController {
             artworkUri = thumbnail(item),
             isPlaying = player.isPlaying || (player.playWhenReady && player.playbackState == Player.STATE_BUFFERING),
             hasNext = player.hasNextMediaItem(),
+            hasPrevious = player.hasPreviousMediaItem(),
             repeatMode = player.repeatMode,
             shuffle = player.shuffleModeEnabled,
             index = player.currentMediaItemIndex,

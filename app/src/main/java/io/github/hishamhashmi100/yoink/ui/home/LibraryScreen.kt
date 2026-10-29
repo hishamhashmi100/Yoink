@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.ContentCopy
@@ -44,6 +45,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,10 +79,15 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, botto
     val query by viewModel.query.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val grid by viewModel.grid.collectAsStateWithLifecycle()
+    val openPlaylist by viewModel.openPlaylist.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var toDelete by remember { mutableStateOf<Download?>(null) }
+    var addingToPlaylist by remember { mutableStateOf<Download?>(null) }
 
-    Column(modifier.fillMaxSize()) {
+    val playlist = openPlaylist?.takeIf { filter == LibraryFilter.PLAYLISTS }
+    if (playlist != null) {
+        MyPlaylistScreen(playlist, bottomInset, onBack = { viewModel.openPlaylist.value = null }, modifier = modifier)
+    } else Column(modifier.fillMaxSize()) {
         OutlinedTextField(
             value = query,
             onValueChange = { viewModel.query.value = it },
@@ -122,6 +129,7 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, botto
                                     LibraryFilter.ALL -> R.string.filter_all
                                     LibraryFilter.VIDEO -> R.string.filter_video
                                     LibraryFilter.AUDIO -> R.string.filter_audio
+                                    LibraryFilter.PLAYLISTS -> R.string.filter_playlists
                                 }
                             )
                         )
@@ -129,7 +137,7 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, botto
                 )
             }
             }
-            IconButton(onClick = { viewModel.grid.value = !grid }) {
+            if (filter != LibraryFilter.PLAYLISTS) IconButton(onClick = { viewModel.grid.value = !grid }) {
                 if (grid) {
                     Icon(Icons.AutoMirrored.Rounded.ViewList, contentDescription = stringResource(R.string.layout_list))
                 } else {
@@ -138,7 +146,9 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, botto
             }
         }
 
-        if (items.isEmpty()) {
+        if (filter == LibraryFilter.PLAYLISTS) {
+            MyPlaylistsList(query, bottomInset, onOpen = { viewModel.openPlaylist.value = it })
+        } else if (items.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                 Text(
                     stringResource(if (hasAny) R.string.library_no_results else R.string.library_empty),
@@ -174,12 +184,16 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, botto
                         onShare = { FileActions.share(context, download) },
                         onOpenWith = { FileActions.openWith(context, download) },
                         onDelete = { toDelete = download },
+                        onAddToPlaylist = if (download.quality.isAudio) ({ addingToPlaylist = download }) else null,
                     )
                 }
             }
         }
     }
 
+    addingToPlaylist?.let { download ->
+        AddToPlaylistDialog(download.id, onDismiss = { addingToPlaylist = null })
+    }
     toDelete?.let { download ->
         YoinkAlertDialog(
             onDismissRequest = { toDelete = null },
@@ -209,8 +223,14 @@ internal fun LibraryItem(
     onDelete: () -> Unit,
     /** Replaces "Copy details" (the Appearance preview has no real download to copy). */
     onCopyDetails: (() -> Unit)? = null,
+    /** Shown for MP3s: put this one in a playlist of the user's own. */
+    onAddToPlaylist: (() -> Unit)? = null,
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
+    // The menu is only built once it's been opened: building it for every row (in its glass theme) made long
+    // lists stutter while scrolling. Once built it stays, so it can still animate closed.
+    var menuUsed by remember { mutableStateOf(false) }
+    LaunchedEffect(menuOpen) { if (menuOpen) menuUsed = true }
     val context = LocalContext.current
     val clickable = Modifier
         .clip(MaterialTheme.shapes.medium)
@@ -222,8 +242,15 @@ internal fun LibraryItem(
                 Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more_options))
             }
             // Dark glass with white text when glass is on: the menu pops up over busy thumbnails.
-            OverlayGlass {
+            if (menuOpen || menuUsed) OverlayGlass {
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    onAddToPlaylist?.let { add ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.playlist_add_to)) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null) },
+                            onClick = { menuOpen = false; add() },
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_share)) },
                         leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
@@ -324,16 +351,19 @@ private fun ItemText(download: Download) {
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
     )
-    val details = listOfNotNull(
-        if (download.quality.isAudio) "MP3" else download.resolution?.let(MediaInfo::label),
-        download.channel,
-        download.sizeBytes?.let { Formatter.formatShortFileSize(context, it) },
-        DateUtils.getRelativeTimeSpanString(
-            download.createdAt,
-            System.currentTimeMillis(),
-            DateUtils.MINUTE_IN_MILLIS,
-        ).toString(),
-    ).joinToString(" · ")
+    // Worked out once per row rather than on every pass while the list scrolls.
+    val details = remember(download) {
+        listOfNotNull(
+            if (download.quality.isAudio) "MP3" else download.resolution?.let(MediaInfo::label),
+            download.channel,
+            download.sizeBytes?.let { Formatter.formatShortFileSize(context, it) },
+            DateUtils.getRelativeTimeSpanString(
+                download.createdAt,
+                System.currentTimeMillis(),
+                DateUtils.MINUTE_IN_MILLIS,
+            ).toString(),
+        ).joinToString(" · ")
+    }
     Text(
         details,
         style = MaterialTheme.typography.bodySmall,
