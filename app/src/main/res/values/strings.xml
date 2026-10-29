@@ -118,6 +118,26 @@
     <string name="filter_all">All</string>
     <string name="filter_video">Video</string>
     <string name="filter_audio">Audio</string>
+    <string name="filter_playlists">Playlists</string>
+    <string name="playlist_add_to">Add to playlist</string>
+    <string name="my_playlist_new">New playlist</string>
+    <string name="my_playlist_create">Create</string>
+    <string name="my_playlist_name">Playlist name</string>
+    <string name="my_playlist_rename">Rename</string>
+    <string name="my_playlist_delete">Delete playlist</string>
+    <string name="my_playlist_delete_title">Delete “%1$s”?</string>
+    <string name="my_playlist_delete_text">The songs stay in your Library.</string>
+    <string name="my_playlist_play">Play</string>
+    <string name="my_playlist_shuffle">Shuffle</string>
+    <string name="my_playlist_remove">Remove from playlist</string>
+    <string name="my_playlist_added">Added to %1$s</string>
+    <string name="my_playlist_already">Already in %1$s</string>
+    <string name="my_playlists_empty">No playlists yet. Make one, then add songs from the Library: tap ⋮ on a song and choose Add to playlist.</string>
+    <string name="my_playlist_empty">No songs yet. In the Library, tap ⋮ on a song and choose Add to playlist, or use the button in the big player.</string>
+    <plurals name="my_playlist_songs">
+        <item quantity="one">%d song</item>
+        <item quantity="other">%d songs</item>
+    </plurals>
     <string name="layout_grid">Grid view</string>
     <string name="layout_list">List view</string>
     <string name="action_share">Share</string>

@@ -28,6 +28,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -101,7 +102,17 @@ fun HomeScreen(
     LaunchedEffect(nowPlaying == null) {
         if (nowPlaying == null) player.snapTo(0f)
     }
-    BackHandler(enabled = player.value > 0f) { settlePlayer(false) }
+    // Only whether the player is showing, not every step of its slide: reading the slide here would rebuild
+    // all of Home (lists included) on every frame while the player opens or closes.
+    val playerShown by remember { derivedStateOf { player.value > 0f } }
+    // Back from an open playlist goes to the list of them (but closes the player first when it's open: the
+    // player's handler comes after this one, so it wins).
+    val openPlaylist by viewModel.openPlaylist.collectAsStateWithLifecycle()
+    val filter by viewModel.filter.collectAsStateWithLifecycle()
+    BackHandler(enabled = openPlaylist != null && filter == LibraryFilter.PLAYLISTS && (tab ?: HomeTab.LIBRARY) == HomeTab.LIBRARY) {
+        viewModel.openPlaylist.value = null
+    }
+    BackHandler(enabled = playerShown) { settlePlayer(false) }
     val glass = LocalGlass.current
     val hazeState = rememberHazeState()
     // With glass, the backdrop (theme colors, the user's colors or picture) is blurred behind the glass panels.
@@ -212,9 +223,9 @@ fun HomeScreen(
         }
     }
     // On top of everything on Home (bars, the + button, the mini player), so the full-screen player covers it all.
-    if (player.value > 0f) {
+    if (playerShown) {
         NowPlayingOverlay(
-            progress = player.value,
+            progress = { player.value },
             onDrag = dragPlayer,
             onDragStopped = releasePlayer,
             onClose = { settlePlayer(false) },

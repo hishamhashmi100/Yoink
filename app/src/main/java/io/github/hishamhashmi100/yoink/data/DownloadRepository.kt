@@ -12,6 +12,7 @@ import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.download.QueueResumeWorker
 import io.github.hishamhashmi100.yoink.download.Storage
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
+import io.github.hishamhashmi100.yoink.yoink
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -175,6 +176,8 @@ class DownloadRepository(private val context: Context, val dao: DownloadDao) {
             download.thumbnailPath?.let { File(it).delete() }
         }
         dao.delete(download.id)
+        // And out of the user's playlists.
+        context.yoink.database.playlistDao().removeDownload(download.id)
     }
 
     /** Fills in the resolution of videos downloaded before it was recorded. */

@@ -4,6 +4,10 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -31,6 +35,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -53,18 +58,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -80,10 +92,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.GlassBehind
+import io.github.hishamhashmi100.yoink.ui.home.AddToPlaylistDialog
 import io.github.hishamhashmi100.yoink.ui.theme.ButtonShape
 import io.github.hishamhashmi100.yoink.ui.theme.GlassBackdrop
 import io.github.hishamhashmi100.yoink.ui.theme.GlassTheme
@@ -91,20 +102,24 @@ import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdrop
 import io.github.hishamhashmi100.yoink.ui.theme.LocalBackdropColors
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlass
 import io.github.hishamhashmi100.yoink.ui.theme.LocalGlassOverlay
-import io.github.hishamhashmi100.yoink.ui.theme.LocalHazeState
 import io.github.hishamhashmi100.yoink.ui.theme.SafeArea
 import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The full-screen "Now playing" view for MP3s, pulled up from the mini player. [progress] runs from 0
  * (tucked away) to 1 (open): while a finger drags (here or on the mini player) it follows the finger, and
- * [onDragStopped] settles it open or closed. Drawn entirely from the Appearance settings.
+ * [onDragStopped] settles it open or closed. It's read only while drawing, so sliding doesn't rebuild the
+ * screen on every frame. Drawn entirely from the Appearance settings.
  */
 @Composable
 fun NowPlayingOverlay(
-    progress: Float,
+    progress: () -> Float,
     onDrag: (Float) -> Unit,
     onDragStopped: (Float) -> Unit,
     onClose: () -> Unit,
@@ -128,7 +143,7 @@ fun NowPlayingOverlay(
 
 @Composable
 private fun PlayerPane(
-    progress: Float,
+    progress: () -> Float,
     onDrag: (Float) -> Unit,
     onDragStopped: (Float) -> Unit,
     onClose: () -> Unit,
@@ -139,12 +154,13 @@ private fun PlayerPane(
     val nowPlaying by AudioController.nowPlaying.collectAsStateWithLifecycle()
     val playing = nowPlaying ?: return
     val glass = LocalGlass.current
-    // Glass: the whole player is a pane of glass over Home, blurring it like the mini player does (Home's
-    // blur state, from the screen below). Solid: an opaque background, the user's colors if they picked some.
-    val homeHaze = LocalHazeState.current
+    // Glass: the whole player is a pane of glass over the background alone (the user's picture or colors, or the
+    // theme's), not over Home: the Library showing through made the player look busy. Solid: an opaque
+    // background, the user's colors if they picked some.
     val backdrop = LocalBackdrop.current
     val customColors = backdrop.behind != GlassBehind.THEME
-    if (progress >= 1f) HideSystemBars()
+    val open by remember { derivedStateOf { progress() >= 1f } }
+    if (open) HideSystemBars()
 
     val drag = Modifier.draggable(
         orientation = Orientation.Vertical,
@@ -155,28 +171,26 @@ private fun PlayerPane(
         val height = constraints.maxHeight
         // The player's own glass: from milky white to smoky black by the user's shade, tinted with their colors.
         val tint = glass.playerTint(shade ?: 0f)
-        val pane = when {
-            glass.enabled && homeHaze != null -> Modifier.hazeEffect(
-                homeHaze,
-                // At least a little blur, so the screen behind doesn't fight with the player's text.
-                glass.hazeStyle.copy(tints = listOf(HazeTint(tint)), blurRadius = maxOf(glass.blur, 16.dp)),
-            )
-            glass.enabled -> Modifier.background(tint)
-            else -> Modifier
-        }
         Box(
             Modifier
-                .offset { IntOffset(0, ((1f - progress) * height).roundToInt()) }
+                .offset { IntOffset(0, ((1f - progress()) * height).roundToInt()) }
                 .fillMaxSize()
-                .then(pane)
                 // Taps on empty space shouldn't reach the screen underneath.
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
         ) {
-            if (!glass.enabled) {
+            if (glass.enabled) {
+                // A picture is softened, as if seen through the glass; colors look the same either way.
+                GlassBackdrop(
+                    LocalBackdropColors.current ?: MaterialTheme.colorScheme,
+                    if (backdrop.behind == GlassBehind.PICTURE) Modifier.blur(maxOf(glass.blur, 16.dp)) else Modifier,
+                )
+                Box(Modifier.fillMaxSize().background(tint))
+            } else {
                 if (customColors) GlassBackdrop(LocalBackdropColors.current ?: MaterialTheme.colorScheme)
                 else Box(Modifier.fillMaxSize().background(LocalBackdropColors.current?.surface ?: MaterialTheme.colorScheme.surface))
             }
             var showQueue by rememberSaveable { mutableStateOf(false) }
+            var addingToPlaylist by rememberSaveable { mutableStateOf(false) }
             Column(
                 Modifier
                     .fillMaxSize()
@@ -198,6 +212,11 @@ private fun PlayerPane(
                         textAlign = TextAlign.Center,
                         modifier = Modifier.weight(1f),
                     )
+                    if (playing.downloadId != null) {
+                        IconButton(onClick = { addingToPlaylist = true }) {
+                            Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = stringResource(R.string.playlist_add_to))
+                        }
+                    }
                     IconButton(onClick = { showQueue = !showQueue }) {
                         Icon(
                             Icons.AutoMirrored.Rounded.QueueMusic,
@@ -221,12 +240,21 @@ private fun PlayerPane(
 
                 Controls(playing, null)
             }
+            playing.downloadId?.takeIf { addingToPlaylist }?.let { id ->
+                AddToPlaylistDialog(id, onDismiss = { addingToPlaylist = false })
+            }
         }
     }
 }
 
 @Composable
 private fun Cover(playing: NowPlaying) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val current by rememberUpdatedState(playing)
+    // How far the cover has been swiped sideways, in pixels.
+    val swipe = remember { Animatable(0f) }
+    var width by remember { mutableFloatStateOf(1f) }
     Column(
         Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -238,6 +266,39 @@ private fun Cover(playing: NowPlaying) {
             Modifier
                 .weight(1f, fill = false)
                 .aspectRatio(16f / 9f, matchHeightConstraintsFirst = true)
+                .onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f) }
+                .graphicsLayer {
+                    translationX = swipe.value
+                    alpha = 1f - (abs(swipe.value) / width * 0.6f).coerceIn(0f, 0.6f)
+                }
+                // Swipe left for the next track, right for the previous one, like a music app.
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    state = rememberDraggableState { delta ->
+                        // Stiff toward a side with no track to go to.
+                        val nowhere = (delta < 0f && swipe.value <= 0f && !current.hasNext) ||
+                            (delta > 0f && swipe.value >= 0f && !current.hasPrevious)
+                        scope.launch { swipe.snapTo(swipe.value + if (nowhere) delta * 0.2f else delta) }
+                    },
+                    onDragStopped = { velocity ->
+                        val direction = when {
+                            (swipe.value < -width * 0.3f || velocity < -1_500f) && current.hasNext -> -1f
+                            (swipe.value > width * 0.3f || velocity > 1_500f) && current.hasPrevious -> 1f
+                            else -> 0f
+                        }
+                        if (direction == 0f) {
+                            swipe.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow))
+                        } else {
+                            val before = current.index
+                            swipe.animateTo(direction * width, tween(150))
+                            if (direction < 0f) AudioController.next(context) else AudioController.previousTrack(context)
+                            // Once the other track is on, its cover slides in from the opposite side.
+                            withTimeoutOrNull(600) { snapshotFlow { current.index }.first { it != before } }
+                            swipe.snapTo(-direction * width)
+                            swipe.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow))
+                        }
+                    },
+                )
                 .clip(MaterialTheme.shapes.extraLarge)
                 .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,

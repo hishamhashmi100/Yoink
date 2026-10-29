@@ -27,24 +27,56 @@ object ThemedArtwork {
     // Square, like the player shows it; big enough to stay sharp on high-density screens.
     private const val SIZE = 720
 
-    /** A file URI for the themed cover. Does disk work, so call it off the main thread. */
-    fun uri(context: Context, thumbnailPath: String?, appearance: Appearance): Uri? = runCatching {
-        val dir = File(context.cacheDir, "artwork").apply { mkdirs() }
-        val (shadow, highlight) = duotone(context, appearance)
-        // Named after the two colors, so a new theme makes new covers.
-        val theme = "%08x%08x".format(shadow, highlight)
-        dir.listFiles()?.filterNot { it.name.startsWith(theme) }?.forEach { it.delete() }
+    /** The theme's two duotone colors. Worked out once for a whole queue: building the colors takes a moment. */
+    class Theme internal constructor(val shadow: Int, val highlight: Int) {
+        // Covers are named after the two colors, so a new theme makes new covers.
+        internal val key = "%08x%08x".format(shadow, highlight)
+    }
 
+    fun theme(context: Context, appearance: Appearance): Theme =
+        duotone(context, appearance).let { (shadow, highlight) -> Theme(shadow, highlight) }
+
+    private fun dir(context: Context) = File(context.cacheDir, "artwork")
+
+    /** Where the themed cover for [thumbnailPath] goes. Made by [render]. */
+    fun file(context: Context, theme: Theme, thumbnailPath: String?): File {
         val name = thumbnailPath?.let { File(it).nameWithoutExtension } ?: "none"
-        val file = File(dir, "${theme}_$name.png")
-        if (!file.exists()) {
-            val bitmap = thumbnailPath?.let { recolor(it, shadow, highlight) } ?: gradient(shadow, highlight)
-            // PNG: JPEG blotches the smooth duotone.
-            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-            bitmap.recycle()
-        }
-        Uri.fromFile(file)
-    }.getOrNull()
+        return File(dir(context), "${theme.key}_$name.png")
+    }
+
+    /**
+     * Makes the themed cover at [file] unless it's already there. Slow (decodes, recolors and saves a picture),
+     * so call it off the main thread. False if it couldn't be made.
+     */
+    fun render(file: File, theme: Theme, thumbnailPath: String?): Boolean {
+        if (file.exists()) return true
+        runCatching { make(file, theme, thumbnailPath) }
+        return file.exists()
+    }
+
+    private fun make(file: File, theme: Theme, thumbnailPath: String?) {
+        file.parentFile?.mkdirs()
+        val bitmap = thumbnailPath?.let { recolor(it, theme.shadow, theme.highlight) } ?: gradient(theme.shadow, theme.highlight)
+        // Written under another name and then renamed, so a cover is never seen half written.
+        val part = File(file.parentFile, file.name + ".part")
+        // PNG: JPEG blotches the smooth duotone.
+        part.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
+        part.renameTo(file)
+    }
+
+    /** Deletes covers made for another theme. */
+    fun clearOthers(context: Context, theme: Theme) {
+        dir(context).listFiles()?.filterNot { it.name.startsWith(theme.key) }?.forEach { it.delete() }
+    }
+
+    /** A file URI for the themed cover, made now if needed. Does disk work, so call it off the main thread. */
+    fun uri(context: Context, thumbnailPath: String?, appearance: Appearance): Uri? {
+        val theme = theme(context, appearance)
+        clearOthers(context, theme)
+        val file = file(context, theme, thumbnailPath)
+        return if (render(file, theme, thumbnailPath)) Uri.fromFile(file) else null
+    }
 
     /** The darkest and lightest colors of the duotone, both from the theme's primary color. */
     private fun duotone(context: Context, appearance: Appearance): Pair<Int, Int> {
