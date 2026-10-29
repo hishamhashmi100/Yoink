@@ -24,16 +24,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RemoveCircleOutline
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +77,7 @@ import io.github.hishamhashmi100.yoink.ui.theme.fadeOutBottom
 import io.github.hishamhashmi100.yoink.yoink
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -131,7 +137,13 @@ fun MyPlaylistsList(query: String, bottomInset: Dp, onOpen: (Long) -> Unit) {
 
 /** One playlist: its name, songs, Play and Shuffle. Back (the arrow or the system's) returns to the list. */
 @Composable
-fun MyPlaylistScreen(playlistId: Long, bottomInset: Dp, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun MyPlaylistScreen(
+    playlistId: Long,
+    bottomInset: Dp,
+    onBack: () -> Unit,
+    onAddSongs: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     val app = context.yoink
     val playlist by remember(playlistId) { app.playlists.observe(playlistId) }.collectAsStateWithLifecycle(null)
@@ -155,6 +167,9 @@ fun MyPlaylistScreen(playlistId: Long, bottomInset: Dp, onBack: () -> Unit, modi
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            IconButton(onClick = onAddSongs) {
+                Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.my_playlist_add_songs))
             }
             Box {
                 IconButton(onClick = { menuOpen = true }) {
@@ -201,6 +216,10 @@ fun MyPlaylistScreen(playlistId: Long, bottomInset: Dp, onBack: () -> Unit, modi
         }
         if (tracks.isEmpty()) {
             Hint(stringResource(R.string.my_playlist_empty), Modifier.padding(horizontal = 16.dp))
+            FilledTonalButton(onClick = onAddSongs, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+                Text(stringResource(R.string.my_playlist_add_songs), modifier = Modifier.padding(start = 8.dp))
+            }
         } else {
             LazyColumn(
                 contentPadding = PaddingValues(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 96.dp + bottomInset),
@@ -355,6 +374,137 @@ fun AddToPlaylistDialog(downloadId: Long, onDismiss: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
+}
+
+/**
+ * Choosing songs for a playlist: every MP3 in the Library with a tick box, so several go in at once. Songs
+ * already in the playlist show as ticked.
+ */
+@Composable
+fun AddSongsScreen(playlistId: Long, bottomInset: Dp, onDone: () -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val app = context.yoink
+    val playlist by remember(playlistId) { app.playlists.observe(playlistId) }.collectAsStateWithLifecycle(null)
+    val inPlaylist by remember(playlistId) {
+        app.playlists.observeTracks(playlistId, DownloadStatus.COMPLETED).map { tracks -> tracks.mapTo(HashSet()) { it.id } }
+    }.collectAsStateWithLifecycle(emptySet())
+    val songs by remember {
+        app.repository.downloads.map { all -> all.filter { it.status == DownloadStatus.COMPLETED && it.quality.isAudio } }
+    }.collectAsStateWithLifecycle(null)
+    var query by rememberSaveable { mutableStateOf("") }
+    // In the order they were ticked, which is the order they go into the playlist.
+    var picked by rememberSaveable { mutableStateOf(longArrayOf()) }
+    val search = query.trim()
+    val shown = songs.orEmpty().filter {
+        search.isEmpty() || it.title.contains(search, ignoreCase = true) || it.channel?.contains(search, ignoreCase = true) == true
+    }
+    val name = playlist?.name.orEmpty()
+
+    Column(modifier.fillMaxSize()) {
+        Row(Modifier.padding(start = 4.dp, end = 8.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onDone) {
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cancel))
+            }
+            Text(
+                stringResource(R.string.my_playlist_add_to_title, name),
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 4.dp),
+            )
+            Button(
+                onClick = {
+                    val ids = picked.toList()
+                    onDone()
+                    app.appScope.launch {
+                        val added = app.playlists.addAll(playlistId, ids)
+                        withContext(Dispatchers.Main) {
+                            val message = app.resources.getQuantityString(R.plurals.my_playlist_added_count, added, added, name)
+                            Toast.makeText(app, message, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                enabled = picked.isNotEmpty(),
+            ) {
+                Text(stringResource(R.string.my_playlist_add_count, picked.size), maxLines = 1)
+            }
+        }
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            placeholder = { Text(stringResource(R.string.search_hint)) },
+            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Clear, contentDescription = null) }
+                }
+            },
+            singleLine = true,
+            shape = MaterialTheme.shapes.extraLarge,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        val pickable = shown.filter { it.id !in inPlaylist }
+        if (pickable.isNotEmpty()) {
+            // Ticks every song shown (all of them, or the search results), or unticks them if they all are.
+            val allPicked = pickable.all { it.id in picked }
+            TextButton(
+                onClick = {
+                    picked = if (allPicked) {
+                        picked.filter { id -> pickable.none { it.id == id } }.toLongArray()
+                    } else {
+                        picked + pickable.map { it.id }.filter { it !in picked }
+                    }
+                },
+                modifier = Modifier.padding(horizontal = 8.dp),
+            ) {
+                Text(stringResource(if (allPicked) R.string.my_playlist_select_none else R.string.my_playlist_select_all))
+            }
+        }
+        when {
+            songs == null -> Unit
+            songs.orEmpty().isEmpty() -> Hint(stringResource(R.string.my_playlist_no_songs), Modifier.padding(horizontal = 16.dp))
+            else -> LazyColumn(
+                contentPadding = PaddingValues(start = 8.dp, end = 16.dp, top = 4.dp, bottom = 96.dp + bottomInset),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .fadeOutBottom(bottomInset),
+            ) {
+                items(shown, key = { it.id }) { song ->
+                    val already = song.id in inPlaylist
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.medium)
+                            .clickable(enabled = !already) {
+                                picked = if (song.id in picked) picked.filter { it != song.id }.toLongArray() else picked + song.id
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = already || song.id in picked, onCheckedChange = null, enabled = !already)
+                        Spacer(Modifier.width(8.dp))
+                        Thumbnail(song, Modifier.width(96.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(song.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                if (already) stringResource(R.string.my_playlist_in) else song.channel.orEmpty(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /** Asks for a playlist's name: a new one, or a new name for one. */

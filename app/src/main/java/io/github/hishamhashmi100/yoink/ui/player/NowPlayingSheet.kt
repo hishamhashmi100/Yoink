@@ -4,10 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -34,7 +30,11 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -64,7 +64,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -75,8 +74,8 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -107,9 +106,6 @@ import io.github.hishamhashmi100.yoink.ui.theme.glassPanel
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The full-screen "Now playing" view for MP3s, pulled up from the mini player. [progress] runs from 0
@@ -171,10 +167,13 @@ private fun PlayerPane(
         val height = constraints.maxHeight
         // The player's own glass: from milky white to smoky black by the user's shade, tinted with their colors.
         val tint = glass.playerTint(shade ?: 0f)
+        // The background doesn't slide: it fades in where it is as the player opens, so the screen underneath
+        // (Library, Downloading) slowly melts away instead of being covered by a sheet. Fully open, only the
+        // background is left.
         Box(
             Modifier
-                .offset { IntOffset(0, ((1f - progress()) * height).roundToInt()) }
                 .fillMaxSize()
+                .graphicsLayer { alpha = progress().coerceIn(0f, 1f) }
                 // Taps on empty space shouldn't reach the screen underneath.
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
         ) {
@@ -189,6 +188,14 @@ private fun PlayerPane(
                 if (customColors) GlassBackdrop(LocalBackdropColors.current ?: MaterialTheme.colorScheme)
                 else Box(Modifier.fillMaxSize().background(LocalBackdropColors.current?.surface ?: MaterialTheme.colorScheme.surface))
             }
+        }
+        // The cover and controls slide up with the finger from the mini player, fading in as they come.
+        Box(
+            Modifier
+                .offset { IntOffset(0, ((1f - progress()) * height).roundToInt()) }
+                .graphicsLayer { alpha = (progress() * 1.4f - 0.4f).coerceIn(0f, 1f) }
+                .fillMaxSize(),
+        ) {
             var showQueue by rememberSaveable { mutableStateOf(false) }
             var addingToPlaylist by rememberSaveable { mutableStateOf(false) }
             Column(
@@ -247,74 +254,66 @@ private fun PlayerPane(
     }
 }
 
+/**
+ * The cover, and the title under it. The covers of the whole queue sit side by side, like a music app: swipe
+ * to the next or previous one and that track plays. There's nothing to swipe to before the first track or
+ * after the last, and the tips of arrows beside the cover show which ways there is.
+ */
 @Composable
 private fun Cover(playing: NowPlaying) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val current by rememberUpdatedState(playing)
-    // How far the cover has been swiped sideways, in pixels.
-    val swipe = remember { Animatable(0f) }
-    var width by remember { mutableFloatStateOf(1f) }
+    val queue by AudioController.queue.collectAsStateWithLifecycle()
+    // Where this track is in playing order (with shuffle on, not the order the queue was made in).
+    val position = queue.indexOfFirst { it.index == playing.index }.coerceAtLeast(0)
+    val pager = rememberPagerState(initialPage = position) { queue.size }
+    val currentQueue by rememberUpdatedState(queue)
+    val currentPosition by rememberUpdatedState(position)
+    // The track changed some other way (the buttons, the queue, a song ending): the covers follow.
+    LaunchedEffect(position, queue.size) {
+        if (queue.isEmpty() || pager.currentPage == position) return@LaunchedEffect
+        if (abs(pager.currentPage - position) > 2) pager.scrollToPage(position) else pager.animateScrollToPage(position)
+    }
+    // A swipe came to rest on another cover: play that track.
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.settledPage }.collect { page ->
+            val entry = currentQueue.getOrNull(page) ?: return@collect
+            if (page != currentPosition) AudioController.skipTo(context, entry.index)
+        }
+    }
+
     Column(
         Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // As wide as the screen allows, but smaller when the screen is short (landscape, small phones, large
-        // fonts), so the title below always fits.
-        Box(
-            Modifier
-                .weight(1f, fill = false)
-                .aspectRatio(16f / 9f, matchHeightConstraintsFirst = true)
-                .onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f) }
-                .graphicsLayer {
-                    translationX = swipe.value
-                    alpha = 1f - (abs(swipe.value) / width * 0.6f).coerceIn(0f, 0.6f)
-                }
-                // Swipe left for the next track, right for the previous one, like a music app.
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    state = rememberDraggableState { delta ->
-                        // Stiff toward a side with no track to go to.
-                        val nowhere = (delta < 0f && swipe.value <= 0f && !current.hasNext) ||
-                            (delta > 0f && swipe.value >= 0f && !current.hasPrevious)
-                        scope.launch { swipe.snapTo(swipe.value + if (nowhere) delta * 0.2f else delta) }
-                    },
-                    onDragStopped = { velocity ->
-                        val direction = when {
-                            (swipe.value < -width * 0.3f || velocity < -1_500f) && current.hasNext -> -1f
-                            (swipe.value > width * 0.3f || velocity > 1_500f) && current.hasPrevious -> 1f
-                            else -> 0f
-                        }
-                        if (direction == 0f) {
-                            swipe.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow))
-                        } else {
-                            val before = current.index
-                            swipe.animateTo(direction * width, tween(150))
-                            if (direction < 0f) AudioController.next(context) else AudioController.previousTrack(context)
-                            // Once the other track is on, its cover slides in from the opposite side.
-                            withTimeoutOrNull(600) { snapshotFlow { current.index }.first { it != before } }
-                            swipe.snapTo(-direction * width)
-                            swipe.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow))
-                        }
-                    },
-                )
-                .clip(MaterialTheme.shapes.extraLarge)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
+        Row(
+            Modifier.weight(1f, fill = false),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                Icons.Rounded.MusicNote,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(56.dp),
-            )
-            AsyncImage(
-                model = playing.artworkUri,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+            SwipeHint(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, visible = queue.isNotEmpty() && pager.currentPage > 0)
+            // As wide as the screen allows, but smaller when the screen is short (landscape, small phones, large
+            // fonts), so the title below always fits.
+            Box(
+                Modifier
+                    .weight(1f, fill = false)
+                    .aspectRatio(16f / 9f, matchHeightConstraintsFirst = true),
+            ) {
+                if (queue.isEmpty()) {
+                    CoverArt(playing.artworkUri)
+                } else {
+                    HorizontalPager(
+                        state = pager,
+                        key = { page -> currentQueue.getOrNull(page)?.index ?: page },
+                        pageSpacing = 16.dp,
+                        // The covers either side are ready before they slide in.
+                        beyondViewportPageCount = 1,
+                        modifier = Modifier.fillMaxSize(),
+                    ) { page ->
+                        CoverArt(queue.getOrNull(page)?.artworkUri)
+                    }
+                }
+            }
+            SwipeHint(Icons.AutoMirrored.Rounded.KeyboardArrowRight, visible = queue.isNotEmpty() && pager.currentPage < queue.lastIndex)
         }
         Spacer(Modifier.height(28.dp))
         Text(
@@ -333,6 +332,45 @@ private fun Cover(playing: NowPlaying) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CoverArt(artwork: Any?) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Rounded.MusicNote,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.size(56.dp),
+        )
+        AsyncImage(
+            model = artwork,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+/** Just the tip of an arrow beside the cover: there's another track that way. Keeps its space when hidden. */
+@Composable
+private fun SwipeHint(icon: ImageVector, visible: Boolean) {
+    Box(Modifier.size(width = 20.dp, height = 32.dp), contentAlignment = Alignment.Center) {
+        if (visible) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.size(20.dp),
             )
         }
     }

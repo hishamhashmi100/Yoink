@@ -170,9 +170,6 @@ object AudioController {
     /** Back to the start of the track, or the previous track if it just started. */
     fun previous(context: Context) = withController(context) { it.seekToPrevious() }
 
-    /** Straight to the previous track (a swipe on the cover), wherever this one is. */
-    fun previousTrack(context: Context) = withController(context) { it.seekToPreviousMediaItem() }
-
     /**
      * Takes a deleted download out of the player. If it was playing, the next track starts (or playback stops
      * when nothing is left), so a deleted MP3 doesn't keep playing from memory.

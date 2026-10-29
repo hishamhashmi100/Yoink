@@ -31,6 +31,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     /** The playlist open under Library → Playlists, or null for the list of them. */
     val openPlaylist = MutableStateFlow<Long?>(null)
 
+    /** Choosing songs to add to the open playlist. */
+    val pickingSongs = MutableStateFlow(false)
+
     /** Null until the database has answered once. */
     val active: StateFlow<List<ActiveDownload>?> =
         combine(repository.downloads, repository.progress) { downloads, progress ->

@@ -80,13 +80,25 @@ fun LibraryScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier, botto
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val grid by viewModel.grid.collectAsStateWithLifecycle()
     val openPlaylist by viewModel.openPlaylist.collectAsStateWithLifecycle()
+    val pickingSongs by viewModel.pickingSongs.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var toDelete by remember { mutableStateOf<Download?>(null) }
     var addingToPlaylist by remember { mutableStateOf<Download?>(null) }
 
     val playlist = openPlaylist?.takeIf { filter == LibraryFilter.PLAYLISTS }
-    if (playlist != null) {
-        MyPlaylistScreen(playlist, bottomInset, onBack = { viewModel.openPlaylist.value = null }, modifier = modifier)
+    if (playlist != null && pickingSongs) {
+        AddSongsScreen(playlist, bottomInset, onDone = { viewModel.pickingSongs.value = false }, modifier = modifier)
+    } else if (playlist != null) {
+        MyPlaylistScreen(
+            playlist,
+            bottomInset,
+            onBack = {
+                viewModel.openPlaylist.value = null
+                viewModel.pickingSongs.value = false
+            },
+            onAddSongs = { viewModel.pickingSongs.value = true },
+            modifier = modifier,
+        )
     } else Column(modifier.fillMaxSize()) {
         OutlinedTextField(
             value = query,

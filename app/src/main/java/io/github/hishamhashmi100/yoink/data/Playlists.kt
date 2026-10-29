@@ -83,6 +83,10 @@ interface PlaylistDao {
     suspend fun add(playlistId: Long, downloadId: Long): Boolean =
         insertItem(PlaylistItem(playlistId, downloadId, lastPosition(playlistId) + 1)) != -1L
 
+    /** Adds several at once, in the order given. Returns how many weren't in the playlist already. */
+    @Transaction
+    suspend fun addAll(playlistId: Long, downloadIds: List<Long>): Int = downloadIds.count { add(playlistId, it) }
+
     @Query("DELETE FROM playlist_items WHERE playlistId = :playlistId AND downloadId = :downloadId")
     suspend fun removeItem(playlistId: Long, downloadId: Long)
 
