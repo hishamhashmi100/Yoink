@@ -109,9 +109,14 @@ fun HomeScreen(
     // player's handler comes after this one, so it wins).
     val openPlaylist by viewModel.openPlaylist.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
-    BackHandler(enabled = openPlaylist != null && filter == LibraryFilter.PLAYLISTS && (tab ?: HomeTab.LIBRARY) == HomeTab.LIBRARY) {
+    val pickingSongs by viewModel.pickingSongs.collectAsStateWithLifecycle()
+    val inPlaylist = openPlaylist != null && filter == LibraryFilter.PLAYLISTS && (tab ?: HomeTab.LIBRARY) == HomeTab.LIBRARY
+    BackHandler(enabled = inPlaylist) {
         viewModel.openPlaylist.value = null
+        viewModel.pickingSongs.value = false
     }
+    // Choosing songs to add: back returns to the playlist (this one comes later, so it wins over the one above).
+    BackHandler(enabled = inPlaylist && pickingSongs) { viewModel.pickingSongs.value = false }
     BackHandler(enabled = playerShown) { settlePlayer(false) }
     val glass = LocalGlass.current
     val hazeState = rememberHazeState()
@@ -152,6 +157,8 @@ fun HomeScreen(
         )
     }
     Scaffold(
+        // Hidden under the open player (its background is solid by then), so it isn't drawn for nothing.
+        modifier = Modifier.graphicsLayer { alpha = if (player.value >= 1f) 0f else 1f },
         contentWindowInsets = SafeArea.content,
         topBar = {
             TopAppBar(
