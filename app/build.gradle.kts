@@ -27,6 +27,8 @@ android {
         targetSdk = 36
         versionCode = appVersionCode
         versionName = appVersion
+        // Which table usage data goes to (see stats/Stats.kt). Empty: the build collects nothing.
+        buildConfigField("String", "STATS_BUILD", "\"\"")
     }
 
     signingConfigs {
@@ -59,6 +61,7 @@ android {
             versionNameSuffix = "-test" + (testBuild?.let { ".$it" } ?: "")
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
+            buildConfigField("String", "STATS_BUILD", "\"test\"")
         }
     }
 
@@ -88,6 +91,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

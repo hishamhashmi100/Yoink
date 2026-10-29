@@ -52,6 +52,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.ShareMode
 import io.github.hishamhashmi100.yoink.download.Quality
+import io.github.hishamhashmi100.yoink.stats.Stats
 import io.github.hishamhashmi100.yoink.ui.theme.SafeArea
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkAlertDialog
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
@@ -169,6 +170,11 @@ private fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                 leadingContent = { Icon(Icons.Rounded.Palette, contentDescription = null) },
                 modifier = Modifier.clickable { context.startActivity(Intent(context, AppearanceActivity::class.java)) },
             )
+
+            if (Stats.available) {
+                SectionHeader(R.string.stats_section)
+                UsageDataItems()
+            }
 
             SectionHeader(R.string.settings_about)
             val appVersion = remember {

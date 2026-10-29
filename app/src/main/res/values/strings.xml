@@ -307,4 +307,20 @@
     <string name="add_link_hint">YouTube link</string>
     <string name="paste">Paste</string>
     <string name="next">Next</string>
+
+    <!-- Usage data (only in builds that collect it; see stats/Stats.kt) -->
+    <string name="stats_section">Usage data</string>
+    <string name="stats_title">Help improve Yoink?</string>
+    <string name="stats_what">If you say yes, Yoink sends:\n\n• A random ID for this install (not your name, number or Google account)\n• App version, Android version, phone model and language\n• Your country, worked out from your connection (your internet address itself isn\'t kept)\n• When you open the app\n• Each download: which video, its title and channel, the quality, its length and size, how long it took, and whether it worked (and why not)\n• Playlists you download: their name and how many videos\n\nYou can turn this off or delete what was sent any time in Settings → Usage data.</string>
+    <string name="stats_yes">Yes, share</string>
+    <string name="stats_no">No thanks</string>
+    <string name="stats_share">Share usage data</string>
+    <string name="stats_share_on">On. Thanks for helping improve Yoink.</string>
+    <string name="stats_share_off">Off. Nothing is sent.</string>
+    <string name="stats_what_title">What\'s collected</string>
+    <string name="stats_got_it">Got it</string>
+    <string name="stats_delete">Delete my data</string>
+    <string name="stats_delete_summary">Removes everything this install has sent</string>
+    <string name="stats_deleted">Your data was deleted.</string>
+    <string name="stats_delete_failed">Couldn\'t reach Yoink\'s server. Check your connection and try again.</string>
 </resources>

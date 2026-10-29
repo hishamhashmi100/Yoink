@@ -88,6 +88,22 @@ Every push runs the **Build** workflow, which also makes **Yoink Test**: a copy 
 
 To get it: open the repository's **Actions** tab → the latest **Build** run for your branch → **Artifacts** → `yoink-test-<number>`. Unzip it on the phone and install the APK. To build any branch on demand, use **Run workflow** on the Build workflow. Locally: `./gradlew assembleBeta`.
 
+## Usage data
+
+**Yoink Test** can collect usage data, to try it out before the real app does. The real app collects nothing: its builds have no `STATS_BUILD` (see `app/build.gradle.kts`).
+
+- **In the app** (`stats/Stats.kt`): the first time it opens, it asks. Nothing is sent unless the answer is yes, and **Settings → Usage data** can turn it off, show what's collected, or delete what was sent. Events wait on the phone and go in batches a minute later.
+- **What's sent:** a random ID for the install, app and Android version, phone model and language; app opens; each download (video, title, channel, quality, length, size, time taken, success or the reason it failed); playlists queued.
+- **On the website** (`functions/api/`): Cloudflare Pages runs `events.js` and `forget.js` at `yoink.download/api/…`. They store each event in a **D1** database, adding the country from Cloudflare (the internet address isn't stored). Yoink Test's events go to `test_events`; the real app's would go to `events`.
+
+**One-time setup in Cloudflare:**
+
+1. **Storage & databases → D1 → Create database**, named `yoink-data`.
+2. Open it → **Console**, paste everything from [`stats/schema.sql`](stats/schema.sql) and run it.
+3. **Workers & Pages → the Yoink site → Settings → Bindings → Add → D1 database**: variable name `DB`, database `yoink-data`. Then redeploy the site (or push to `main`).
+
+To look at the data: D1 → `yoink-data` → **Tables** → `test_events`, or run a query in **Console**, e.g. `SELECT at, name, title, channel, country FROM test_events ORDER BY at DESC LIMIT 50`.
+
 ## Releases
 
 Pushing a tag like `v1.0.0` runs `.github/workflows/release.yml`. It builds the release APKs, signs them, and attaches them to a GitHub Release with fixed names (`yoink-arm64-v8a.apk`, `yoink-armeabi-v7a.apk`, `yoink-universal.apk`, `SHA256SUMS.txt`). The website links to `releases/latest/download/<name>`, so those names must never change.

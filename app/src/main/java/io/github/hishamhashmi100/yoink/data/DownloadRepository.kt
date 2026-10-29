@@ -11,6 +11,7 @@ import io.github.hishamhashmi100.yoink.download.Notifications
 import io.github.hishamhashmi100.yoink.download.Quality
 import io.github.hishamhashmi100.yoink.download.QueueResumeWorker
 import io.github.hishamhashmi100.yoink.download.Storage
+import io.github.hishamhashmi100.yoink.stats.Stats
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -88,6 +89,11 @@ class DownloadRepository(private val context: Context, val dao: DownloadDao) {
         )
         pump()
         updatePlaylistNotice(playlistId)
+        Stats.record(
+            context,
+            "playlist_queued",
+            mapOf("playlist_id" to playlistId, "title" to playlistTitle, "videos" to entries.size, "quality" to quality.name),
+        )
         return entries.size
     }
 

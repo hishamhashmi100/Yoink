@@ -17,6 +17,7 @@ import com.yausername.youtubedl_android.YoutubeDLRequest
 import io.github.hishamhashmi100.yoink.R
 import io.github.hishamhashmi100.yoink.data.Download
 import io.github.hishamhashmi100.yoink.data.DownloadStatus
+import io.github.hishamhashmi100.yoink.stats.Stats
 import io.github.hishamhashmi100.yoink.yoink
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -69,8 +70,18 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         setProgress(toData(queued()))
         thumb = withContext(Dispatchers.IO) { NotificationThumbs.load(applicationContext, download.videoId) }
 
+        val startedAt = System.currentTimeMillis()
         return try {
             val finished = slots.withPermit { download(download, workDir) }
+            Stats.record(
+                applicationContext,
+                "download_done",
+                details(finished) + mapOf(
+                    "size_mb" to finished.sizeBytes?.let { it / 1_000_000 },
+                    "resolution" to finished.resolution,
+                    "seconds_taken" to (System.currentTimeMillis() - startedAt) / 1000,
+                ),
+            )
             runCatching { DownloadLog.write(applicationContext, finished, synchronized(log) { log.toList() }, null) }
             app.repository.connectionWorks()
             afterwards(download)
@@ -81,6 +92,11 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 throw if (e is CancellationException) e else CancellationException("Stopped")
             }
             val message = DownloadErrors.readable(applicationContext, e)
+            Stats.record(
+                applicationContext,
+                "download_failed",
+                details(download) + mapOf("reason" to message, "youtube_limited" to DownloadErrors.isRateLimited(e)),
+            )
             val lines = synchronized(log) { log.toList() }
             runCatching { DownloadLog.write(applicationContext, download, lines, e) }
             dao.setStatus(downloadId, DownloadStatus.FAILED, message)
@@ -92,6 +108,15 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             Result.failure()
         }
     }
+
+    private fun details(download: Download) = mapOf(
+        "video_id" to download.videoId,
+        "title" to download.title,
+        "channel" to download.channel,
+        "quality" to download.quality.name,
+        "length_sec" to download.durationSec,
+        "playlist" to (download.playlistId != null),
+    )
 
     /** Done or failed: start the next playlist video in line, and update the playlist's notification. */
     private suspend fun afterwards(download: Download) {

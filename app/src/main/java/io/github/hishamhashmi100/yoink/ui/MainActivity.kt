@@ -12,13 +12,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.hishamhashmi100.yoink.R
+import io.github.hishamhashmi100.yoink.stats.Stats
 import io.github.hishamhashmi100.yoink.ui.home.HomeScreen
 import io.github.hishamhashmi100.yoink.ui.home.HomeTab
 import io.github.hishamhashmi100.yoink.ui.player.AudioController
 import io.github.hishamhashmi100.yoink.ui.settings.SettingsActivity
+import io.github.hishamhashmi100.yoink.ui.settings.StatsConsentDialog
 import io.github.hishamhashmi100.yoink.ui.theme.YoinkTheme
 import io.github.hishamhashmi100.yoink.yoink
 
@@ -32,6 +35,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         AudioController.connect(this)
         if (savedInstanceState == null) {
+            Stats.record(this, "app_open")
             requestedTab.value = tabFrom(intent)
             openPlayer.value = intent.getBooleanExtra(EXTRA_PLAYER, false)
         }
@@ -49,6 +53,16 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                 )
+                // Builds that collect usage data ask once, the first time the app opens.
+                var asking by remember { mutableStateOf(Stats.available && Stats.consent(this) == null) }
+                if (asking) {
+                    StatsConsentDialog(
+                        onAnswer = { yes ->
+                            Stats.setConsent(this, yes)
+                            asking = false
+                        },
+                    )
+                }
             }
         }
     }
