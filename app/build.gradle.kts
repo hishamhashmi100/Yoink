@@ -14,6 +14,9 @@ val appVersionCode = appVersion.split(".").map { it.toIntOrNull() ?: 0 }
     .let { (major, minor, patch) -> major * 10_000 + minor * 100 + patch }
     .coerceAtLeast(1)
 
+// CI passes -PtestBuild=<run number>; it goes in the test copy's version, so you can tell builds apart.
+val testBuild = providers.gradleProperty("testBuild").orNull
+
 android {
     namespace = "io.github.hishamhashmi100.yoink"
     compileSdk = 36
@@ -47,6 +50,15 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        // "Yoink Test": a copy for trying changes on a phone before a release. Built like the release (shrunk,
+        // full speed), it installs next to the real app, and the fixed key lets each new one install over the last.
+        create("beta") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test" + (testBuild?.let { ".$it" } ?: "")
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
         }
     }
 

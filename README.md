@@ -82,7 +82,11 @@ You need JDK 17 and the Android SDK.
 
 The APKs land in `app/build/outputs/apk/debug/`. Debug builds install as **Yoink Debug** (`…yoink.debug`), so they can sit next to the release version.
 
-Every push runs the **Build** workflow, which uploads the `arm64-v8a` debug APK as a workflow artifact for quick testing on a phone.
+### Testing on your phone
+
+Every push runs the **Build** workflow, which also makes **Yoink Test**: a copy built exactly like a release (shrunk, full speed) that installs next to the real Yoink, with its own icon, downloads and settings. Its version ends in `-test.<build number>`, so Settings shows which build you're on. It doesn't update itself; each new one installs over the last.
+
+To get it: open the repository's **Actions** tab → the latest **Build** run for your branch → **Artifacts** → `yoink-test-<number>`. Unzip it on the phone and install the APK. To build any branch on demand, use **Run workflow** on the Build workflow. Locally: `./gradlew assembleBeta`.
 
 ## Releases
 

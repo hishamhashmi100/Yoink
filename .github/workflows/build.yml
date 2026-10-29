@@ -24,8 +24,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       # The release build is unsigned here; it runs R8 so shrinking problems show up before tagging.
-      - name: Build debug and release APKs
-        run: ./gradlew assembleDebug assembleRelease --stacktrace
+      - name: Build the test and release APKs
+        run: ./gradlew assembleBeta assembleRelease -PtestBuild=${{ github.run_number }} --stacktrace
 
       # Release builds are shrunk by R8. Fail here if it removed what the downloader needs to unpack
       # Python, instead of finding out from a crash on someone's phone.
@@ -44,9 +44,10 @@ jobs:
             if grep -qF "$name" dex.txt; then echo "ok: $name"; else echo "::error::Missing from release APK: $name"; exit 1; fi
           done
 
-      - name: Upload arm64 debug APK
+      # "Yoink Test", to try on a phone before a release (see README → Testing on your phone).
+      - name: Upload the test APK
         uses: actions/upload-artifact@v4
         with:
-          name: yoink-debug-arm64-v8a
-          path: app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+          name: yoink-test-${{ github.run_number }}
+          path: app/build/outputs/apk/beta/app-arm64-v8a-beta.apk
           if-no-files-found: error

@@ -2,7 +2,6 @@ package io.github.hishamhashmi100.yoink.update
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -52,6 +51,7 @@ object AppUpdater {
 
     private const val LATEST_RELEASE = "https://api.github.com/repos/hishamhashmi100/Yoink/releases/latest"
     private const val RECHECK_AFTER_MS = 6 * 60 * 60 * 1000L
+    private const val RELEASE_APP_ID = "io.github.hishamhashmi100.yoink"
 
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = _state.asStateFlow()
@@ -59,9 +59,11 @@ object AppUpdater {
     private val checkLock = Mutex()
     @Volatile private var lastCheck = 0L
 
-    /** Debug builds have a different app ID, so a release APK would install next to them, not over them. */
-    fun canSelfUpdate(context: Context): Boolean =
-        context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0
+    /**
+     * Only the real app updates itself. Test and debug copies have their own app ID, so a release APK would
+     * install next to them, not over them.
+     */
+    fun canSelfUpdate(context: Context): Boolean = context.packageName == RELEASE_APP_ID
 
     fun currentVersion(context: Context): String =
         context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty().substringBefore('-')
